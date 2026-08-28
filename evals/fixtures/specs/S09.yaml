@@ -1,0 +1,104 @@
+# S09 — TEST — the decoy receiver.
+# A post_delete receiver that deletes a file exists, is genuinely connected through
+# AppConfig.ready(), and is registered for the wrong sender: Comment, not Photo
+# (research §6 R9). Rows are erased; the image files are not. A reader who greps for
+# "post_delete" and stops sees a repository that cleans up after itself.
+# One planted variable only, which is what makes a failure here attributable.
+# Store names are the identifiers the code carries (fixture-generator.md §7 rule 1): the explicit
+# db_table of each model, and photo.image for the ImageField store — the id 03-verifier.md §3.1
+# derives, and the one the advanced arm's own missing_stores feedback would name. Under the old
+# alias `photo_files` the single non-reaching tuple this case exists to measure was decided by
+# whether the arm guessed the manifest's spelling.
+# Frozen once the first run against S09 exists. Test split: see evals/split.yaml.
+case: S09
+split: test
+flavour: django
+package: slatecove
+apps: [gallery, catalog]
+intent: "a connected post_delete receiver that deletes files, registered for the wrong sender; rows are erased and the files survive"
+engine: "sqlite:///./slatecove.sqlite3"
+
+models:
+  - name: Account
+    table: gallery_account
+    store: gallery_account
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: email, type: str, category: contact, nullable: false}
+      - {name: full_name, type: str, category: identifier}
+      - {name: joined_at, type: datetime, category: technical}
+  - name: Photo
+    table: gallery_photo
+    store: gallery_photo
+    parent: Account
+    on_delete: CASCADE
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: image, type: image, category: null, store: photo.image}
+      - {name: caption, type: str, category: free_text_may_contain}
+      - {name: taken_at, type: datetime, category: technical}
+  - name: Comment
+    table: gallery_comment
+    store: gallery_comment
+    parent: Account
+    on_delete: CASCADE
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: body, type: text, category: free_text_may_contain}
+      - {name: posted_at, type: datetime, category: technical}
+  - name: Product
+    table: catalog_product
+    negative: true
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: sku, type: str}
+      - {name: title, type: str}
+
+stores:
+  - name: photo.image
+    kind: object_storage
+    client: file
+    module: gallery/models.py
+    fields:
+      - {name: image, category: identifier}
+    writes_from: null
+    write_called_by: null
+    delete_call: null
+    delete_called_by: null
+    key_template: "photos/{user_id}/{photo_id}.jpg"
+
+receivers:
+  - name: delete_attached_image
+    signal: post_delete
+    sender: Comment
+    module: gallery/signals.py
+    weak: true
+    registered_in: apps_ready
+    body: delete_file
+
+entry_points:
+  - name: delete_account
+    kind: view
+    module: gallery/views.py
+    action: hard_delete
+    deletes_via: model_delete
+    docstring: "Delete the account, its photos and its comments."
+
+routes:
+  - {name: gallery_index, module: gallery/views.py, reads: [Photo.caption]}
+
+admin: [Account, Photo]
+
+extra_files:
+  - {path: gallery/utils.py, kind: helpers}
+
+expect:
+  entry_points: [delete_account]
+  stores:
+    gallery_account: {verdict: erased, evidence: "gallery/views.py::delete_account!delete"}
+    gallery_photo:   {verdict: erased, evidence: "gallery/models.py::Photo.account"}
+    gallery_comment: {verdict: erased, evidence: "gallery/models.py::Comment.account"}
+    photo.image:
+      verdict: not_erased
+      evidence: null
+      note: "the only file-deleting receiver is {gallery/signals.py::delete_attached_image}, registered for sender Comment; no receiver, storage call or cleanup package covers Photo.image"
