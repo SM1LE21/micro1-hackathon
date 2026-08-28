@@ -1,0 +1,102 @@
+# S03 — dev — the multi-hop path and the timer.
+# Soft delete on the route, jobs/purge.py hard-deletes rows older than RETENTION_DAYS.
+# Invoices hang off a relationship with the default cascade, so they survive (research §6 R5),
+# and their foreign key declares ondelete=CASCADE with no PRAGMA listener on a SQLite engine,
+# which is DDL the database never enforces: verdict unverified (research §6 R6, AMBIGUITIES 14).
+# That is the only synthetic fixture behind `unverified`; see fixture-generator.md §9.
+# jobs/backup.py carries a schedule and a retention constant, which is what
+# governed_by_retention needs (gdpr-sources §3.1).
+# Extends CASES.md's S03 row with the backup store; see fixture-generator.md §9.
+# Frozen once the first run against S03 exists.
+case: S03
+split: dev
+flavour: sqlalchemy
+package: atlaslane
+intent: "soft delete plus a scheduled purge job: the erasure verdict depends on a two-hop path and a timer the tool must cite"
+engine: "sqlite:///./atlaslane.db"
+
+models:
+  - name: User
+    table: users
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: email, type: str, category: contact, nullable: false}
+      - {name: full_name, type: str, category: identifier}
+      - {name: deleted_at, type: datetime, category: technical}
+  - name: Invoice
+    table: invoices
+    parent: User
+    cascade: "save-update, merge"
+    ondelete: "CASCADE"          # DDL only: SQLite does not enforce it and no PRAGMA listener exists
+    passive_deletes: false
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: billing_name, type: str, category: identifier}
+      - {name: reference, type: str, category: financial, comment: "kept for the statutory accounting period; the purge job does not touch this table"}
+      - {name: amount_cents, type: int, category: financial}
+
+stores:
+  - name: nightly_backup
+    kind: backup
+    client: file
+    module: jobs/backup.py
+    writes_from: dump_database
+    write_called_by: module      # the dump script's own SCHEDULE constant is the evidence
+    fields:
+      - {name: email, category: contact}
+      - {name: full_name, category: identifier}
+      - {name: reference, category: financial}
+
+entry_points:
+  - name: close_account
+    kind: route
+    module: api/account.py
+    action: soft_delete
+    docstring: "Close the account. Rows are removed by the nightly purge."
+
+jobs:
+  - name: purge_closed_accounts
+    module: jobs/purge.py
+    kind: purge
+    target: User
+    method: orm_loop
+    retention_days: 30
+    filter_field: deleted_at
+  - name: dump_database
+    module: jobs/backup.py
+    kind: backup
+    target: null
+    schedule: "0 3 * * *"
+    retention_days: 35
+
+routes:
+  - {name: get_profile, module: api/profile.py, reads: [User.email, User.full_name]}
+  - {name: list_invoices, module: api/profile.py, reads: [Invoice.billing_name, Invoice.reference]}
+
+extra_files:
+  - {path: utils/text.py, kind: helpers}
+
+retention:
+  - {store: users, category: contact, days: 30, anchor: "jobs/purge.py::RETENTION_DAYS"}
+  # The criteria is anchored at the column the comment annotates: comments render inline on the
+  # column line (fixture-generator.md §3.1), so the line carries the wording. A null anchor would
+  # emit file: null, line: null, which invariant I6 (04-output-schema.md §4) rejects in a submitted
+  # record in both arms — retention_check.missing would then be permanently non-zero on a dev case.
+  - {store: invoices, category: financial, criteria: "kept for the statutory accounting period", anchor: "models.py::Invoice.reference"}
+  - {store: nightly_backup, category: contact, days: 35, anchor: "jobs/backup.py::BACKUP_RETENTION_DAYS"}
+
+expect:
+  entry_points: [close_account]
+  stores:
+    users:
+      verdict: erased_after_timer
+      timer_days: 30
+      evidence: "jobs/purge.py::purge_closed_accounts!delete"
+    invoices:
+      verdict: unverified
+      evidence: "models.py::Invoice.user_id"
+      note: "the relationship at {models.py::User.invoices} carries no delete token, so the ORM issues no child DELETE; the foreign key at {models.py::Invoice.user_id} declares ondelete=CASCADE, which SQLite does not enforce without a PRAGMA foreign_keys listener, and none exists"
+    nightly_backup:
+      verdict: governed_by_retention
+      timer_days: 35
+      evidence: "jobs/backup.py::BACKUP_RETENTION_DAYS"
