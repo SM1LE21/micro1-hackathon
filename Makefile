@@ -1,7 +1,9 @@
 .PHONY: setup smoke fixtures run baseline advanced eval eval-replay report traces gate-timing check-secrets
 
 CLAUDE_PROJECT_DIR ?= $(HOME)/.claude/projects/-Users-tun-Documents-micro1-hackathon
-CASE ?= S10
+CASE ?= S05
+MODE ?= live
+OUT ?= results/runs
 
 setup:
 	uv sync --locked
@@ -18,7 +20,7 @@ fixtures:
 	@echo "not implemented - evals/fixtures/gen.py (docs/spec/fixture-generator.md); must leave a clean git diff" && exit 1
 
 run:
-	@echo "not implemented - art30 scan evals/fixtures/synthetic/$(CASE) --arm advanced --approve ask (docs/spec/07-ui.md)" && exit 1
+	@echo "not implemented - art30 scan evals/fixtures/synthetic/$(CASE) --arm advanced --approve ask --mode $(MODE) --out $(OUT) (docs/spec/07-ui.md; test cases need ART30_UNLOCK_TEST=1)" && exit 1
 
 baseline:
 	@echo "not implemented - built after fixtures and harness (ADR 0002 order)" && exit 1
