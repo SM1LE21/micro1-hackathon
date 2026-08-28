@@ -25,3 +25,7 @@ What does Tun want to record with (QuickTime screen recording + mic, or somethin
 ## Q3 — How much of the lived bug story goes in the README?
 
 The "who has this problem" section is strongest with the real anecdote (hand-written report with two statements reversed; soft-delete not reaching object storage for a month). Proposed wording: "in a product the author runs", no product name, no dates, no stack detail. Confirm or tighten. Not blocking; needed before README is written Sunday night.
+
+## Q4 — Repository licence
+
+No `LICENSE` file exists. The prior-art comparison lists this project as "licence: to be decided". micro1 owns the submission under the hackathon terms; whether to also publish under an OSI licence (MIT or Apache-2.0) is your call, not the agents'. Needed before the README's prior-art table is final (Sunday night). Not blocking.
