@@ -1,0 +1,63 @@
+# S04 — dev — object storage done right.
+# Avatars live in a bucket, the key is derived from user.id in storage.py, and the delete
+# route calls the storage helper as well as removing the row. No versioning is declared
+# anywhere, so the narrowed assumption in research §3 applies and the delete reaches erasure.
+# Frozen once the first run against S04 exists.
+case: S04
+split: dev
+flavour: sqlalchemy
+package: snapledger
+intent: "an object store that is genuinely erased: the delete route calls the storage helper as well as the ORM"
+engine: "sqlite:///./snapledger.db"
+
+models:
+  - name: User
+    table: users
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: email, type: str, category: contact, nullable: false}
+      - {name: full_name, type: str, category: identifier}
+      - {name: created_at, type: datetime, category: technical}
+  - name: Product
+    table: products
+    negative: true
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: sku, type: str}
+      - {name: title, type: str}
+
+stores:
+  - name: uploads
+    kind: object_storage
+    client: boto3
+    module: storage.py
+    fields:
+      - {name: avatar_key, category: identifier}
+    writes_from: upload_avatar
+    write_called_by: set_avatar
+    delete_call: delete_avatar
+    delete_called_by: delete_account
+    key_template: "avatars/{user_id}.jpg"
+    versioning_declared: false
+
+entry_points:
+  - name: delete_account
+    kind: route
+    module: api/account.py
+    action: hard_delete
+    deletes_via: session_delete
+    calls: [delete_avatar]
+    docstring: "Delete the account, then remove the avatar from object storage."
+
+routes:
+  - {name: set_avatar, module: api/profile.py, reads: [User.id]}
+  - {name: get_profile, module: api/profile.py, reads: [User.email, User.full_name]}
+
+extra_files:
+  - {path: utils/text.py, kind: helpers}
+
+expect:
+  entry_points: [delete_account]
+  stores:
+    users:   {verdict: erased, evidence: "api/account.py::delete_account!delete"}
+    uploads: {verdict: erased, evidence: "storage.py::delete_avatar!delete_object"}
