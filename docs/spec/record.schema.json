@@ -30,11 +30,21 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["file", "line", "symbol"],
-      "description": "A line of code. The verifier reads the line and rejects the citation if it does not contain the symbol.",
+      "description": "A line of code. The verifier reads the logical line - the cited line, or the statement whose span contains it - and rejects the citation if the symbol is not on it.",
       "properties": {
         "file": {"type": "string", "description": "Path relative to the repository root, no leading slash."},
         "line": {"type": "integer", "description": "1-based line number."},
         "symbol": {"type": "string", "description": "The name or literal on that line the claim rests on, e.g. delete_object, timedelta, eu-central-1."}
+      }
+    },
+    "subject_link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "line"],
+      "description": "The line that ties this store to a data subject: a foreign key to the user model, a subject id in a cache key, an owner column. Kept even where the subject key is not listed as a field.",
+      "properties": {
+        "file": {"type": "string", "description": "Path relative to the repository root, no leading slash."},
+        "line": {"type": "integer", "description": "1-based line number."}
       }
     },
     "unscanned_item": {
@@ -97,11 +107,12 @@
     "store": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "kind", "declared_at", "fields", "erasure", "recipient_kind", "note"],
+      "required": ["name", "kind", "declared_at", "subject_link", "fields", "erasure", "recipient_kind", "note"],
       "properties": {
         "name": {"type": "string", "description": "Table, bucket or prefix, cache namespace, index, queue, service, log sink, backup target."},
         "kind": {"$ref": "#/$defs/store_kind"},
         "declared_at": {"anyOf": [{"$ref": "#/$defs/citation"}, {"type": "null"}], "description": "Where the store is defined or first written to. Null where no single line declares it. Rendered in the store's own heading in section A, so the reader meets the store and its declaration together."},
+        "subject_link": {"anyOf": [{"$ref": "#/$defs/subject_link"}, {"type": "null"}], "description": "Citation tying the store to a data subject. Null only where nothing in the code links it to one; a store with no subject link and no personal-data field does not belong in the record."},
         "fields": {"type": "array", "description": "At least one. A store with no personal-data field does not belong in the record.", "items": {"$ref": "#/$defs/field"}},
         "erasure": {"$ref": "#/$defs/erasure"},
         "recipient_kind": {"type": "null", "description": "Art. 30(1)(d). Set by the human at the gate to internal, processor or external_controller; unknown until then. The agent submits null and cannot do otherwise."},
