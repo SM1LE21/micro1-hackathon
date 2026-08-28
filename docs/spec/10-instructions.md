@@ -19,7 +19,7 @@ Two constraints shape the split. The system prompt is a cached prefix: any per-c
 
 The tool descriptions are in this file for the same reason as the prompt: they are model-facing text, byte-identical in both arms under ADR 0003 §4, and they render at position 0 of the request, ahead of the system prompt (`shared/prompt-caching.md` § Architectural guidance: "Tools render at position 0"). They are also the only place the model learns the tools' caps, which the system prompt deliberately does not restate.
 
-The include is a literal splice, not a template: `system.md` and `taxonomy.md` are concatenated at the marker with no substitution, and the SHA-256 of the result is what a trace should carry (see the proposed contract change at the end).
+The include is a literal splice, not a template: `system.md` and `taxonomy.md` are concatenated at the marker with no substitution, and the SHA-256 of the result is the `prompt_sha` every `run_start` line carries (contract §Trace contract, ADR 0004 P-14). `make report` refuses to write `metrics.json` when the two arms' values differ, which is how the byte-identical claim is checked rather than asserted.
 
 ## 1. `art30/prompts/system.md`
 
@@ -49,6 +49,10 @@ The six categories, with examples and negatives, are in the taxonomy below. Use 
 # Stores
 
 A store is a named place data lives: a relational table, an object-storage bucket or prefix, a cache namespace, a search index, a queue payload, a third-party service, a log sink, a backup target. The database is the store everyone remembers; the cache, the index, the queue, the log line, the analytics call and the nightly dump are the ones missing from records written by hand.
+
+Name a store after the identifier the code carries: the table or model name, the bucket or prefix constant, the cache key prefix, the index or queue name, the SDK name for a service, the job module for a backup. A name you invent is a name your reader cannot find in the code.
+
+Every store carries a `subject_link`: the `file` and `line` where the code ties it to a person, such as the foreign key to the subject class or the user id an object key is built from. Null only where nothing in the code makes that link.
 
 A third-party service belongs in the record when a personal-data field flows into a call to it. An import on its own is a lead to follow, not a finding.
 
@@ -133,7 +137,7 @@ Keep the record to what the code evidences: no filler sections, no restated summ
 </tone_preference>
 ```
 
-Length, measured on the fenced blocks in this file rather than on the prose about them: `system.md` is 1,724 words; `taxonomy.md` is 808; the spliced block that actually reaches the model is 2,528 words and 15,464 bytes, roughly 3.9k tokens. That clears the 512-token minimum this model needs before a `cache_control` marker does anything (`prompt-caching.md` § API reference) by a wide margin. The 900–1500 target was set for `system.md` alone and is missed by 224 words; the binding number is the spliced block, which is re-read at cache-read price on every step of every run. The overrun is four corrections, each of which was producing a wrong verdict as prose: the Django file table, the database-cascade rule, the coverage sentence and the data-subject sentence. The tool descriptions (§1b) sit ahead of all of it in the same cached prefix and add 159 words more.
+Length, measured on the fenced blocks in this file rather than on the prose about them: `system.md` is 1,824 words; `taxonomy.md` is 853; the spliced block that actually reaches the model is 2,673 words and 16,255 bytes, roughly 4.0k tokens. That clears the 512-token minimum this model needs before a `cache_control` marker does anything (`prompt-caching.md` § API reference) by a wide margin. The 900–1500 target was set for `system.md` alone and is missed by 324 words; the binding number is the spliced block, which is re-read at cache-read price on every step of every run. The overrun is six additions. Four were each producing a wrong verdict as prose — the Django file table, the database-cascade rule, the coverage sentence, the data-subject sentence — the fifth is the store-naming line the contract's store-identity convention requires (ADR 0004), without which the model's store names and the manifests' need not be the same string and the scorer's normaliser carries the difference, and the sixth is the `subject_link` line. That last one is not a quality edit. `subject_link` is in `record.schema.json`'s `store.required` and the tool schema runs `strict: true`, so a store without the key does not validate; unnamed in the prompt, it would have cost the first submit of every run in both arms one of its five attempts, on a property the model was never told about. The tool descriptions (§1b) sit ahead of all of it in the same cached prefix and add 159 words more.
 
 ## 1b. Tool descriptions
 
@@ -295,16 +299,17 @@ You ended your turn without calling a tool. If your last message was a plan, car
 
 Field names and the object shape come from contract §Feedback object. These are the strings that fill them. Each one names the store or field, the fact that decided it with a citation, and the single edit that resolves it, so that an item can be acted on without a re-read.
 
-The `expected` string on `missing_stores`, `bad_citations` and `unverified` is proposed contract change 1 and is not in contract §Feedback object yet; until the lead accepts it, those three lists carry only the contract's fields. Every line below that carries it is marked `[PCC 1]`, and `art30/verify/check.py` emits it only once the change lands.
+Every item on every list carries `expected` — contract §Feedback object requires it (ADR 0004) — so no feedback round asks the model to infer the edit from the problem. `art30/verify/check.py` fills it from the templates below.
 
 ### 4.1 Rejected claim (`rejected_claims[]`)
 
 ```text
 reason:   "no path from entry point {entry_name} ({entry_file}:{entry_line}) to {primitive}; {detail}"
+path:     [{"file": ..., "line": ..., "symbol": ...}, …]   the walk the verifier found; [] when none
 expected: "verdict {suggested}, or cite the path"
 ```
 
-`{primitive}` names the store kind's deletion primitive in the words the contract's own example uses: `any relational row-deletion primitive`, `any object-storage deletion primitive`, `any cache deletion primitive`, `any search-index deletion primitive`, `any queue purge`, `any vendor deletion call`. The store is already the entry's `store` key, so the reason does not repeat it. `{suggested}` is the verdict the check would have accepted on the evidence it found.
+`{primitive}` names the store kind's deletion primitive in the words the contract's own example uses: `any relational row-deletion primitive`, `any object-storage deletion primitive`, `any cache deletion primitive`, `any search-index deletion primitive`, `any queue purge`, `any vendor deletion call`. The store is already the entry's `store` key, so the reason does not repeat it. `{suggested}` is the verdict the check would have accepted on the evidence it found. `path` carries the same walk as the prose, structured, so the renderer and the video can show it without a reader parsing a sentence; on this rejection it is empty, which is the finding.
 
 The template renders the contract's §Feedback object example verbatim for the R26 dead-helper case, which is what `03-verifier.md` §7.3 means by calling that example the template, and it is the sentence `06-traces.md` §2, `07-ui.md` §3, `04-output-schema.md` §5 and `example-record-S10.md` §G all quote. An earlier draft here rendered a different sentence for the same rejection, which would have put a string in the video's 0:40 beat that the code never emits.
 
@@ -326,6 +331,7 @@ Rendered:
 ```json
 {"store": "uploads", "field": null, "claim": "erasure.verdict=erased",
  "reason": "no path from entry point close_account (api/account.py:12) to any object-storage deletion primitive; cleanup_user_files (storage.py:41) is defined but has no callers",
+ "path": [],
  "expected": "verdict not_erased, or cite the path"}
 ```
 
@@ -333,7 +339,7 @@ Rendered:
 
 ```text
 evidence: "{file}:{line} {verb} {what}"
-expected: "add store {store} (kind {kind}) with its personal-data fields and an erasure verdict"   [PCC 1]
+expected: "add store {store} (kind {kind}) with its personal-data fields and an erasure verdict"
 ```
 
 `{verb}` is one of `writes`, `sends`, `indexes`, `enqueues`, `logs`, `uploads`, `backs up`.
@@ -344,7 +350,20 @@ expected: "add store {store} (kind {kind}) with its personal-data fields and an 
  "expected": "add store sessions (kind cache) with its personal-data fields and an erasure verdict"}
 ```
 
-`expected` in that example is `[PCC 1]`.
+### 4.2a Missing entry point (`missing_entry_points[]`)
+
+Non-blocking (`03-verifier.md` §7.1): an erasure entry point the verifier discovered and the record does not declare. It costs no attempt and it tells the model what it walked past.
+
+```text
+expected: "declare {name} as an entry point, or say in its note why it is not one"
+```
+
+```json
+{"name": "delete_user", "file": "cli.py", "line": 40, "kind": "cli",
+ "expected": "declare delete_user as an entry point, or say in its note why it is not one"}
+```
+
+`{kind}` is one of the contract's entry-point kinds. The verifier walks from its own discovered set whatever the record declares (`03-verifier.md` §2.5), so this list changes no verdict; it changes what the record says about how a person is deleted.
 
 ### 4.3 Bad citation (`bad_citations[]`)
 
@@ -355,8 +374,8 @@ problem:  "line {line} does not contain '{symbol}'"
           "line {line} is beyond end of file ({n} lines)"
           "file {file} is not in the scanned set"
           "file {file} does not exist under the repository root"
-expected: "cite the line where {symbol} appears, or drop the claim"                    [PCC 1]
-          "cite a line in a file this scan read, or drop the claim"   (scanned set)    [PCC 1]
+expected: "cite the line where {symbol} appears, or drop the claim"
+          "cite a line in a file this scan read, or drop the claim"   (scanned set)
 ```
 
 A file the scan skipped exists on disk: `03-verifier.md` §1.1 leaves files over 1 MB, files that raise `SyntaxError` and files that fail strict UTF-8 decoding outside the scanned set. Telling the model that a file it just read does not exist would buy a correct citation being dropped, at the cost of an attempt.
@@ -367,13 +386,11 @@ A file the scan skipped exists on disk: `03-verifier.md` §1.1 leaves files over
  "expected": "cite the line where email appears, or drop the claim"}
 ```
 
-`expected` in that example is `[PCC 1]`.
-
 ### 4.4 Unverified (`unverified[]`)
 
 ```text
 reason:   "{symbol} at {file}:{line} resolves through {mechanism}; the path cannot be decided from the source"
-expected: "verdict unverified for {store}, or cite a path that does not pass through {mechanism}"   [PCC 1]
+expected: "verdict unverified for {store}, or cite a path that does not pass through {mechanism}"
 ```
 
 `{mechanism}` is one of `getattr`, `a string import`, `two definitions of the same name`, `an unmodelled decorator`, `raw SQL`, `a callable passed as an argument`.
@@ -384,7 +401,22 @@ expected: "verdict unverified for {store}, or cite a path that does not pass thr
  "expected": "verdict unverified for stripe, or cite a path that does not pass through getattr"}
 ```
 
-`expected` in that example is `[PCC 1]`.
+### 4.4a Conservative divergence (`conservative_divergences[]`)
+
+Non-blocking, and never a reason to reject: the record is safer than the evidence, which is the direction this tool asks for (`03-verifier.md` §7.3, Decision 10). It is recorded so the trace shows where the model and the verifier disagreed in the harmless direction.
+
+```text
+verifier: "{verdict} via {mechanism} {file}:{line}"
+note:     "accepted; the record is more conservative than the evidence"
+```
+
+```json
+{"store": "orders", "claim": "erasure.verdict=not_erased",
+ "verifier": "erased via on_delete=CASCADE models.py:40",
+ "note": "accepted; the record is more conservative than the evidence"}
+```
+
+The `note` string is the contract's own and is fixed: a per-case sentence here would invite the model to argue with it.
 
 ### 4.5 Schema errors (both arms, one function)
 
@@ -400,7 +432,7 @@ expected: "verdict unverified for {store}, or cite a path that does not pass thr
  "/stores/0/fields/1: 'line' is a required property"]
 ```
 
-The baseline's feedback object is this list and nothing else, with `rejected_claims`, `missing_stores`, `bad_citations` and `unverified` empty, and the same `attempt` / `attempts_left` counters. A baseline run that submits a record that is schema-valid and passes §4.6 is accepted on the first attempt, which is the point of the arm.
+A baseline rejection is this list, the two counters and nothing else — `{"accepted": false, "attempt": 2, "attempts_left": 3, "schema_errors": [...]}` — with the six advanced-only keys **absent**, not present and empty (contract §Feedback object, `01-architecture.md` §1.3, `02-agent-loop.md` §5). The unit tests assert that no baseline tool result in `traces/baseline/**` contains any of the six names, so a `"rejected_claims": []` in that payload fails them. A baseline run whose record is schema-valid and passes §4.6 is accepted on the first attempt, which is the point of the arm.
 
 ### 4.6 Handler invariants (both arms)
 
@@ -465,18 +497,18 @@ You are approving a document you will sign. Render it? [y/N]:
 
 | Rating | `{risk_reason}` |
 |---|---|
-| `high` | names the first store that is `not_erased`, `pseudonymised`, `external_manual`, `no_schedule_evidenced` or `unverified` with an identifier or contact field |
+| `high` | names the first store that is `not_erased`, `pseudonymised`, `external_manual`, `no_entry_point`, `no_schedule_evidenced` or `unverified` with an identifier or contact field |
+| `high`, no entry point anywhere | `no deletion entry point was found; no store in this record reaches erasure` |
 | `medium` | every store reaches erasure, at least one only after a timer |
 | `low` | every store reaches erasure directly and an entry point was found |
-| `low`, no entry point | `no deletion entry point was found; no store in this record reaches erasure` |
 
-The fourth shape exists because a record whose every store is `no_entry_point` matches neither the `high` list nor the `medium` clause and falls to `low` under the contract as written. S08 and R04 are the two cases built to test whether the tool can say there is no way to delete a user, and with the third shape their gate screen would tell the approver the opposite, at the lowest urgency, directly above "You are approving a document you will sign". `07-ui.md` proposal 3 and `PROPOSED-CONTRACT-CHANGES.md` P-09 ask for `no_entry_point` in the contract's `high` list, which is the real fix; the fourth shape is what stops the screen lying in the meantime, and it stays as the `high` reason once P-09 lands.
+`no_entry_point` is in the contract's `high` list (ADR 0004 P-09), so the second shape is a `high` reason and not the `low` exception it was drafted as. S08 and R04 are the two cases built to test whether the tool can say there is no way to delete a user; under the contract as first written their records matched neither the `high` list nor the `medium` clause and fell to `low`, and the screen would have told the approver that every store reaches erasure, at the lowest urgency, directly above "You are approving a document you will sign".
 
 The gate fires at every rating, so a `low` run still stops here.
 
 The gate reads one line per `third_party` store and then one keystroke, in the printed order: the recipient block sits above `You are approving a document you will sign`, because a person should not be asked to complete cells in a document they have already approved. In `--approve auto`, and wherever there is no TTY, it reads nothing: every `recipient_kind` stays `unknown` and the decision is recorded `by: "simulated"` (`07-ui.md` §3). `01-architecture.md` §2 row 7 and `02-agent-loop.md` §7 now quote this order rather than putting the questions after the keystroke.
 
-What the human typed is recorded in the checkpoint's free-form `summary`, as a trailing clause: `recipient kinds set: stripe=processor, sentry=unknown`. Without it the rendered record in `--approve ask` carries a cell that came from a person and nothing in the trace shows where it came from, which is the one thing this project refuses everywhere else. The `summary` string needs no contract change; `07-ui.md`'s proposed structured `human_completions` field on the `checkpoint` line does the same job better, and if it lands the clause becomes redundant.
+What the human typed is recorded on the checkpoint line as `human_completions` — `{"recipient_kind": {"stripe": "processor"}}` (contract §Trace contract, ADR 0004 P-10) — so a cell that came from a person can be traced back to the moment they typed it, which is the one thing this project refuses to leave unevidenced. The trailing `summary` clause an earlier draft used for the same job is dropped: one machine-readable field beats a sentence a reader has to parse.
 
 Rejecting is a run outcome, not a correction channel: the decision is written to the trace as `checkpoint` with `decision: "rejected"` and the run ends `gate_rejected`. The human is not asked to edit the record.
 
@@ -488,6 +520,7 @@ Rejecting is a run outcome, not a correction channel: the decision is written to
 | Known-object / unknown-object split | Aggressive classification on `User`-shaped classes, conservative elsewhere, so hidden fields are found without dragging in `products` | prior-art.md "What we borrow" 1 [S5]; AMBIGUITIES 1; S07 |
 | Every attribute of a subject class is in scope, timestamps included | Art. 4(1) "any information relating to" | AMBIGUITIES 1; gdpr-sources.md §5(c); S07 |
 | The list of store kinds, with the cache, index, queue, log and backup named | Those are the stores a hand-written record misses; naming them is most of the recall | CASES.md S05, R04; gdpr-sources.md §6.1 |
+| Every store carries a `subject_link` with its `file:line` | `store.required` lists the key and the tool schema is `strict: true`, so a store submitted without it does not validate. The link is also the thing that puts the store in the record | contract §Record vocabulary (ADR 0004); record.schema.json `store.required`; Decision 6 |
 | A third-party import is a lead, not a finding | Art. 4(9): a recipient receives data | AMBIGUITIES 7; gdpr-sources.md §5(d) |
 | Entry points are discovered, and the admin counts as one, flagged admin-only | Real repos do not label the erasure path, and operators do delete through the admin | AMBIGUITIES 3, 15; R16; R03 |
 | "Where there is none, say so, and carry that answer to every store" | S08 and R04 have no deletion feature at all; the failure mode is inventing one. The second half is invariant I2, which rejects the record in both arms when `entry_points` is empty and any store reads `not_erased` | S08, R04; 04-output-schema.md §4 I2 |
@@ -539,14 +572,14 @@ Rejecting is a run outcome, not a correction channel: the decision is written to
 ## Decisions taken here
 
 1. `taxonomy.md` is spliced into `system.md` at a literal `<!-- include: taxonomy.md -->` marker, with no substitution, so the two files are one cached system block and one hashable string.
-2. Length is reported as measured on the blocks themselves: `system.md` 1,724 words, `taxonomy.md` 808, the spliced block the model receives 2,528 words and 15,464 bytes, roughly 3.9k tokens. The 900–1500 target applied to `system.md` alone and is missed by 224 words; the spliced block is the number that binds, because it is what gets cached and re-read every step. Trimming is a later, measured edit, not a reason to drop a rule that decides a verdict.
+2. Length is reported as measured on the blocks themselves: `system.md` 1,824 words, `taxonomy.md` 853, the spliced block the model receives 2,673 words and 16,255 bytes, roughly 4.0k tokens. The 900–1500 target applied to `system.md` alone and is missed by 324 words; the spliced block is the number that binds, because it is what gets cached and re-read every step. Trimming is a later, measured edit, not a reason to drop a rule that decides a verdict.
 3. Everything that varies by case — the scan target's name, the tool-call budget, the submission budget — lives in the first user message, never in the system prompt, so the cached prefix is identical across cases and steps. No absolute path appears anywhere in a request: the fixture root reaches the tools through `ToolCtx`, which is what keeps the request hash machine-independent and the committed replay cache usable by a judge.
 4. Schema-error strings are produced by one shared function, `art30/tools.py::format_schema_errors`, called by both arms. Claim-level feedback strings live in `art30/verify/check.py`. No prompt text is duplicated between `baseline/` and `advanced/`.
-5. Every feedback item carries the store or field, one cited fact, and one resolving edit. `{detail}` and `{mechanism}` are closed sets keyed to rule IDs, so the strings a judge reads in a trace map back to R1–R28.
-6. A foreign key to the data subject is recorded as the store's subject link with its `file:line`, not as a personal-data field, except where it is the only personal data in that store, in which case it is a field of category `identifier`. That exception is also what keeps such a store legal against invariant I1 of `docs/spec/04-output-schema.md` §4, which rejects a store with no fields in both arms. `record.schema.json` does not enforce it: `store.fields` carries the rule in its `description` and has no `minItems`, which is outside the strict-tool-use subset by that document's own §4. Manifests must be written to the same rule or the tuple counts will not compare.
+5. Every feedback item carries the store or field and one cited fact; every list but one also carries a resolving edit in `expected` (contract §Feedback object). `{detail}` and `{mechanism}` are closed sets keyed to rule IDs, so the strings a judge reads in a trace map back to R1–R28. `missing_entry_points` is non-blocking and still names the edit. `conservative_divergences` is the exception on both counts: it carries `note` where the others carry `expected`, because a record safer than the evidence asks for nothing.
+6. A foreign key to the data subject is recorded in the store's `subject_link` cell with its `file:line` (contract §Record vocabulary, ADR 0004), not as a personal-data field, except where it is the only personal data in that store, in which case it is a field of category `identifier`. The `# Stores` block of §1 says this in the prompt, because a decision recorded here is not a byte the model reads and `store.required` makes the key mandatory. That exception is also what keeps such a store legal against invariant I1 of `docs/spec/04-output-schema.md` §4, which rejects a store with no fields in both arms. `record.schema.json` does not enforce it: `store.fields` carries the rule in its `description` and has no `minItems`, which is outside the strict-tool-use subset by that document's own §4. Manifests must be written to the same rule or the tuple counts will not compare.
 7. `password_hash` and other credentials belonging to the person are `technical`, and the hasher is separately recorded as an Art. 32(1)(a) technical measure.
 8. Account-state columns on the subject class (`is_active`, `is_staff`, `plan_tier`) are `behavioural`; timestamps on subject-linked rows are `behavioural`, except soft-delete markers (`deleted_at`, `is_deleted`, `archived_at`), which are `technical` because they record what the application did to the row rather than what the person did; an `ip_address` anywhere, including a log line, is `technical`. The exception is the rule `evals/fixtures/specs/S10.yaml` and `example-record-S10.md` already carry (`deleted_at` technical beside `last_seen_at` behavioural), and the taxonomy row above is where the manifests and the prompt read it from. Categories are not in the scored tuple, so nothing fails on a disagreement — which is exactly why it would have gone unnoticed.
-9. The gate reads one line per third-party store, for `recipient_kind`, and then one keystroke for the decision. Both reads happen only in `--approve ask` on a TTY. What the human typed is echoed into the checkpoint's `summary` so the trace carries it; the gate is still not an editing surface, and a rejection ends the run as `gate_rejected`.
+9. The gate reads one line per third-party store, for `recipient_kind`, and then one keystroke for the decision. Both reads happen only in `--approve ask` on a TTY. What the human typed is written to the checkpoint's `human_completions` field so the trace carries it; the gate is still not an editing surface, and a rejection ends the run as `gate_rejected`.
 10. The prompt names a working order (tree, models, deletion path, other stores) once and calls it a suggestion. No stage is enforced, no step count is given, and no self-verification pass is requested. The first two rest on the Fable 5 de-prescription note, marked as an assumption in §6; the third rests on the Opus 5 section directly (§ Over-verification, and the checklist's "**Delete** verification instructions from prompts").
 11. The first user message tells the model nobody is watching, and tells it to convert a last paragraph that is a plan, a question or a promise into a tool call before ending the turn. **Assumption:** both halves come from `model-migration.md` § Rare: early stopping, which is recorded for Claude Fable 5, and no equivalent note exists for Claude Opus 5. They cost two lines; the loop genuinely has no question channel, and the second half is what `02-agent-loop.md` open risk 1 says the nudge path needs.
 12. The four tool `description` strings live in §1b of this file, not in `art30/tools.py` as ad-hoc text, and each states its own cap. They are model-facing, byte-identical across arms under ADR 0003 §4, and part of the hashed prefix.
@@ -559,9 +592,8 @@ Rejecting is a run outcome, not a correction channel: the decision is written to
 ## Open risks
 
 - **The taxonomy and the manifests can disagree.** Decisions 6, 7 and 8 change the tuple count for every case. If manifests are hand-written to a different rule, the scorer measures the disagreement, not the agent. The labelling protocol in `evals/CASES.md` should cite this file's §2 by name before R01 is labelled.
-- **The output schema landed after this file was drafted.** `docs/spec/04-output-schema.md` and `docs/spec/record.schema.json` now exist and their key names agree with the prompt: `file`, `line`, `category`, `verdict`, `kind`, `note`, `recipient_kind` typed `null`, and the three `hints` fields. The one thing to re-check on any schema edit is that `store.additionalProperties` stays `false` while `store.note` remains the only place a subject-link citation can go.
-- **The store-level subject link has nowhere to go.** Decision 6 records a `file:line` that neither contract §Record vocabulary nor `record.schema.json` has a cell for, and the store object is closed (`additionalProperties: false`). Until proposed contract change 3 lands, the citation goes in `store.note`, which the schema caps at one sentence.
-- **The prompt is over its own target and the target may be the wrong measure.** `system.md` is 1,724 words against a 900–1500 target; the spliced block plus the four tool schemas is what the cache holds, and it clears the 512-token minimum this model needs (`prompt-caching.md` § API reference) many times over, so nothing is at risk technically. What is at risk is attention: four rules were added because each was producing a wrong verdict, and no rule was removed to pay for them. The first dev runs should be read for whether the middle of the rule list is being applied at all, and the trim comes from that evidence rather than from the word count.
+- **The output schema landed after this file was drafted.** `docs/spec/04-output-schema.md` and `docs/spec/record.schema.json` now exist and their key names agree with the prompt: `file`, `line`, `category`, `verdict`, `kind`, `note`, `recipient_kind` typed `null`, and the three `hints` fields. The store object gained `subject_link` in the same pass (ADR 0004), so the subject citation has a cell of its own and `store.note` is back to being one sentence about what the store is. The `# Stores` block of §1 now names that key, which is what the risk was actually about: `store.required` lists it, `strict: true` enforces the list, and a prompt that never mentioned it would have failed every first submit in both arms. The thing to re-check on any schema edit is that `store.additionalProperties` stays `false` and that every key `store.required` gains is named in §1 the same day.
+- **The prompt is over its own target and the target may be the wrong measure.** `system.md` is 1,824 words against a 900–1500 target; the spliced block plus the four tool schemas is what the cache holds, and it clears the 512-token minimum this model needs (`prompt-caching.md` § API reference) many times over, so nothing is at risk technically. What is at risk is attention: six lines were added, four because each was producing a wrong verdict, one because the contract names the store-identity convention, one because the schema requires `subject_link`, and no rule was removed to pay for them. The first dev runs should be read for whether the middle of the rule list is being applied at all, and the trim comes from that evidence rather than from the word count.
 - **The Django file rule is now a table, and a table teaches sufficiency.** The four rows are read independently, which is the failure the single sentence was avoiding; the lead sentence carries R8's precondition, and it is the sentence a hurried reader skips. S06, S09 and R03 are the cases that settle it. The `CleanupSelectedConfig` and `@cleanup.ignore` exceptions are in no fixture, so nothing in the eval will catch them being dropped.
 - **`evals/CASES.md` S05 disagrees with the contract, and the manifest is not written yet.** Its expected truth reads "mail is a recipient, not a store", which predates contract §Record vocabulary: "Recipients are stores of kind `third_party`; there is no separate recipients list." A model following this prompt records the transactional mail service as a `third_party` store carrying the address that flows into it, verdict `external_manual` unless a vendor deletion call is on the path (R24) — correct behaviour that an S05 manifest written from that line would score as a false positive, in both arms, on the case CASES.md nominates for third-party recipients. CASES.md needs an errata row before the S05 manifest exists.
 - **The request shapes are reconciled; the bytes are still unmeasured.** `02-agent-loop.md` §1 now renders `FIRST_TURN` from `repo_name`, `tool_call_budget` and `submit_budget` and its §2 now describes the system block as the splice at the `<!-- include: taxonomy.md -->` marker, as §0 here does, and its §7 reads the recipient lines before the keystroke as §5 here prints them. The replay cache is keyed on these bytes, so what remains is not a disagreement between documents but the fact that nobody has yet hashed the assembled string: the `config.py` assertion `02` describes has to be computed against the spliced file, and the constant it compares to does not exist until the prompt files do.
@@ -569,6 +601,4 @@ Rejecting is a run outcome, not a correction channel: the decision is written to
 
 ## Proposed contract changes
 
-1. **Uniform `expected` on every feedback item.** Contract §Feedback object gives `expected` only to `rejected_claims`. `missing_stores`, `bad_citations` and `unverified` carry a problem with no stated resolution, which forces the model to infer the edit and costs an attempt out of five. Proposal: add a required `expected` string to all four lists, filled from the templates in §4. Reason: one attempt saved per feedback round is worth more than four bytes of schema.
-2. **`prompt_sha` on the `run_start` trace line.** ADR 0003 §4 and this file both rest on the instruction text being byte-identical across arms, and nothing in the trace proves it. `docs/judging/requirements-matrix.md` D1b already flags the gap. Proposal: `run_start` carries `prompt_sha`, the SHA-256 of the spliced `system.md` + `taxonomy.md` string, and `make report` fails if the two arms' values differ.
-3. **A store-level `subject_link {file, line}` cell.** Decision 6 keeps subject foreign keys out of the field list, which loses the citation that puts the store in the record at all; `store.note` is a one-sentence fallback, not a cell a render or a scorer can read. Proposal: contract §Record vocabulary gains `subject_link` as a per-store object with `file` and `line`, nullable where no single line links the store to the subject, and `docs/spec/04-output-schema.md` plus `record.schema.json` carry it inside the closed `store` object.
+All accepted by ADR 0004 on 2026-08-28; the contract now carries them.
