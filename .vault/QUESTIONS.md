@@ -29,3 +29,7 @@ The "who has this problem" section is strongest with the real anecdote (hand-wri
 ## Q4 — Repository licence
 
 No `LICENSE` file exists. The prior-art comparison lists this project as "licence: to be decided". micro1 owns the submission under the hackathon terms; whether to also publish under an OSI licence (MIT or Apache-2.0) is your call, not the agents'. Needed before the README's prior-art table is final (Sunday night). Not blocking.
+
+## Q5 — Live-API ceiling for the weekend
+
+`docs/spec/08-plan.md` §3 spends against **$300** (planned $142–$286; Sweeps B and C reserved at $81–$176; three to five changelog iterations depending on the Saturday 15:15 UTC calibration). The figure is an assumption recorded in ADR 0005 item 4. Confirm, raise or lower it; the plan re-derives the iteration count from whatever you set. Not blocking; the first live call is Saturday ~15:00 UTC.
