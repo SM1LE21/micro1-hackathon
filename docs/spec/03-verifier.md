@@ -217,7 +217,7 @@ The record carries the agent's entry points; the verifier has its own set. Let `
 
 The cap exists because the earlier wording had the safety argument backwards. Adding a start node makes *more* stores read `erased`, which is the unsafe direction, and any intra-repo symbol with a resolving citation was a start node. S10 fell in four lines: the record declares `{name: cleanup_user_files, file: storage.py, line: 41, kind: unknown}`, the citation resolves, and `path_exists` then walks `cleanup_user_files → s3.delete_object` in one hop, so the verifier corroborated `erased` for `uploads` — in the case the whole eval is built around. §2.1 keeps `cleanup` out of the vocabulary precisely so that cannot happen; a declared entry point must not hand it back. Under the cap the model may still tell the verifier about a helper, and the verifier will still say it cannot confirm that anything calls it.
 
-Verdicts are computed over `D ∪ E_valid`, with `declared_unregistered` nodes contributing only capped verdicts. The one case where a missing declaration bites is a record that says `no_entry_point` for a store while the verifier walks to it from a discovered admin registration — there the verdicts differ and the claim is rejected with the discovered entry point named in the reason, which tells the model exactly what it missed without a new feedback key.
+Verdicts are computed over `D ∪ E_valid`, with `declared_unregistered` nodes contributing only capped verdicts. A discovered entry point the record does not declare is one `missing_entry_points` entry — `{name, file, line, kind, expected}`, non-blocking (contract §Feedback object) — so the model is told what it missed without having to read it out of a rejection's prose. The case where the omission also costs a claim is a record that says `no_entry_point` for a store the verifier walks to from a discovered admin registration: the verdicts differ, and that claim is rejected on its own terms.
 
 ---
 
@@ -225,7 +225,7 @@ Verdicts are computed over `D ∪ E_valid`, with `declared_unregistered` nodes c
 
 What the verifier can see on its own, before it reads the record. Used for the synthetic edges, for the verdicts, and for the completeness guard. Detection is name and shape matching over the AST plus the rule data — no type inference (NON-GOALS).
 
-A store is `{id, kind, name, declared_at (file:line), client_vars, fields[], evidence[]}`. `kind` is the contract's closed set: `relational | object_storage | cache | search_index | queue | third_party | log | backup`.
+A store is `{id, kind, name, declared_at (file:line), client_vars, fields[], evidence[]}`. `kind` is the contract's closed set: `relational | object_storage | cache | search_index | queue | third_party | log | backup`. The name is the identifier the code carries — the table or model name, the bucket or prefix constant, the SDK name, the job module for backups — which is contract §Verifier contract's store-identity convention and binds the manifests and the instruction text alike.
 
 ### 3.1 Relational
 
@@ -524,7 +524,7 @@ So: qualifying predicate → the child is `erased` on that path and the parent d
 
 ---
 
-## 5. `path_exists(entry, primitive, must_pass_through=None)`
+## 5. `path_exists(graph, entry, target, must_pass_through=None)`
 
 ### 5.1 Signature and semantics
 
@@ -540,7 +540,7 @@ def path_exists(graph, entry, target, must_pass_through=None) -> Path | None:
 
 Not "the lexicographically smallest shortest path": the search carries one `seen` set over states, so it never enumerates the competing shortest paths a lexicographic minimum would be selected from — a node first reached from a later-expanded predecessor keeps that predecessor's path. Sorting the out-edges gives determinism, which is the property §5.2 actually needs.
 
-The signature differs from the contract's `path_exists(entry, primitive, must_pass_through=None)` by a `graph` parameter and a rename. The contract wins until an ADR lands; proposed contract change 5 asks for it.
+Contract §Verifier contract carries this signature by pointing at this section (ADR 0004 P-15): the search needs the graph, and the target is a store node as often as it is a primitive.
 
 A `Path` is a list of steps, each `{from, to, kind, file, line, rule, ambiguous}`. `Path.ambiguous` is true when any step is; `Path.mode` is the delete mode at the target.
 
@@ -653,13 +653,13 @@ The rating is computed from **the accepted record's** verdicts — the document 
 
 `reach.py` returns the same flags over its own verdicts, carried alongside as a cross-check: whether any store is `not_erased` / `pseudonymised` / `external_manual` / `no_entry_point` / `no_schedule_evidenced` / `unverified` with an `identifier` or `contact` field, and whether every reaching store reaches only after a timer. Where the two ratings differ, both are shown at the gate with the stores that differ named. The verifier computes the inputs; the harness decides the rating and writes the checkpoint line.
 
-`no_entry_point` is in the returned set although the contract's `high` list does not name it. A record whose every store is `no_entry_point` — S08 and R04, the two cases built to test whether the tool can say there is no way to delete a user — matches neither the `high` list nor the `medium` clause and falls to `low` under the contract as written. The flag is computed here so the rating becomes one line to change when `PROPOSED-CONTRACT-CHANGES.md` P-09 lands; until then the harness rates those records `low` and `10-instructions.md` §5 prints a `risk_reason` that says why rather than the sentence about every store reaching erasure.
+`no_entry_point` is in the contract's `high` list (ADR 0004 P-09), so a record whose every store is `no_entry_point` — S08 and R04, the two cases built to test whether the tool can say there is no way to delete a user — rates `high` and the gate says why. Before the amendment those two records matched neither the `high` list nor the `medium` clause and fell to `low`, which is the rating the screen would have shown above "You are approving a document you will sign".
 
 ---
 
 ## 7. Claim checking (`verify/check.py`)
 
-Input: the submitted record (already schema-valid), the repo path, the rule sets, and `reach.py`'s output. Output: the feedback object of contract §"Feedback object", exactly those five keys plus `accepted`, `attempt`, `attempts_left`.
+Input: the submitted record (already schema-valid), the repo path, the rule sets, and `reach.py`'s output. Output: the feedback object of contract §"Feedback object", exactly those seven list keys — `schema_errors`, `rejected_claims`, `missing_stores`, `missing_entry_points`, `bad_citations`, `unverified`, `conservative_divergences` — plus `accepted`, `attempt`, `attempts_left`.
 
 ### 7.1 Acceptance
 
@@ -667,15 +667,16 @@ Input: the submitted record (already schema-valid), the repo path, the rule sets
 accepted = schema_errors == [] and rejected_claims == [] and missing_stores == [] and bad_citations == []
 ```
 
-`unverified` is informational and never blocks. A repository with one `getattr` in it would otherwise be unable to produce an accepted record at all, and the arm would measure the verifier's blind spots rather than the model's work.
+`unverified`, `missing_entry_points` and `conservative_divergences` are informational and never block. A repository with one `getattr` in it would otherwise be unable to produce an accepted record at all, and the arm would measure the verifier's blind spots rather than the model's work. `conservative_divergences` could not block by construction: the record being safer than the evidence is the direction this project asks for.
 
 ### 7.2 Citation re-read
 
-`bad_citations` blocks acceptance (§7.1), so which objects are checked cannot be left to the implementer. `record.schema.json` puts positions on seven object types; here is what happens to each.
+`bad_citations` blocks acceptance (§7.1), so which objects are checked cannot be left to the implementer. `record.schema.json` puts positions on eight object types; here is what happens to each.
 
 | Record object | Has `symbol` | Path must be | Symbol checked |
 |---|---|---|---|
 | `stores[].declared_at` | yes | a scanned file | yes |
+| `stores[].subject_link` (nullable) | no | a scanned file | no |
 | `stores[].fields[].file/line` | — (name is the symbol) | a scanned file | yes, against `name` |
 | `stores[].erasure.evidence[]` | yes | a scanned file | yes |
 | `stores[].fields[].erasure.evidence[]` | yes | a scanned file | yes |
@@ -688,13 +689,13 @@ Then, in order:
 
 1. the path must exist under the repo root and resolve inside it (no `..` escape). For the first five rows it must also be one of the scanned files;
 2. the line must exist (1-indexed);
-3. where the row says the symbol is checked, the line must contain it after normalisation (contract §Verifier contract): both sides lowercased, non-alphanumerics collapsed to `_`, compared on token boundaries, singular and plural equal. `email` matches `email = models.EmailField()` and does not match `user_email_verified_at` on its own.
+3. where the row says the symbol is checked, the cited **logical** line must contain it after normalisation (contract §Record vocabulary and §Verifier contract): the cited physical line, or the statement whose span contains it, so a field declaration split across three lines or a call broken by a formatter is cited by its first line and still passes. Normalisation is both sides lowercased, non-alphanumerics collapsed to `_`, compared on token boundaries, singular and plural equal. `email` matches `email = models.EmailField()` and does not match `user_email_verified_at` on its own.
 
 Two of the position-carrying objects have no `symbol` property at all, so rule 3 has nothing to compare and is skipped rather than guessed at. And the `hints` rows are let out of the scanned set on purpose: Art. 32(1)(a) evidence for TLS or encryption at rest normally cites a `docker-compose.yml`, an nginx config or a Dockerfile, none of which is Python, and turning honest evidence into a blocking citation error would cost the model an attempt for doing the right thing.
 
-A failure is one `bad_citations` entry: `{file, line, symbol, problem}` with the problem stated in the terms of the check ("line 14 does not contain 'email'", "file storage.py is not in the scanned set", "line 402 is beyond end of file (311 lines)").
+A failure is one `bad_citations` entry: `{file, line, symbol, problem, expected}` with the problem stated in the terms of the check ("line 14 does not contain 'email'", "file storage.py is not in the scanned set", "line 402 is beyond end of file (311 lines)") and `expected` saying what to do about it ("cite the line that carries the symbol"). Every item on the three blocking lists carries `expected`, and so do `missing_entry_points` and `unverified`; contract §Feedback object requires it. `conservative_divergences` is the one exception and carries `note` in its place, because a record safer than the evidence asks nothing of the model (§7.3; `10-instructions.md` §4.4a).
 
-Citations are re-read from disk rather than trusted from the graph, because the check has to catch a plausible line number the model produced without looking.
+Citations are re-read from disk rather than trusted from the graph, because the check has to catch a plausible line number the model produced without looking. Reading the logical line means parsing the file once per citation batch and mapping physical lines to statement spans, which the call graph already builds.
 
 ### 7.3 Verdict consistency
 
@@ -705,8 +706,8 @@ Let `M` be the record's verdict for a store (or field) and `V` the verifier's. `
 | `reach(M) = true`, `reach(V) = false` | `rejected_claims` | the false-safe direction, and the only one that gets a founder fined |
 | `reach(M) = true`, `V = unverified` | `rejected_claims`, expected "verdict `unverified`, or cite the path" | an unverifiable safe claim is a safe claim without evidence |
 | `M = erased`, `V = erased_after_timer` | `rejected_claims` | the record's retention column would say the data is gone today when it survives N days |
-| `M = erased_after_timer`, `V = erased` | accepted | conservative, and the timer is cited |
-| `reach(M) = false`, `reach(V) = true` | accepted, no feedback entry | the model may have seen what the rules do not model. **The verifier never upgrades a claim to safer than the model wrote** |
+| `M = erased_after_timer`, `V = erased` | accepted; one `conservative_divergences` entry | conservative, and the timer is cited |
+| `reach(M) = false`, `reach(V) = true` | accepted; one `conservative_divergences` entry naming the verifier's verdict and its evidence | the model may have seen what the rules do not model. **The verifier never upgrades a claim to safer than the model wrote**, and the divergence is recorded rather than dropped, so the trace shows where the record was safer than the code |
 | `M` and `V` both false-side but different labels (`not_erased` vs `external_manual`) | accepted | the scored tuple is `reaches_erasure`; the fine-grained label is rendered, not scored (CASES.md) |
 | `M` uses a verdict reserved for another kind — `governed_by_retention` or `no_schedule_evidenced` on a non-`backup` store, or any other verdict on a `backup` store | `rejected_claims`, expected the kind's allowed set | the contract says those two "are the only verdicts rendered for stores of kind `backup`". The kind also decides the render section and whether `recipient_kind` applies, so a wrong one is a defect in the signed document |
 | the record's `kind` for a store differs from the verifier's detected kind | non-blocking `unverified` note naming both | the detectors can be wrong about kind; the document should still say the two disagreed |
@@ -716,11 +717,11 @@ Let `M` be the record's verdict for a store (or field) and `V` the verifier's. `
 
 **File-store reconciliation.** §3.1 gives a Django file store the id `<model>.<field>` (`avatar.image`) and a record will naturally call it `uploads` or `avatars`; the two never normalise equal, so before the split above the S10, S04 and R03 file store landed in the uncorroborated row every time. The rule: a record store whose `declared_at` is the `FileField`/`ImageField` declaration line matches the verifier's `<model>.<field>` store for that line, whatever it is named. Name normalisation is tried first; this is the fallback, and it is keyed on a citation the model already has to get right.
 
-Each `rejected_claims` entry is `{store, field, claim, reason, expected}` exactly as the contract shows, with the reason written as a sentence a person can act on: what was looked for, where the search started, what was found. The contract's own example is the template ("no path from entry point `close_account` (api/account.py:12) to any object-storage deletion primitive; `cleanup_user_files` (storage.py:41) is defined but has no callers").
+Each `rejected_claims` entry is `{store, field, claim, reason, path, expected}` exactly as the contract shows, with the reason written as a sentence a person can act on: what was looked for, where the search started, what was found. The contract's own example is the template ("no path from entry point `close_account` (api/account.py:12) to any object-storage deletion primitive; `cleanup_user_files` (storage.py:41) is defined but has no callers"). `path` is the structured walk the verifier found, each element `{file, line, symbol}`, and it is `[]` when there is none — the S10 rejection above has none, which is the whole finding. The renderer and the video read `path`; the prose stays for the model.
 
 ### 7.4 Completeness guard
 
-The guard fires for a store the verifier detected that is absent from the record after name normalisation **and** has either a strong §3.9 match, or a qualified §3.9 match together with a subject link. One `missing_stores` entry `{store, kind, evidence}`, where the evidence is the `file:line` and a phrase naming what was seen there. Matching is on the normalised store name, with the contract's plural/singular equality and app-prefix stripping, so `app_users` in the record matches `users` in the scan; file stores also match by declaration line (§7.3).
+The guard fires for a store the verifier detected that is absent from the record after name normalisation **and** has either a strong §3.9 match, or a qualified §3.9 match together with a subject link. One `missing_stores` entry `{store, kind, evidence, expected}`, where the evidence is the `file:line` and a phrase naming what was seen there and `expected` says to add the store with its fields and an erasure verdict. Matching is on the normalised store name, with the contract's plural/singular equality and app-prefix stripping, so `app_users` in the record matches `users` in the scan; file stores also match by declaration line (§7.3).
 
 It does not fire for a store the verifier found with no qualifying match: predicting `products` costs the model precision, and demanding it would cost the tool credibility.
 
@@ -738,7 +739,7 @@ Zero unlinked fires across the four vendored repositories with the §3.9 list as
 
 ### 7.5 Determinism
 
-Every list in the feedback object is sorted: `rejected_claims` by `(store, field or "", claim)`, `unverified` by `(store, claim)` — the contract's `unverified` entry is `{store, claim, reason}` and carries no `field` — `missing_stores` by `(store)`, `bad_citations` by `(file, line, symbol)`, `schema_errors` by JSON pointer. Sets are never iterated. Dict ordering is never relied on. File walking is sorted at every level. The same record and repository produce the same bytes, which is what makes the replay layer exact (ADR 0003 §6).
+Every list in the feedback object is sorted: `rejected_claims` by `(store, field or "", claim)`, `unverified` by `(store, claim)` — the contract's `unverified` entry is `{store, claim, reason, expected}` and carries no `field` — `missing_stores` by `(store)`, `missing_entry_points` by `(file, line, name)`, `bad_citations` by `(file, line, symbol)`, `conservative_divergences` by `(store, claim)`, `schema_errors` by JSON pointer. A `rejected_claims` entry's `path` is the search's own output and is never re-sorted: its order is the walk. Sets are never iterated. Dict ordering is never relied on. File walking is sorted at every level. The same record and repository produce the same bytes, which is what makes the replay layer exact (ADR 0003 §6).
 
 ---
 
@@ -939,11 +940,11 @@ The earlier §9 figure (299,074 nodes in 0.48 s on `_pytest` plus `pygments`) is
 7. **A Django `FileField` is a second store**, id `<model>.<field>`, kind `object_storage`. The row and the bytes have different fates, and the record has to be able to say so.
 8. **Test files, migrations and vendored virtualenvs are not scanned**; `settings.py` and `management/commands/` always are, because the answer depends on them.
 9. **Acceptance is `schema_errors + rejected_claims + missing_stores + bad_citations` all empty.** `unverified` is informational and never blocks a submission.
-10. **The verifier never upgrades a claim.** A model more conservative than the verifier is accepted without comment; a model less conservative is rejected. The asymmetry is the whole safety argument, and it is why "the tool agreed" can never mean "the tool made it look better".
+10. **The verifier never upgrades a claim.** A model more conservative than the verifier is accepted and the difference is recorded in `conservative_divergences`; a model less conservative is rejected. The asymmetry is the whole safety argument, and it is why "the tool agreed" can never mean "the tool made it look better".
 11. **An unverifiable reaching claim is a rejection, not an `unverified` note.** `reach(M)=true` with no corroborated path lands in `rejected_claims` with "verdict `unverified`, or cite the path".
 12. **`erased` claimed where the verifier has `erased_after_timer` is rejected**; the reverse is accepted. The retention column is part of what the founder signs.
 13. **The completeness guard uses a deliberately short field-name list**, and only fires on stores that the detectors already found, with the free-text names counting only on a store linked to a subject root.
-14. **Citations are re-read from disk**, checked against the physical line, with path traversal outside the repo treated as a bad citation.
+14. **Citations are re-read from disk**, checked against the logical line — the statement whose span contains the cited physical line (contract §Record vocabulary) — with path traversal outside the repo treated as a bad citation.
 15. **`must_pass_through` is specified now and unused now.** One boolean in the search state buys the AI Act extension later; retrofitting would mean rewriting the search.
 16. **S3 versioning is a bounded regex search over the non-Python globs and over the scanned Python sources as text**, reported as a string search, with the narrowed assumption from the research: no declaration found means the delete is scored as reaching. The qualifier is `status["']?\s*[:=]\s*["']?enabled`, case-insensitive, because Terraform, boto3 and YAML each spell it differently.
 17. **Verdict precedence is fixed and ordered conservative-first** (§6.1), so two rules never race for the same store non-deterministically.
@@ -955,6 +956,8 @@ The earlier §9 figure (299,074 nodes in 0.48 s on `_pytest` plus `pygments`) is
 23. **A reaching claim on a store the verifier does not hold is a rejection**, matching Decision 11, not an `unverified` note. File stores reconcile by declaration line, because `avatar.image` and `uploads` never normalise equal.
 24. **`name` is a qualified field name, not a strong one** (§3.9), on measurement: with it strong the guard fires twice on FlaskBB with no subject link, on `Group` and `PluginRegistry`, and blocks acceptance for R02.
 25. **The gate's risk rating is computed from the accepted record**, with the verifier's own rating carried alongside and both shown when they differ. Rating the verifier's set would under-warn on exactly the conservative divergence §7.3 accepts.
+26a. **A conservative divergence and a discovered-but-undeclared entry point are recorded, not swallowed.** `conservative_divergences` and `missing_entry_points` are non-blocking lists on the feedback object (contract §Feedback object), so both reach the trace instead of living only inside `reach.py`.
+26b. **Every feedback item carries `expected` except a conservative divergence**, which carries `note` instead: the entry records something, it does not ask for anything. A rejected claim carries the structured `path` beside its prose reason, `[]` where the search found none.
 26. **R24 upgrades a third-party store to `erased` in one shape only** — a Segment regulation whose type literal forwards downstream. `DELETE_INTERNAL`, a variable, Mixpanel's queued task and SendGrid's contact delete all stay `external_manual`.
 
 ## Open risks
@@ -963,7 +966,7 @@ The earlier §9 figure (299,074 nodes in 0.48 s on `_pytest` plus `pygments`) is
 2. **`unverified` inflation on real repositories.** FlaskBB and the Django styleguide example use idioms the rules do not model. If the advanced arm renders most stores `unverified`, it cannot separate from the baseline on F1 — ADR 0002 names this as the condition that reopens the decision. First measurement is R01 and R02 on Saturday.
 3. **The delete-mode model can be wrong in the recall direction.** A repository that calls `Model.delete()` through a helper the graph resolves by short name (CG-3) inherits that mode correctly; one that dispatches through a manager method the graph cannot resolve loses the mode and lands on `unverified`.
 4. **The completeness guard is a precision risk for the model.** Every `missing_stores` entry costs a submit attempt. Measured before any run (§7.4): zero unlinked fires across the four vendored repositories with `name` qualified, against two on FlaskBB with it strong. The measurement covers Django models and `__tablename__` declaratives only, so R01's SQLModel classes are untested and the first dev run still reports the fire rate per case. Tests 42 and 43 pin both directions.
-5. **Citation strictness versus real formatting.** A field defined across three lines, or a call chain broken by a formatter, will produce citations that name the statement's first line while the symbol sits on the third. The contract's physical-line rule then rejects a correct claim; the proposed relaxation below is the fix, and until it lands the risk shows up as `bad_citations` noise on the real repos.
+5. **Citation strictness versus real formatting.** A field defined across three lines, or a call chain broken by a formatter, produces citations that name the statement's first line while the symbol sits on the third. The logical-line rule (contract §Record vocabulary, ADR 0004) covers that shape; what it does not cover is a symbol that appears nowhere in its own statement — a field built by a loop, a column named by a variable — and those still land in `bad_citations` on the real repos.
 6. **Timer parsing is shallow.** An env-var retention period, a value computed from a plan tier, or a schedule living in Kubernetes will yield no number, so a repository that does erase on a timer can read `not_erased`. The `criteria` string keeps it honest but costs a tuple.
 7. **The spike is not the verifier.** 149 lines answered the two shapes it was written for, with a DFS path search, no delete modes and no entry-point qualification — so it is evidence about `ast` and name-based edges and about nothing in §2.2, §2.5 or §4.1. The modules have to hold twenty-eight rules, seven modes and a claim checker, and nothing in the spike proves that stays inside the 300-line-per-file rule.
 8. **The conservative fixes cost recall, and the cost lands on the primary metric.** `anonymised` over every detected column (§4.7), a schedule registration for `erased_after_timer` (§6.2), a bound engine for SE7 (§4.5), a subject qualification on DELETE routes (§2.2): each turns a case of "probably reaching" into `pseudonymised`, `not_erased` or `unverified`. Every one of those is a wrong tuple when the manifest says the store does reach erasure, and F1 pays. The trade is deliberate — false safes are the must-be-zero row (CASES.md) and each fix closed a reproducible one — but if the advanced arm's recall on R01 and R02 collapses, §6.2 requirement 3 and §4.7's column rule are the first two to re-examine, with a changelog row each.
@@ -971,10 +974,4 @@ The earlier §9 figure (299,074 nodes in 0.48 s on `_pytest` plus `pygments`) is
 
 ## Proposed contract changes
 
-The lead decides these; the spec above implements the contract as written in the meantime.
-
-1. **Add `tests/verify/` to §Repository layout.** Matrix G-05 requires unit tests before the first advanced run and the layout gives them no home. Proposed line: `tests/verify/test_*.py   unit tests over hand-written repos (fixtures inline)`.
-2. **Relax the citation rule from the physical line to the logical line.** §Verifier contract says the cited line must contain the symbol. A multi-line field declaration or a formatter-split call makes that false for a correct citation. Proposed wording: "the cited line, or the statement whose span contains it, must contain the cited symbol". Cost: a citation may point one or two lines off; benefit: correct claims stop being rejected on formatting.
-3. **Add two optional informational keys to the feedback object**: `conservative_divergences` (the model was safer than the verifier — accepted, but the divergence is evidence worth keeping in the trace) and `missing_entry_points` (discovered but undeclared). Both would be non-blocking, like `unverified`. Without them the information exists only inside `reach.py` and never reaches the trace, and §2.5 has to smuggle a discovered entry point into a `rejected_claims` reason string.
-4. **Allow an optional `path` array on a `rejected_claims` entry**, each element `{file, line, symbol}`, alongside the prose `reason`. The reason string already carries the same content in prose; a structured path would let the renderer show the walk the verifier took and would make the S10 rejection legible in the video without reading a sentence aloud.
-5. **Name the `graph` parameter and the `primitive → target` rename in `path_exists`.** The contract has `path_exists(entry, primitive, must_pass_through=None)`; §5.1 has `path_exists(graph, entry, target, must_pass_through=None)`, because the search needs the graph and because the target is a store node as often as it is a primitive. Either the contract takes the four-parameter form, or the graph binds on a module-level object and §5.1 goes back to three. The lead picks; carrying the difference silently in the spec body was the defect.
+All accepted by ADR 0004 on 2026-08-28; the contract now carries them.
