@@ -23,7 +23,7 @@ art30/                    shared runtime (both arms)
   schema/record.schema.json
   verify/callgraph.py     ast → symbols, edges, entry points, decorators
   verify/rules.py         rule-set loading and matching (YAML under verify/rules/)
-  verify/reach.py         path_exists(entry, primitive, must_pass_through=None), verdicts
+  verify/reach.py         path_exists(graph, entry, target, must_pass_through=None), verdicts
   verify/check.py         claim-by-claim check of a submitted record → feedback object
   verify/rules/*.yaml     data: store kinds, deletion primitives, recipients, entry-point patterns, soft-delete markers
   render/markdown.py      validated record → record.md
@@ -37,6 +37,8 @@ evals/
   fixtures/synthetic/<case>/           generated repos (committed)
   fixtures/real/<name>/                vendored at pinned SHA, LICENSE kept, SOURCE.md (url, sha, licence, date, what was stripped)
   fixtures/manifests/<case>.yaml       ground truth; header carries labelling_minutes for real repos
+  fixtures/manifests/<case>.labelling.yaml   blind-labelling sidecar for S03, S05 (author's minutes; never generated)
+  fixtures/synthetic/.gen-index.json   generator index: spec sha → output sha per case (clean-diff check)
   harness/run.py          cases × arms × seeds → results/runs/…, traces/…
   harness/score.py        manifest vs record → per-case metrics
   harness/report.py       results/runs → results/metrics.json + Markdown tables
