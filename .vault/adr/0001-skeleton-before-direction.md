@@ -19,3 +19,5 @@ The rubric pays 30/100 for evidence (measured improvement + reproducibility) and
 ## Consequences
 
 Direction choice (ADR 0002) must slot into this structure: `baseline/` and `advanced/` share an interface, evals live as task files under `evals/tasks/`, all decisions get logged in `.vault/`.
+
+Superseded in part 2026-08-28: eval cases live as fixture specs and manifests under `evals/fixtures/` (docs/spec/00-contract.md), not as task files under `evals/tasks/`. `baseline/` and `advanced/` still share one interface (`arm.py`).
