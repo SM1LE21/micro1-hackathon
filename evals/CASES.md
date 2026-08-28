@@ -6,7 +6,7 @@ Status: proposed 2026-08-28, before any harness or solution code. Manifests and 
 
 - Same cases, same instructions, same read-only tools for both arms. The advanced arm's verifier calls count as steps and are reported.
 - Split by repository. Dev is iterated on; test is touched twice (baseline once, final once).
-- 3 seeded runs per case per arm. Mean ± std. Temperature 0 is not determinism.
+- 3 runs per case per arm, labelled s1–s3. Mean ± std. The model exposes no sampling parameters and no seed; the three runs measure sampling variance (ADR 0003).
 - Every manifest is committed before the first agent run on that repository. Corrections after that go into the errata section with a date and apply to both arms.
 - `success + failure == n` reported per arm. Runs that crash or exceed the step budget are failures, never dropped.
 
@@ -146,3 +146,11 @@ Test-set discipline: R03 and R04 manifests are labelled by Saturday morning and 
 ## Errata
 
 - 2026-08-28: verdict enum extended after research (`pseudonymised`, `governed_by_retention`, `no_schedule_evidenced`, all on the false side); field-level `erasure` override allowed; retention per `(store, category)`; `recipient_kind` on third-party stores. Sources: docs/research/gdpr-sources.md §3 and §6. Applies before any manifest is written, so no run is affected.
+- 2026-08-28 (after the spec pass, ADR 0004):
+  1. Cost and time: the "$20–40 per full eval" and "10–20 min" lines are superseded by `docs/spec/01-architecture.md` §10: $80–$176 for one 84-run live sweep, ≈107 min at concurrency 4; an advanced real-repo run $1.85–$3.73 (≈$4.40 with a rejected submit). Replays cost nothing.
+  2. Pass also requires `stop_condition == accepted`.
+  3. The synthetic set carries 90 tuples (38 reaching, 52 not) after the S10 reconciliation (`docs/spec/fixture-generator.md` §9).
+  4. S08 and R04 manifests carry `no_schedule_evidenced` on the backup store and `external_manual` on third-party stores, not `no_entry_point`; `reaches_erasure` is false either way.
+  5. The illustrative manifest's null-cited retention row is a shape example only; every submitted retention item carries `file` and `line`. S10's `(users, financial, criteria)` row is dropped — the same table is hard-deleted at 30 days.
+  6. S05: the transactional mail service is a `third_party` store under the contract's vocabulary, not "a recipient, not a store".
+  7. Failure traces live at `traces/failures/<arm>/<case>-s<seed>.jsonl`.
