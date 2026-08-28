@@ -98,10 +98,15 @@ Baseline feedback contains only `schema_errors`.
 
 - Store kinds: `relational | object_storage | cache | search_index | queue | third_party | log | backup`. Recipients are stores of kind `third_party`; there is no separate recipients list.
 - Field categories: `identifier | contact | financial | behavioural | free_text_may_contain | technical`.
-- Erasure verdicts: `erased | erased_after_timer | anonymised | not_erased | external_manual | no_entry_point | unverified`. `reaches_erasure` (scoring) is true for the first three only.
+- Erasure verdicts: `erased | erased_after_timer | anonymised | pseudonymised | not_erased | external_manual | no_entry_point | governed_by_retention | no_schedule_evidenced | unverified`. `reaches_erasure` (scoring) is true for `erased`, `erased_after_timer`, `anonymised` only. `pseudonymised` (hash, token, UUID, mask, or a surviving key to the subject) is the false side and a false safe when claimed as reaching. `governed_by_retention` / `no_schedule_evidenced` are the only verdicts rendered for stores of kind `backup` (research: gdpr-sources.md §3.1).
+- Erasure is recorded per store; a field whose fate differs from its store (email anonymised, invoice reference kept ten years) carries its own `erasure` block that overrides the store's for that field. The scorer reads the field-level block when present.
+- Retention items are per `(store, category)` where the code distinguishes them, per store otherwise; a `criteria` string is allowed where no number exists (Art. 30(1)(f) "where possible"; CNIL "or the criteria"). The tool never invents a number; absence renders `no_timer_evidenced`.
+- Stores of kind `third_party` carry `recipient_kind: unknown | internal | processor | external_controller`, default `unknown`, set by the human at the gate. The agent may never set it.
+- The record has an `activities` layer (Art. 30's unit is a processing activity) that the agent leaves empty; the render shows the empty layer with "requires human completion" rather than hiding it.
+- Hint fields the agent may fill, each rendered under a heading that says it is not a finding: `observed_module_names` (not purposes), `observed_region_hints` (region strings and API hosts with `file:line`; not a transfer finding), `security_evidence` (Art. 32(1)(a) technical measures only: hashing, TLS, encryption at rest, each `file:line`).
 - Entry-point kinds: `route | view | cli | admin | task | signal | unknown`.
 - Every field, entry point and erasure evidence item carries `file` and `line` (1-based, relative to the repo root).
-- Human-only cells (never filled by the agent): controller identity, DPO, purposes, legal basis, transfer safeguards. Optional `security_evidence` items (config lines for hashing, TLS, encryption at rest) are allowed as evidence only.
+- Human-only cells (never filled by the agent): controller identity and contact, DPO, purposes, legal basis, data-subject category confirmation, transfer existence and safeguards, recipient kind, activity grouping, retention justification.
 - Name normalisation (used by scorer and verifier alike): lowercase; non-alphanumerics → `_`; collapse repeats; strip a leading app prefix when the remainder matches a known model name; compare plural and singular as equal.
 
 ## Verifier contract
@@ -128,7 +133,7 @@ Cost per step from `usage`: input $5/MTok, output $25/MTok, cache write ×1.25, 
 
 `reasoning` is the summarised thinking text (may be empty). Tool outputs are stored in full.
 
-Risk rating for the checkpoint: `high` if any store is `not_erased`, `external_manual` or `unverified` with an `identifier` or `contact` field; `medium` if every store reaches erasure but at least one only after a timer; `low` otherwise. The gate fires at every rating.
+Risk rating for the checkpoint: `high` if any store is `not_erased`, `pseudonymised`, `external_manual`, `no_schedule_evidenced` or `unverified` with an `identifier` or `contact` field; `medium` if every store reaches erasure but at least one only after a timer; `low` otherwise. The gate fires at every rating.
 
 ## Scoring contract
 
