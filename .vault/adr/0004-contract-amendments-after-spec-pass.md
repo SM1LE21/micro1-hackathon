@@ -44,3 +44,5 @@ The contract was written before the specs existed, on purpose: a shared vocabula
 - `docs/spec/00-contract.md` is amended in place; the spec documents' "interim" readings are replaced with the binding ones in the next agent pass, and any leftover `P-0x`/"interim" marker is a defect.
 - ADR 0003 items 1 and 6 are amended by P-11 (streaming, `max_tokens` hashed).
 - The first live recording must not start before P-11 and P-12 are implemented.
+
+Addendum 2026-08-28 (same pass): the layout also gains `evals/fixtures/manifests/<case>.labelling.yaml` (blind-labelling sidecar) and `evals/fixtures/synthetic/.gen-index.json` (generator index), both asked for by `fixture-generator.md`; neither changes a rule, a hashed byte or a metric.
