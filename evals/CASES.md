@@ -16,7 +16,7 @@ A **tuple** is `(store, field, reaches_erasure)`.
 
 - *store*: a named place personal data lives — relational table, object-storage bucket/prefix, cache namespace, search index, queue payload, third-party service, log sink, backup target.
 - *field*: a personal-data attribute in that store. For third-party, log, cache and queue stores the field is what is sent or written (e.g. `email`).
-- *reaches_erasure*: `true` if the verdict is `erased`, `erased_after_timer` or `anonymised`; `false` for `not_erased`, `external_manual`, `no_entry_point`, `unverified`.
+- *reaches_erasure*: `true` if the verdict is `erased`, `erased_after_timer` or `anonymised`; `false` for `pseudonymised`, `not_erased`, `external_manual`, `no_entry_point`, `governed_by_retention`, `no_schedule_evidenced`, `unverified`.
 
 Names are normalised (snake_case, table prefixes stripped) before matching. A predicted tuple is a true positive only if store, field and `reaches_erasure` all match the manifest. Per case: precision, recall, F1. Aggregate: mean F1 across cases, dev and test reported separately.
 
@@ -34,6 +34,20 @@ Secondary rows, all reported, never folded into F1:
 | Turns, tool calls | per run, from the trace |
 
 Fine-grained verdicts and retention timers are rendered in the artifact and checked in the manifest, but they are not part of F1. One primary metric.
+
+## Definition of a good result (written before any run)
+
+For the founder who signs the record: nothing in it is wrong, nothing that the code evidences is missing, and no store is called erased when the code does not erase it.
+
+Targets, committed before the first baseline run:
+
+- Advanced arm, dev: mean F1 ≥ 0.85. Test: mean F1 ≥ 0.75 (real repos are in test and will be harder).
+- Advanced arm, false safe: 0 on test, 0 on dev. One false safe on test is a headline failure regardless of F1 and goes in HOT_TAKE.md.
+- pass^3 on at least half the dev cases.
+- Unsignable regardless of score: any legal cell filled by the agent, any claim without `file:line`, the word "compliant" anywhere in the record.
+- Baseline: no target. It is measured, not tuned. If the baseline matches the advanced arm on F1 and false safe, that result is reported as the finding.
+
+Statistics: the significance test runs on the binary `pass` row (exact McNemar over paired cases, each case's outcome = majority of its three runs); F1 differences carry a paired bootstrap 95% interval over cases. README's "exact McNemar" sentence refers to `pass` only.
 
 ## Manifest shape (one per case)
 
@@ -58,9 +72,18 @@ stores:
               note: "cleanup_user_files defined at storage.py:41, never called"}
   - name: stripe
     kind: third_party
+    recipient_kind: unknown          # human sets at the gate; never the agent
     fields:
       - {name: email, category: contact, file: billing.py, line: 30}
     erasure: {verdict: external_manual, evidence: null}
+  - name: nightly_backup
+    kind: backup
+    fields:
+      - {name: email, category: contact, file: jobs/backup.py, line: 8}
+    erasure: {verdict: governed_by_retention, timer_days: 35, evidence: jobs/backup.py:12}
+retention:
+  - {store: users, category: contact, days: 30, file: jobs/purge.py, line: 22}
+  - {store: users, category: financial, criteria: "kept for the statutory accounting period", file: null, line: null}
 negatives:                 # tables with no personal data; predicting them costs precision
   - products
 ```
@@ -122,4 +145,4 @@ Test-set discipline: R03 and R04 manifests are labelled by Saturday morning and 
 
 ## Errata
 
-(none yet)
+- 2026-08-28: verdict enum extended after research (`pseudonymised`, `governed_by_retention`, `no_schedule_evidenced`, all on the false side); field-level `erasure` override allowed; retention per `(store, category)`; `recipient_kind` on third-party stores. Sources: docs/research/gdpr-sources.md §3 and §6. Applies before any manifest is written, so no run is affected.
