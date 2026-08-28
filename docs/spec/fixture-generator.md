@@ -131,7 +131,7 @@ The foreign-key column is **not** listed in `fields[]`. The generator emits it f
 
 `routes[]`: `{name, module, reads: [Model.field, …]}` — a GET handler that touches personal data and deletes nothing. Noise, and the reason a repo has more than one thing in it.
 
-`extra_files[]`: `{path, kind}` where `kind` is `helpers` (three pure string/date functions), `constants` (feature flags, page sizes), or `readme` (a two-line `README.md`). No personal data, ever. Each case carries at least one, per CASES.md ("plus one or two files with no personal data at all").
+`extra_files[]`: `{path, kind}`. One kind, `helpers` — three pure string/date functions, no personal data ever — because that is the only kind §3's templates emit (`utils/text.py`, `<app>/utils.py`). The `constants` and `readme` kinds an earlier draft listed have no template behind them: `README.md` is emitted unconditionally by both flavours, and non-personal constants live in `config.py` and `settings.py`, neither of which is an `extra_files` entry. Each case carries one `helpers` file. With the always-emitted `README.md` beside it that is CASES.md's "one or two files with no personal data at all", met by the templates rather than by a knob.
 
 ### 2.7 `receivers[]` (django only)
 
@@ -150,7 +150,10 @@ The foreign-key column is **not** listed in `fields[]`. The generator emits it f
 
 ```yaml
 expect:
-  entry_points: [close_account]          # names; must equal the entry_points[] names
+  entry_points: [close_account]          # every entry point the verifier should find:
+                                          # the entry_points[] names, plus admin_delete_model
+                                          # and admin_delete_selected where admin[] is
+                                          # non-empty (03-verifier.md §2.2; S06, S09)
   stores:
     users:   {verdict: erased_after_timer, timer_days: 30,
               evidence: "jobs/purge.py::purge_closed_accounts!delete"}
@@ -332,7 +335,13 @@ manifest.intent          = spec.intent
 manifest.spec_sha256     = sha256(spec file bytes)
 manifest.gen_version     = GEN_VERSION constant in gen.py
 manifest.normalisation.prefixes = spec.apps          # [] for the sqlalchemy flavour, which has no package dir
-manifest.entry_points[]  = one per spec.entry_points[], with file+line from the rendered def
+manifest.entry_points[]  = one per spec.entry_points[], with file+line from the rendered def,
+                           plus, where spec.admin[] is non-empty, admin_delete_model and
+                           admin_delete_selected — kind admin, admin_only: true, cited at the
+                           first admin.site.register(...) line in <app>/admin.py. Two of them
+                           per repository, not per registered model (03-verifier.md §4.2's
+                           "the two admin ones"); SE10 adds one edge from each to every
+                           registered model
 manifest.stores[]        = one per non-negative model (kind relational) + one per spec.stores[]
   .fields[]              = every field with a non-null category, in spec order,
                            file+line captured while rendering the token that names it
@@ -501,6 +510,7 @@ CASES.md is frozen except for a dated errata section, and these specs extend fou
 | S05 | `analytics` becomes kind `third_party` with verdict `external_manual`, not `not_erased` | `00-contract.md`: "Recipients are stores of kind `third_party`; there is no separate recipients list." Same for the mail SDK, which CASES.md called "a recipient, not a store". **`reaches_erasure` is `false` either way, so no scored tuple changes** — the errata is a label correction |
 | S07 | Gains the hashed-email trap: `close_account` calls `anonymize_user`, which hashes the email and writes a constant name. Store verdict `pseudonymised`; field `full_name` overrides to `anonymised` | gdpr-sources §3.2 asks for a planted case. Placed on S07 rather than S09 for three reasons: the `pseudonymised` false-safe rule must be developed on **dev**, because a trap first met on test cannot be fixed without spending one of the two test sweeps; S09's value is that it isolates a single variable (`sender=` mismatch) and a second trap would confound the attribution; and S07 already carries the "read what the code means, not what it is called" theme, which is exactly what `anonymize_user` writing a hash is |
 | S08 | Gains three stores — `doc_search` (`search_index`), `events` (`queue`), `nightly_dump` (`backup`, no schedule, verdict `no_schedule_evidenced`) — reaching six stores of five kinds | Completes synthetic coverage of the contract's store kinds, and `no_schedule_evidenced` is the EDPB's own finding (controllers claiming schedules they do not have). The index is named `doc_search` and not `documents`: the case already has a `documents` table, and an index the code called `documents` normalises to the same string, which `extract()` resolves by dropping one of the two |
+| S06, S09 | `expect.entry_points` gains `admin_delete_model` and `admin_delete_selected`, both `admin_only`, which `admin.site.register(...)` already planted and the two `expect` blocks did not declare | 03-verifier.md §2.2 discovers them from a registration, so a manifest listing only the view scores a spurious `entry_point_check.missing` on every run of both arms. Entry points are not scored tuples: no store verdict moves, and the F1 counts in `05-eval-harness.md` §1 are unchanged at 8 tuples each. What moves is `entry_point_check`, from one expected name to three. S06 is dev, which is what gives the admin-only rule its rehearsal before the test split |
 | S06 | One child model uses `on_delete=models.DB_CASCADE` | R4's row half is a real Django 6.1 propagation edge and belongs in the clean case. R4's other half — `DB_CASCADE` silently killing signal-based file cleanup — is a false-safe shape that stays in the verifier's unit tests (`docs/spec/03-verifier.md`), not in a scored case, so S09 keeps one variable |
 | S10 | Drops the `(users, financial, criteria)` retention row that appears in CASES.md's illustrative manifest | That row says a financial field on `users` is kept for the statutory accounting period while the same table is hard-deleted at 30 days. The example is a shape illustration; the four stores and both evidence notes are reproduced exactly |
 | S10 | Gains `users.signup_ip`, `users.last_seen_at`, `uploads.original_filename` and a second Stripe argument, reaching eleven tuples | `docs/spec/example-record-S10.md` is the hand-written target artefact — the document on screen at 1:15 of the video and the one the author holds the real output against — and it renders all four. Scored against the old seven-tuple manifest, the project's own model answer was precision 0.64 and `pass` false. The exemplar wins; `05-eval-harness.md` §1's counts are recomputed (11 tuples, 5 reaching, 6 not; 90 / 38 / 52 across the ten cases) |
@@ -512,7 +522,7 @@ CASES.md is frozen except for a dated errata section, and these specs extend fou
 
 Beyond the extensions above, three lines belong in that errata. Two are in it — the tuple count and the pass definition. The first is not, and is stated here so nothing depends on a reader reconstructing it:
 
-1. **Three rules have no dev rehearsal.** `no_entry_point` appears in one spec, S08 (test), where it decides 10 of 13 tuples; `no_schedule_evidenced` appears in one spec, S08, deciding 3; and the admin-only entry point of AMBIGUITIES 15 is first met on R03 (test). Their first *scored* appearance is therefore on the test split, and a bug in any of them is discovered by spending one of the two live test sweeps. Each is covered by a unit test written before the first advanced run — `test_no_entry_point_repo` (41), `test_backup_no_schedule` (49), `test_r16_admin_two_paths` (29) in `03-verifier.md` §10 — and that is the whole of their pre-test coverage. The dead-deletion-helper shape, which had the same problem, now has a dev rehearsal on S05.
+1. **Two rules have no dev rehearsal.** `no_entry_point` appears in one spec, S08 (test), where it decides 10 of 13 tuples; `no_schedule_evidenced` appears in one spec, S08, deciding 3. Their first *scored* appearance is on the test split, and a bug in either is discovered by spending one of the two live test sweeps. Each is covered by a unit test written before the first advanced run — `test_no_entry_point_repo` (41), `test_backup_no_schedule` (49) in `03-verifier.md` §10 — and that is the whole of their pre-test coverage. Two shapes that had the same problem no longer do: the dead deletion helper is rehearsed on S05, and the admin-only entry point of AMBIGUITIES 15 is rehearsed on **S06 (dev)**, whose `admin: [Account]` now shows in `expect.entry_points`, rather than first being met on R03. `test_r16_admin_two_paths` (29) stays as the unit test beside it.
 2. **The synthetic set carries 90 tuples**, 38 reaching and 52 not, after the S10 reconciliation above.
 3. **Pass requires `stop_condition == accepted`** (`05-eval-harness.md` §4.2), which is a change to the frozen Primary-metric definition.
 
