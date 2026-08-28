@@ -1,0 +1,56 @@
+# S02 — dev — soft delete is not erasure (AMBIGUITIES row 4, research §6 R25).
+# close_account writes deleted_at and flips is_active. There is no purge job, no CLI,
+# no admin, nothing anywhere that removes a row. Both stores are not_erased.
+# Frozen once the first run against S02 exists.
+case: S02
+split: dev
+flavour: sqlalchemy
+package: harbourdesk
+intent: "soft delete and nothing else: deleted_at is written, no code anywhere removes a row"
+engine: "sqlite:///./harbourdesk.db"
+
+models:
+  - name: User
+    table: users
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: email, type: str, category: contact, nullable: false}
+      - {name: full_name, type: str, category: identifier}
+      - {name: phone, type: str, category: contact}
+      - {name: is_active, type: bool, category: technical}
+      - {name: deleted_at, type: datetime, category: technical}
+  - name: SupportTicket
+    table: tickets
+    parent: User
+    cascade: "save-update, merge"
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: subject, type: str, category: free_text_may_contain}
+      - {name: body, type: text, category: free_text_may_contain}
+      - {name: opened_at, type: datetime, category: technical}
+
+entry_points:
+  - name: close_account
+    kind: route
+    module: api/account.py
+    action: soft_delete
+    docstring: "Close the account. The user can no longer sign in."
+
+routes:
+  - {name: get_profile, module: api/profile.py, reads: [User.email, User.phone]}
+  - {name: list_tickets, module: api/profile.py, reads: [SupportTicket.subject]}
+
+extra_files:
+  - {path: utils/text.py, kind: helpers}
+
+expect:
+  entry_points: [close_account]
+  stores:
+    users:
+      verdict: not_erased
+      evidence: null
+      note: "soft delete only: deleted_at written at {api/account.py::close_account!now}; no hard delete exists in the repository"
+    tickets:
+      verdict: not_erased
+      evidence: null
+      note: "rows survive the soft delete and the relationship carries no delete cascade ({models.py::User.tickets})"
