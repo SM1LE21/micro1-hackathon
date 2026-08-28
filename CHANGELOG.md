@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-29 22:15 UTC — v1 accepted
+
+- Author reviewed all 428 v1 decisions through the review ledger and accepted every one; Q2–Q5 closed with their defaults
+- `.gitattributes` pins fixture bytes (plan item 0) before any fixture is generated
+- Next: the build, in the order of docs/spec/08-plan.md §7
+
 ## 2026-08-28 21:09 UTC — v1 concept, research and spec
 
 - Three verified agent workflows (42 Opus subagents): research with re-fetched sources (docs/research/), judge mapping (docs/judging/), specs 00–10 + fixture generator + example record (docs/spec/), ten fixture specs and the split (evals/fixtures/specs/, evals/split.yaml), build plan and narrative drafts
