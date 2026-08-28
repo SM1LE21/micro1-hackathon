@@ -29,7 +29,7 @@ Yes — see [REPRODUCE.md](REPRODUCE.md). `make eval-replay` reproduces every nu
 | Human time per task | | | |
 | Cost per task | | | |
 
-Full metrics (pass^3, regressions, robustness, turns, tool calls): `results/metrics.json`. Statistics method: paired per-task differences, exact McNemar; details in REPRODUCE.md.
+Full metrics (false safe, pass, pass^3, regressions, unverified, turns, tool calls): `results/metrics.json`. Statistics: exact McNemar on the binary pass row (majority of three seeds); paired bootstrap 95% interval on F1; details in REPRODUCE.md.
 
 ## Improvement changelog
 
