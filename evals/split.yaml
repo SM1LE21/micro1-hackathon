@@ -1,7 +1,8 @@
 # Dev/test membership for the evaluation (evals/CASES.md §Counts and budget).
 #
-# Dev is iterated on freely. Test is touched twice with live runs: once for the baseline,
-# once for the final system. That is enforced in four places, not promised
+# Dev is iterated on freely. Test is swept live at most twice; the reported comparison comes from
+# one sweep with both arms in one recording window and the second slot is held for a re-record
+# (ADR 0005, evals/CASES.md errata). That is enforced in four places, not promised
 # (docs/spec/05-eval-harness.md §5.4):
 #   1. evals/harness/run.py refuses any selection intersecting `test` without --unlock-test
 #      and a --reason, and appends the sweep to results/test-runs.log before the first call.
