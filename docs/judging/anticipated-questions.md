@@ -46,7 +46,7 @@ That is precisely the baseline, on purpose (ADR 0002). Same model, same read-onl
 
 **9. What does the verifier actually check?**
 
-`path_exists(entry, primitive, must_pass_through=None)` over a name-based, intra-repo call graph built with stdlib `ast`, with store kinds, deletion primitives, and recipient SDKs as data rather than code. An erasure claim survives only if a static path runs from the erasure entry point to a deletion primitive for that store. Django `on_delete=CASCADE` counts for relational rows; `FileField` and `ImageField` need an explicit storage delete on the path (AMBIGUITIES 13), because Django's own documentation says "when a model is deleted, related files are not deleted" [S7]. It is four files under `art30/verify/` — `callgraph.py`, `rules.py`, `reach.py`, `check.py` — plus the rule sets as YAML, each file under ~300 lines (`docs/spec/00-contract.md` §Repository layout).
+`path_exists(graph, entry, target, must_pass_through=None)` over a name-based, intra-repo call graph built with stdlib `ast`, with store kinds, deletion primitives, and recipient SDKs as data rather than code. An erasure claim survives only if a static path runs from the erasure entry point to a deletion primitive for that store. Django `on_delete=CASCADE` counts for relational rows; `FileField` and `ImageField` need an explicit storage delete on the path (AMBIGUITIES 13), because Django's own documentation says "when a model is deleted, related files are not deleted" [S7]. It is four files under `art30/verify/` — `callgraph.py`, `rules.py`, `reach.py`, `check.py` — plus the rule sets as YAML, each file under ~300 lines (`docs/spec/00-contract.md` §Repository layout).
 
 **10. Can the model just retry until the verifier passes?**
 
@@ -58,11 +58,21 @@ The PDF's own line: "Purposeful choices matter more than the number of component
 
 **12. What happens when the model and the verifier disagree?**
 
-The verifier wins, and the disagreement stays visible. The rejection appears in the trace as a tool response (`REJECT store=uploads claim=erased reason=no path close_account → storage.delete; helper cleanup_user_files defined at storage.py:41, never called`), followed by the revised draft. Both the first answer and the reason it was struck are in the trajectory, which is what deliverable 04 asks for and what the demo shows at 0:40 (`docs/demo-script.md`).
+The verifier wins, and the disagreement stays visible. The rejection appears in the trace as a tool response and on screen as the CLI prints it (`docs/spec/07-ui.md` §3):
+
+```
+  REJECT   uploads · erasure.verdict=erased
+           no path from entry point close_account (api/account.py:12) to any
+           object-storage deletion primitive; cleanup_user_files (storage.py:41)
+           is defined but has no callers
+           expected: verdict not_erased, or cite the path
+```
+
+The store and the claim are on the first line, the verifier's reason on the continuation lines, and what it expected instead under that; the CLI prints the verifier's strings unchanged. The revised draft follows in the next step. Both the first answer and the reason it was struck are in the trajectory, which is what deliverable 04 asks for and what the demo shows at 0:40 (`docs/demo-script.md`).
 
 **13. Where is the human, and who is qualified to be there?**
 
-A gate before the record renders, appearing in the trace as a tool call annotated with the risk rating that triggered it (AGENTS.md §Trace rules). It covers the erasure entry point the agent discovered, which the human confirms (AMBIGUITIES 3), and the legal cells the agent refused to fill. Ground rules 04 and 05 require it. The qualified reviewer is whoever signs the record; the tool's job is to make that review cheap by putting `file:line` on every cell and by distinguishing seven erasure verdicts instead of yes/no. Assumption: during batch evaluation the approver is simulated and logged as simulated — the gate fires on 42 advanced-arm runs and nobody approves those by hand — while the demo path uses a real prompt. `--approve auto` records `by: "simulated"`, `--approve ask` prompts on the terminal (`docs/spec/00-contract.md` §Run phases 3), and REPRODUCE.md states the difference.
+A gate before the record renders, appearing in the trace as a tool call annotated with the risk rating that triggered it (AGENTS.md §Trace rules). It covers the erasure entry point the agent discovered, which the human confirms (AMBIGUITIES 3), and the legal cells the agent refused to fill. Ground rules 04 and 05 require it. The qualified reviewer is whoever signs the record; the tool's job is to make that review cheap by putting `file:line` on every cell and by distinguishing ten erasure verdicts instead of yes/no (`erased`, `erased_after_timer`, `anonymised`, `pseudonymised`, `not_erased`, `external_manual`, `no_entry_point`, `governed_by_retention`, `no_schedule_evidenced`, `unverified` — `docs/spec/00-contract.md` §Record vocabulary; the first three are the only ones that count as reaching erasure). Assumption: during batch evaluation the approver is simulated and logged as simulated — the gate fires on 42 advanced-arm runs and nobody approves those by hand — while the demo path uses a real prompt. `--approve auto` records `by: "simulated"`, `--approve ask` prompts on the terminal (`docs/spec/00-contract.md` §Run phases 3), and REPRODUCE.md states the difference.
 
 **14. Why not run the target repositories?**
 
@@ -90,7 +100,7 @@ Partly, which is why they are not the whole set. The generator emits repository 
 
 **19. How was the test set protected?**
 
-Split by repository. Dev is iterated on; test is touched exactly twice, once for the baseline and once for the final (AGENTS.md §Eval rules, CASES.md). R03 and R04 manifests are labelled Saturday morning and those repositories are not opened again until the final run. The dev/test gap will be real, and the README states the test number is expected to be lower before a judge has to notice.
+Split by repository, and the test split is capped at two live sweeps (AGENTS.md §Eval rules, CASES.md). ADR 0005 spends the first on one sweep carrying both arms in a single recording window and holds the second for a re-record: `report.py` refuses to write `metrics.json` when the two arms' recording windows do not overlap, so a baseline-only sweep on Saturday against a final sweep on Sunday would be unreportable. The baseline arm is frozen before any test case runs, so its cases are uncontaminated by running in the same window. The ledger `results/test-runs.log` is hash-chained and committed, the harness exits 2 on the test split without `--unlock-test` and 3 on a third live sweep unless an ADR names it. R03 and R04 manifests are labelled Saturday morning and those repositories are not opened again until that sweep. The dev/test gap will be real, and the README states the test number is expected to be lower before a judge has to notice.
 
 **20. Who says your hand labels are right?**
 
@@ -98,7 +108,7 @@ A written protocol, timed: vendor at the SHA, editor and grep only, no agent and
 
 **21. What can the verifier not see?**
 
-Everything outside the Python call graph, and we list it rather than hide it: database-level cascades declared in a migration or the schema rather than the ORM, triggers and stored procedures, deletion driven by an external cron or a queue consumer living in another service, object-store lifecycle rules, versioned buckets where a delete leaves earlier versions readable, and backups, which are inventoried as stores of kind `backup` with their retention timer (AMBIGUITIES 6 puts them out of scope for an erasure judgement, and the schema has no way to say nothing at all, so they render `unverified` like every other unprovable claim). Dynamic dispatch, decorator semantics, and `getattr` indirection are out by design (NON-GOALS). All of it renders `unverified` — one of the seven verdicts in `docs/spec/00-contract.md` §Record vocabulary, counted as not reaching erasure — so the residual failure mode is a false alarm, not a false safe.
+Everything outside the Python call graph, and we list it rather than hide it: database-level cascades declared in a migration or the schema rather than the ORM, triggers and stored procedures, deletion driven by an external cron or a queue consumer living in another service, object-store lifecycle rules, versioned buckets where a delete leaves earlier versions readable, and backups, which are inventoried as stores of kind `backup` with their retention timer. AMBIGUITIES 6 puts a backup out of scope for an erasure judgement, and the vocabulary has two verdicts for saying so rather than none: a backup store renders `governed_by_retention` where a schedule is in the code and cited, `no_schedule_evidenced` where there is none, and those are the only two verdicts it can take (contract §Record vocabulary) — never `unverified`, which would fold a finding about a missing schedule into the bucket for calls the parser could not resolve. Dynamic dispatch, decorator semantics, and `getattr` indirection are out by design (NON-GOALS). Everything in the first list renders `unverified` — one of the ten verdicts in `docs/spec/00-contract.md` §Record vocabulary (`erased`, `erased_after_timer`, `anonymised`, `pseudonymised`, `not_erased`, `external_manual`, `no_entry_point`, `governed_by_retention`, `no_schedule_evidenced`, `unverified`), counted as not reaching erasure — so the residual failure mode is a false alarm, not a false safe.
 
 **22. Then couldn't the advanced arm win by marking everything `unverified`?**
 
@@ -138,7 +148,7 @@ Nothing. They are vendored into `evals/fixtures/real/<name>/` at a pinned SHA wi
 
 **30. How long does the whole evaluation take, and what if a run misbehaves?**
 
-Full evaluation is 14 cases × 2 arms × 3 seeds = 84 runs, estimated at 10–20 minutes wall clock with cases in parallel and replaced by the measured [runtime] in REPRODUCE.md. The step budget is 60 tool calls for a synthetic case and 120 for a real one; a run that crashes or exceeds the budget is a failure, never dropped, and `success + failure == n` is printed and stated (AGENTS.md §Evidence discipline). Failed runs ship in `traces/failures/` with a one-line diagnosis each.
+Full evaluation is 14 cases × 2 arms × 3 seeds = 84 runs, estimated at roughly 107 minutes at concurrency 4 and $80–$176 live (`docs/spec/01-architecture.md` §10, which supersedes CASES.md's "10–20 minutes" and "$20–40" — see its errata), and replaced by the measured [runtime] in REPRODUCE.md. A replay is minutes and costs nothing. The step budget is 60 tool calls for a synthetic case and 120 for a real one; a run that crashes or exceeds the budget is a failure, never dropped, and `success + failure == n` is printed and stated (AGENTS.md §Evidence discipline). Failed runs ship in `traces/failures/` with a one-line diagnosis each.
 
 **31. How do we know the README numbers came from the committed artifacts?**
 
