@@ -144,7 +144,7 @@ The foreign-key column is **not** listed in `fields[]`. The generator emits it f
 
 ### 2.8 `retention[]`
 
-`{store, category, days|criteria, anchor|null}`. AMBIGUITIES row 16 wants retention split per `(store, category)` where the code distinguishes them; the synthetic set exercises the split across stores (S03 has three categories under three different timers) and not within one, because every within-store construction we tried needed a purge job that contradicts its own comment. Within one store the same idea is exercised on the erasure axis instead, by S07's field-level overrides. The real-repo manifests are where a within-store retention split will appear if the code has one. `days` and `criteria` are mutually exclusive (contract §Record vocabulary: "a `criteria` string is allowed where no number exists"). **`anchor` is required and may not be null.** A criteria string with no line behind it renders a manifest row with `file: null, line: null`, and invariant I6 of `04-output-schema.md` §4 rejects exactly that row in a submitted record, in both arms — so `retention_check.missing` would be permanently non-zero on a dev case for a row no arm is allowed to produce, and the number would mean nothing. CASES.md's illustrative manifest shows the null form; `04-output-schema.md` proposal 4 asks the lead for the errata line calling it a shape example rather than a submittable one. Where the criteria comes from a comment, the anchor is the line the comment sits on: comments are rendered inline on the column they annotate (§3.1, `models.py`), so `models.py::Invoice.reference` resolves to a line that carries the wording. A criteria with nothing to cite anywhere is `human.retention_justification`, not a retention row.
+`{store, category, days|criteria, anchor|null}`. AMBIGUITIES row 16 wants retention split per `(store, category)` where the code distinguishes them; the synthetic set exercises the split across stores (S03 has three categories under three different timers) and not within one, because every within-store construction we tried needed a purge job that contradicts its own comment. Within one store the same idea is exercised on the erasure axis instead, by S07's field-level overrides. The real-repo manifests are where a within-store retention split will appear if the code has one. `days` and `criteria` are mutually exclusive (contract §Record vocabulary: "a `criteria` string is allowed where no number exists"). **`anchor` is required and may not be null.** A criteria string with no line behind it renders a manifest row with `file: null, line: null`, and invariant I6 of `04-output-schema.md` §4 rejects exactly that row in a submitted record, in both arms — so `retention_check.missing` would be permanently non-zero on a dev case for a row no arm is allowed to produce, and the number would mean nothing. CASES.md's illustrative manifest shows the null form, and its errata now calls that a shape example rather than a submittable one (`evals/CASES.md` §Errata, ADR 0004). Where the criteria comes from a comment, the anchor is the line the comment sits on: comments are rendered inline on the column they annotate (§3.1, `models.py`), so `models.py::Invoice.reference` resolves to a line that carries the wording. A criteria with nothing to cite anywhere is `human.retention_justification`, not a retention row.
 
 ### 2.9 `expect`
 
@@ -337,9 +337,15 @@ manifest.stores[]        = one per non-negative model (kind relational) + one pe
   .fields[]              = every field with a non-null category, in spec order,
                            file+line captured while rendering the token that names it
   .recipient_kind        = "unknown" for kind third_party (contract: the agent may never set it)
+  .subject_link          = {file, line} of the line that ties the store to the subject: the model
+                           declaration for the subject root itself, the foreign-key column for a
+                           relational child, the key builder for a keyed store, the transmitting
+                           call for a third_party store, the DUMP_COLUMNS line for a backup
 manifest.negatives[]     = store/table names of models with negative: true
 manifest.retention[]     = spec.retention[] with anchors resolved
 ```
+
+`subject_link` is required on every store by contract §Record vocabulary (ADR 0004), and the templates already write every one of those lines, so it is recorded the same way a field's citation is: while the token is emitted, never searched for afterwards.
 
 **Which line names a field.** Only a relational field has a column, and `00-contract.md` requires `file` and `line` on every field of every store — so the templates are written so that each declared field's name appears verbatim on exactly one emitted line, and the generator records that line as it writes it. No search, no anchor, no hand-written number.
 
@@ -484,7 +490,7 @@ blind: true          # the manifest was not read before the timer stopped
 
 ## 9. Extensions to the CASES.md case table
 
-CASES.md is frozen except for a dated errata section, and these specs extend four of its rows. The lead applies the errata; the specs are written as if it is already applied, and each extension is listed here so the two can be reconciled in one read.
+CASES.md is frozen except for a dated errata section, and these specs extend four of its rows. The lead applied that errata on 2026-08-28 (ADR 0004, `evals/CASES.md` §Errata); the specs were written as if it already was, and each extension stays listed here so the two can be reconciled in one read.
 
 | Case | Extension | Why |
 |---|---|---|
@@ -504,7 +510,7 @@ CASES.md is frozen except for a dated errata section, and these specs extend fou
 
 ### Errata the lead applies to `evals/CASES.md`
 
-CASES.md is frozen except for its dated errata section. Beyond the extensions above, three lines belong there and are stated plainly rather than left to a reader to reconstruct:
+Beyond the extensions above, three lines belong in that errata. Two are in it — the tuple count and the pass definition. The first is not, and is stated here so nothing depends on a reader reconstructing it:
 
 1. **Three rules have no dev rehearsal.** `no_entry_point` appears in one spec, S08 (test), where it decides 10 of 13 tuples; `no_schedule_evidenced` appears in one spec, S08, deciding 3; and the admin-only entry point of AMBIGUITIES 15 is first met on R03 (test). Their first *scored* appearance is therefore on the test split, and a bug in any of them is discovered by spending one of the two live test sweeps. Each is covered by a unit test written before the first advanced run — `test_no_entry_point_repo` (41), `test_backup_no_schedule` (49), `test_r16_admin_two_paths` (29) in `03-verifier.md` §10 — and that is the whole of their pre-test coverage. The dead-deletion-helper shape, which had the same problem, now has a dev rehearsal on S05.
 2. **The synthetic set carries 90 tuples**, 38 reaching and 52 not, after the S10 reconciliation above.
@@ -549,11 +555,13 @@ These are specified for the real repos and for `03-verifier.md` §10's unit test
 
 ### To `00-contract.md`
 
-`00-contract.md` §Repository layout lists `evals/fixtures/manifests/<case>.yaml` and nothing beside it. Two files need adding to the layout, both created by this document:
+`00-contract.md` §Repository layout lists `evals/fixtures/manifests/<case>.yaml` and nothing beside it. Two files created by this document are still not in it, and ADR 0004 did not carry them:
 
 - `evals/fixtures/manifests/<case>.labelling.yaml` — hand-written blind-labelling sidecar for synthetic cases (§8). Reason: `labelling_minutes` cannot live in a generated file without breaking the clean-diff check that ADR 0003 §9 requires.
 - `evals/fixtures/synthetic/.gen-index.json` — one provenance entry per case (§8). Reason: provenance has to live somewhere, and inside the fixture repos it would be visible to the model.
 
+Both are layout lines and neither changes a rule, a hashed byte or a metric, so the generator is written to them and the next ADR can pick them up.
+
 ### To `docs/spec/10-instructions.md`
 
-**State the store-identity convention once, in the text both arms read.** §7 rule 1 makes the manifest side mechanical: a store name is the identifier the code carries, in the terms `03-verifier.md` §3.1–§3.8 derives it — the `__tablename__` or `db_table` string, the bucket constant, the index name, the cache key prefix, the queue name, the logger name, the SDK module, and `<model>.<field>` for a Django file field. The instructions currently say nothing about it, so the convention binds the ground truth and not the arms. Reason: the metric matches on the store name, the completeness guard names a missing store the verifier's way, and an arm that never learns the convention loses tuples to spelling.
+Accepted by ADR 0004 on 2026-08-28 and applied: the store-identity convention is in contract §Verifier contract and in the `# Stores` block of `10-instructions.md` §1, in the terms §7 rule 1 uses on the manifest side.
