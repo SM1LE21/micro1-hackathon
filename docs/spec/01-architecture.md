@@ -61,10 +61,10 @@ Solid arrows are calls; dotted arrows are the two implementations of one protoco
 | `art30/loop.py` | The step loop: message construction, budget and attempt invariants, stop conditions, gate call, render call | 190 | Know which arm it is running; contain a verifier rule; format a record |
 | `art30/trace.py` | Append one JSON object per line, flush each line | 80 | Buffer across steps; redact or summarise; reorder fields |
 | `art30/render/markdown.py` | Validated record to `record.md` under `docs/writing-rules.md` | 200 | Invent a value the record does not carry; hide the empty `activities` layer |
-| `art30/render/html.py` | `record.md` plus the record to a single-file static page | 120 | Ship JavaScript; fetch anything |
+| `art30/render/html.py` | `record.json` plus the repository path to a single-file static page; reads each cited line for its tooltip | 120 | Ship JavaScript; fetch anything |
 | `baseline/arm.py` | Tool set, schema-only submit handler, no gate | 45 | Import anything under `art30/verify/` |
 | `advanced/arm.py` | Tool set, schema + verifier + completeness guard submit handler, risk rating, gate | 90 | Reach a manifest; alter the record it was handed |
-| `art30/verify/callgraph.py`, `rules.py`, `reach.py`, `check.py` | Spec `03`. Public surface used here: `check(record, root, rules) -> Feedback` and `path_exists(entry, primitive, must_pass_through=None)` (contract §Verifier contract) | 4 x ~200 | See spec `03` |
+| `art30/verify/callgraph.py`, `rules.py`, `reach.py`, `check.py` | Spec `03`. Public surface used here: `check(record, root, rules) -> Feedback` and `path_exists(graph, entry, target, must_pass_through=None)` (contract §Verifier contract, which carries the signature of `03-verifier.md` §5.1) | 4 x ~200 | See spec `03` |
 
 ### 1.2 Evaluation modules
 
@@ -85,16 +85,22 @@ Runtime total is roughly 1,300 lines outside the verifier, which keeps every fil
 class Config:
     model: str = "claude-opus-5"
     effort: str = "high"
-    max_tokens: int = 16_000       # contract §API configuration; proposal 5 asks to raise it
+    max_tokens: int = 32_000       # contract §API configuration; the request is streamed
     mode: Literal["live", "replay"] = "live"
     record: bool = False           # write cache entries on a live run
     tool_budget: int = 60          # 120 for real repos; set from the case kind
     max_submits: int = 5
+    max_usd: float | None = None   # ART30_MAX_USD, unset by default (contract §Budgets);
+                                   # the loop checks cost_cum_usd against it before each dispatch
     approve: Literal["ask", "auto"] = "ask"
     concurrency: int = 4
     cache_dir: Path = Path("evals/cache")
     out_dir: Path = Path("results/runs")
     trace_dir: Path = Path("traces")
+
+    def trace_config(self) -> dict: ...   # {max_tokens, tool_budget, submit_budget, overridden}
+                                          # the run_start line's `config` object, and
+                                          # provenance.config in the record (04 §5)
 
 def load(overrides: Mapping[str, object] | None = None) -> Config: ...
 def read_dotenv(path: Path = Path(".env")) -> dict[str, str]: ...   # never overrides a set var
@@ -102,15 +108,17 @@ def read_dotenv(path: Path = Path(".env")) -> dict[str, str]: ...   # never over
 # art30/trace.py
 class Trace:
     def __init__(self, path: Path) -> None: ...
-    def run_start(self, *, run_id: str, arm: str, case: str, seed: int,
-                  model: str, effort: str, mode: str) -> None: ...
+    def run_start(self, *, run_id: str, arm: str, case: str, seed: int, model: str,
+                  effort: str, mode: str, prompt_sha: str, config: dict) -> None: ...
     def step(self, *, step: int, phase: Literal["agent", "verify"], request_id: str | None,
+             request_hash: str, stop_reason: str | None,
              reasoning: str, text: str, tool_calls: list[dict], tool_results: list[dict],
              usage: dict[str, int], cost_usd: float, cost_cum_usd: float) -> None: ...
-    def checkpoint(self, *, risk: str, summary: str, decision: str, by: str) -> None: ...
+    def checkpoint(self, *, risk: str, summary: str, decision: str, by: str,
+                   wait_s: float, human_completions: dict | None) -> None: ...
     def run_end(self, *, stop_condition: str, steps: int, tool_calls_total: int, submits: int,
                 verify_rounds: int, wall_s: float, cost_usd: float,
-                record_path: str | None) -> None: ...
+                record_path: str | None, note: str | None) -> None: ...
     def close(self) -> None: ...
 
 # art30/llm.py
@@ -200,6 +208,7 @@ class RunCtx:
     tool_calls: int = 0
     submits: int = 0
     verify_rounds: int = 0
+    cost_cum_usd: float = 0.0        # summed by trace_step; read by the loop's cost guard
     accepted: dict | None = None
 
 @dataclass(frozen=True)
@@ -210,8 +219,10 @@ class Feedback:
     schema_errors: list[dict] = field(default_factory=list)
     rejected_claims: list[dict] = field(default_factory=list)
     missing_stores: list[dict] = field(default_factory=list)
+    missing_entry_points: list[dict] = field(default_factory=list)
     bad_citations: list[dict] = field(default_factory=list)
     unverified: list[dict] = field(default_factory=list)
+    conservative_divergences: list[dict] = field(default_factory=list)
     def to_tool_result(self) -> str: ...   # canonical JSON, contract §Feedback object
 
 @dataclass(frozen=True)
@@ -220,8 +231,11 @@ class Decision:
     approved: bool
     by: Literal["human", "simulated"]
     summary: str
+    wait_s: float = 0.0                                   # seconds at the prompt; 0.0 when simulated
     edits: dict[str, str] = field(default_factory=dict)   # {"stores.stripe.recipient_kind": ...}
                                                           # human-only cells; see 02 §7
+    def human_completions(self) -> dict | None: ...       # {"recipient_kind": {store: value}}, or
+                                                          # None when nothing was filled in
 
 class Arm(Protocol):
     name: str
@@ -239,16 +253,16 @@ def run(case: CaseRef, arm: Arm, seed: int, cfg: Config) -> RunResult: ...
 
 # art30/render/
 def render_markdown(record: dict) -> str: ...
-def render_html(markdown_text: str, record: dict) -> str: ...
+def render_html(record: dict, repo_root: Path) -> str: ...
 ```
 
-`to_tool_result()` omits every empty list. One dataclass serialised one way would give the baseline a rejection payload carrying four advanced-only keys, which contradicts the contract ("Baseline feedback contains only `schema_errors`") and puts verifier vocabulary into the baseline's only model-visible channel — the one place the arms are allowed to differ and the place the "same prompt, same tools" claim is defended. So a baseline rejection serialises as `{"accepted": false, "attempt": 2, "attempts_left": 3, "schema_errors": [...]}`, an acceptance as `{"accepted": true}` in both arms, and the unit tests assert that no baseline tool result anywhere in `traces/baseline/**` contains the substrings `rejected_claims`, `missing_stores`, `bad_citations` or `unverified`.
+`to_tool_result()` omits every empty list. One dataclass serialised one way would give the baseline a rejection payload carrying six advanced-only keys, which contradicts the contract ("Baseline feedback contains only `schema_errors`") and puts verifier vocabulary into the baseline's only model-visible channel — the one place the arms are allowed to differ and the place the "same prompt, same tools" claim is defended. So a baseline rejection serialises as `{"accepted": false, "attempt": 2, "attempts_left": 3, "schema_errors": [...]}`, an acceptance as `{"accepted": true}` in both arms, and the unit tests assert that no baseline tool result anywhere in `traces/baseline/**` contains the substrings `rejected_claims`, `missing_stores`, `missing_entry_points`, `bad_citations`, `unverified` or `conservative_divergences`.
 
 ---
 
 ## 2. One run, step by step
 
-A run is one case, one arm, one seed. `run_id` is `<arm prefix>-<case>-s<seed>-<git sha7>` — `adv-S10-s1-9f3ac1e` — where the arm prefixes are `adv` and `base` and the sha is the seven-hex short sha of the working tree the run was made from. It is the same column as `results/test-runs.log` and `metrics.json.git_sha` (`04-output-schema.md` §5, `05-eval-harness.md` §5.4), which is why it carries the sha rather than a wall-clock stamp: a re-run of the same commit is the same run id, and a run made from uncommitted spec edits is not. The contract names the field and not its grammar; `PROPOSED-CONTRACT-CHANGES.md` P-02 asks for this wording.
+A run is one case, one arm, one seed. `run_id` is `<arm prefix>-<case>-s<seed>-<git sha7>` — `adv-S10-s1-9f3ac1e` — where the arm prefixes are `adv` and `base` and the sha is the seven-hex short sha of the working tree the run was made from. It is the same column as `results/test-runs.log` and `metrics.json.git_sha` (`04-output-schema.md` §5, `05-eval-harness.md` §5.4), which is why it carries the sha rather than a wall-clock stamp: a re-run of the same commit is the same run id, and a run made from uncommitted spec edits is not. The contract carries this grammar (ADR 0004 P-02).
 
 | # | Phase | What happens | Artefact written | Path |
 |---|---|---|---|---|
@@ -258,7 +272,7 @@ A run is one case, one arm, one seed. `run_id` is `<arm prefix>-<case>-s<seed>-<
 | 4 | agent | Every `tool_use` in the batch dispatched in response order; all results returned in one user message | same `step` line carries `tool_results` in full | trace |
 | 5 | verify | A `submit_record` call goes to `arm.handle_submit`. Baseline validates the schema. Advanced validates the schema, then runs `verify/check.py` | `step` line with `phase: "verify"`; `verify_rounds` incremented when the submit is rejected | trace |
 | 6 | verify | Rejected: the feedback object goes back as the `tool_result` for that call and step 2 repeats. Accepted: the loop leaves | — | — |
-| 7 | gate | Advanced only: risk rating computed from the accepted record, `--approve ask` prompts (`recipient_kind` per `third_party` store first, then approve/reject — the printed order of `10-instructions.md` §5, which owns the template), `--approve auto` records `by: "simulated"` and collects no edits | `checkpoint` line | trace |
+| 7 | gate | Advanced only: risk rating computed from the accepted record, `--approve ask` prompts (`recipient_kind` per `third_party` store first, then approve/reject — the printed order of `10-instructions.md` §5, which owns the template), `--approve auto` records `by: "simulated"`, `wait_s: 0.0` and collects no edits | `checkpoint` line | trace |
 | 8 | render | Accepted record, with any gate edits applied, written and rendered to Markdown, then to HTML | `record.json`, `record.md`, `record.html` | `results/runs/<arm>/<case>/s<seed>/` |
 | 9 | close | Stop condition, counters, wall time and cost written | `run_end` line | trace |
 | 10 | harness | Failure: trace copied and diagnosed. Success: record scored against the manifest | `<run>.jsonl` + `<run>.diagnosis.txt`, or `metrics.json` | `traces/failures/<arm>/`, `results/runs/<arm>/<case>/s<seed>/metrics.json` |
@@ -346,7 +360,7 @@ canonical(req) == json.dumps(req, **CANON)
 - **Floats**: the request carries none. Sampling parameters are rejected by the model (ADR 0003 item 2) and nothing else in the body is a float. `build_request` asserts this and raises rather than serialising a float, so no run can depend on repr stability.
 - **Thinking blocks**: come back in `content` and are appended to `messages` unchanged, including every field the API sent. They are inside the hash from the step after they appear. Nothing rewrites or trims them.
 - **Tool result bytes**: tool output is placed in the `tool_result` block verbatim and is therefore inside the hash of every later request. A single changed byte in a fixture changes the hash of the next step and the replay misses loudly. This is also what makes filesystem order a reproducibility bug rather than a cosmetic one, which is why §7 requires every traversal to be sorted before it is emitted: `os.scandir`, `os.listdir`, `glob.glob` and `Path.rglob` all return entries in filesystem order, and that order differs between the author's APFS volume and a judge's ext4 or overlayfs clone. A spike on this repo confirms it — `os.scandir` returned `['zeta.py','billing.py','models.py','storage.py','alpha.py','api','jobs','middleware.py']` on files created in that order, and `glob.glob('fx/*.py')` the same. A different order at step 2 is a different request hash at step 3, so `make eval-replay` would pass on the author's machine and fail on every other, taking the qualification gate with it.
-- **Everything else**: `model`, `max_tokens`, `system`, `tools`, `output_config`, `thinking`, `messages`. ADR 0003 item 6 enumerates six of these; `max_tokens` is the only other field we send and is included, since it is env-overridable and changes what the response can be. **Assumption:** that is the ADR's intent rather than a deliberate exclusion (proposal 1 asks the lead to confirm).
+- **Everything else**: `model`, `max_tokens`, `system`, `tools`, `output_config`, `thinking`, `messages`. ADR 0003 item 6 enumerated six of these; ADR 0004 P-11 added `max_tokens`, which is env-overridable and changes what the response can be. Contract §API configuration carries all seven.
 
 ### 4.2 Cache layout
 
@@ -390,7 +404,7 @@ It does not prove the model would say the same thing again. There is no seed and
 
 One free check falls out of the design: the step-1 request of the baseline and the advanced arm on the same case must hash identically, because the prompt, the tools and the first user message are identical by construction. If that assertion ever fails, the "same prompt, same tools" claim in ADR 0003 item 4 is false and the whole comparison is void.
 
-The assertion needs a data path, and as the contract stands it has none: the hash is computed inside `llm.py` and persisted only in a cache entry, the `step` trace line carries `request_id` but no hash, and a plain `live` run writes no cache entry at all — so in the mode a judge or the author would use for a first live evaluation there is nothing to compare. Proposal 4 therefore adds `request_hash` to the `step` line: 64 hex characters per step, machine-independent by construction, and it makes §4.5's whole invalidation table auditable after the fact from `traces/` alone. With it, `run.py` reads step 1 of `traces/baseline/<case>-s<seed>.jsonl` and `traces/advanced/<case>-s<seed>.jsonl` and fails the run plan on a mismatch, in live and replay alike.
+The assertion needs a data path, and the contract now carries one: the `step` line has `request_hash` (ADR 0004 P-12), 64 hex characters per step, machine-independent by construction. Without it the hash would live only inside `llm.py` and a cache entry, and a plain `live` run writes no cache entry at all — nothing to compare in the mode a judge or the author would use for a first live evaluation. `run.py` reads step 1 of `traces/baseline/<case>-s<seed>.jsonl` and `traces/advanced/<case>-s<seed>.jsonl` and fails the run plan on a mismatch, in live and replay alike, and §4.5's invalidation table becomes auditable after the fact from `traces/` alone.
 
 ### 4.5 What could break it silently, and what catches it
 
@@ -441,13 +455,14 @@ Written in three places, each derived from the one before: `step.cost_usd` and `
 | `ART30_EFFORT` | `high` | `output_config.effort`. Changes every request hash |
 | `ART30_MODE` | `live` | `live` or `replay`; `--mode` wins |
 | `ART30_RECORD` | `0` | On a live run, write cache entries |
-| `ART30_MAX_TOKENS` | `16000` | `max_tokens`. Changes every request hash (Decision 4). Above ~16,000 the request must stream or the SDK times out (`shared/model-migration.md` § Migrating to the 4.6 family, item 4: "Stream for `max_tokens > ~16K` (all models)") — see proposal 5 |
+| `ART30_MAX_TOKENS` | `32000` | `max_tokens`. Changes every request hash (Decision 4). At this size the request must stream or the SDK times out (`shared/model-migration.md` § Migrating to the 4.6 family, item 4: "Stream for `max_tokens > ~16K` (all models)"), so `llm.py` calls `client.messages.stream(...).get_final_message()` always, not conditionally |
 | `ART30_TOOL_BUDGET` | unset | Overrides the tool-call budget; default comes from the case kind (60 synthetic, 120 real), and the harness sets it per run from the case's `source` field (`07-ui.md` §1). **Changes every request hash** — the budget is named in the first user message (`10-instructions.md` §3) |
 | `ART30_SUBMIT_BUDGET` | `5` | Contract §Budgets; both arms. **Changes every request hash**, same reason |
+| `ART30_MAX_USD` | unset | Per-run ceiling on `cost_cum_usd`; crossing it ends the run with `budget_exhausted` (contract §Budgets). Outside the request hash: it is never named in a message |
 | `ART30_CONCURRENCY` | `4` | Harness worker pool; ignored by `art30 scan` |
 | `ART30_CACHE_DIR` | `evals/cache` | Cache root |
 
-The two budget variables were `ART30_BUDGET` and `ART30_MAX_SUBMITS` here and `ART30_TOOL_BUDGET` / `ART30_SUBMIT_BUDGET` in `07-ui.md` §1 and `04-output-schema.md` proposal 3, which is the pair the harness sets per run and the pair `provenance.config.overridden` records. This table now carries them; the contract names no variable at all, and `PROPOSED-CONTRACT-CHANGES.md` P-03 asks it to name these two. A `config.py` written from the old names would have run every real-repo case at the synthetic 60-call budget with nothing erroring.
+The two budget variables were `ART30_BUDGET` and `ART30_MAX_SUBMITS` here and `ART30_TOOL_BUDGET` / `ART30_SUBMIT_BUDGET` in `07-ui.md` §1 and `04-output-schema.md` §5, which is the pair the harness sets per run and the pair `provenance.config.overridden` records. Contract §Budgets now names these two (ADR 0004 P-03) and this table carries them. A `config.py` written from the old names would have run every real-repo case at the synthetic 60-call budget with nothing erroring.
 
 `.env` is read by a 15-line parser in `config.py` (`KEY=value`, `#` comments, no interpolation, no export syntax), and a variable already present in the environment always wins. No `python-dotenv`: ADR 0003 item 7 fixes the dependency list at `anthropic`, `pyyaml`, `jsonschema`.
 
@@ -495,24 +510,31 @@ Effort and thinking are pinned per run and never varied mid-run: changing either
 |---|---|---|---|
 | `accepted` | Submit accepted; gate approved or absent | `loop.run` | — (success) |
 | `gate_rejected` | `Decision.approved is False` | `loop.run` after `arm.gate` | `gate rejected at risk=<r>: <first reason>` |
-| `budget_exhausted` | The next tool call would exceed 60 (synthetic) or 120 (real) | `loop.run`, checked per call before dispatch | `budget <n> exhausted at step <k>; last 3 calls: <names>; submits=<s>` |
+| `budget_exhausted` | The next tool call would exceed 60 (synthetic) or 120 (real), or `cost_cum_usd` crosses `ART30_MAX_USD` where it is set | `loop.run`, checked per call before dispatch | `budget <n> exhausted at step <k>; last 3 calls: <names>; submits=<s>`, or `cost ceiling $<x> crossed at step <k>` |
 | `max_submits` | Fifth `submit_record` rejected | `loop.run` after `arm.handle_submit` | `5 submits rejected; last rejection: <first rejected_claim.reason>` |
-| `api_error` | `APIStatusError`, `APIConnectionError`, `APITimeoutError` after SDK retries; `ReplayMiss`; `stop_reason == "max_tokens"`; `stop_reason == "pause_turn"` | `llm.call`, surfaced in `loop.run` | `<exception class>: <message>; request_id=<id>` or `replay miss at <slot>: expected <hash> got <hash>, first diff at <json path>` or `output truncated at max_tokens=<n> on step <k>` or `pause_turn on a request with no server tools` |
-| `api_error` (unhandled) | **Any** unhandled exception in the loop, an arm, the verifier, the renderer or the trace writer | `loop.run`'s outer `try/except Exception` (02 §1 line 9) | `<exception class>: <message>` from `note` |
+| `api_error` | `APIStatusError`, `APIConnectionError`, `APITimeoutError` after SDK retries; `stop_reason == "pause_turn"` | `llm.call`, surfaced in `loop.run` | `<exception class>: <message>; request_id=<id>` or `pause_turn on a request with no server tools` |
+| `max_tokens` | `stop_reason == "max_tokens"` | `llm.call`, surfaced in `loop.run` | `output truncated at max_tokens=<n> on step <k>` |
+| `replay_miss` | `ReplayMiss` from the cache reader | `llm.call`, surfaced in `loop.run` | `replay miss at <slot>: expected <hash> got <hash>, first diff at <json path>` |
+| `api_error` (unhandled) | **Any** unhandled exception in the loop, an arm, the verifier or the trace writer, and anything the renderer raises that is not `RenderError` | `loop.run`'s outer `try/except Exception` (02 §1 line 9) | `<exception class>: <message>` from `note` |
+| `no_submission` | Three consecutive turns ended with no tool call and no accepted record | `loop.run`, after two nudges | `ended turn without submitting, 2 nudges; last text: <first 80 chars>` |
+| `render_failed` | `RenderError`: a cited line no longer carries its symbol when the renderer reads it | `loop.run` around `render_all` (02 §1) | `render failed at <file>:<line>: <symbol> is no longer on the line; record.json kept at <path>` |
+| `timeout` | The child exceeded the wall-clock limit, 900 s synthetic / 1800 s real | `run.py` parent, which kills the child and appends the `run_end` line itself (05 §5.3) | `killed at <n>s; <b> bytes of a partial line discarded` |
 | `refusal` | `stop_reason == "refusal"` | `loop.run`, checked before reading `content` | `refusal category=<stop_details.category>: <explanation>` |
 | `crashed` | Planned run with no `run_end` line in its trace | `report.py`, against the run plan | `no run_end line at <trace path>; the process died before the loop could report` |
 
 `stop_reason` is checked before `response.content` is read; on Claude Opus 5 a refusal returns HTTP 200 with an empty-shaped content list and code that indexes `content[0]` breaks (shared/model-migration.md §Migrating to Claude Opus 5). No refusal fallback is configured: re-routing mid-run would contaminate the measurement (ADR 0003 item 5).
 
-`stop_reason == "max_tokens"` has no home in the contract's enum. Mapping it to `api_error` with a diagnosis that names the truncation is the contract-conformant behaviour; proposal 2 asks for its own value, because a 16,000-token cap and a large record make it a real class rather than a theoretical one. `crashed` has no home in the enum either, which is why it is proposed as part of proposal 6 rather than assumed.
+`max_tokens`, `replay_miss` and `crashed` are each their own value in the contract's twelve-value enum (ADR 0004 P-08), so the writer records what happened rather than folding three diagnosable classes into `api_error`. A truncated record is a prompt-shape problem, a replay miss is a stale cache, and a crash is a dead process; the README's failure table would have shown all three as flaky infrastructure.
 
-**Every exit writes a `run_end` line.** The loop catches `LlmError` and `ReplayMiss` around `llm.call` and nothing else, so a raise from `arm.handle_submit`, `arm.gate`, `render_all`, `risk_rating` on a malformed-but-schema-valid record, or the trace writer itself would propagate out of `loop.run` with no `run_end` written and no artefacts on disk. The run would then vanish from both the numerator and the denominator — `run.py`'s rule keys on a `stop_condition` that was never written — and `success + failure == n`, which the README reports and AGENTS.md requires, would stop being derivable. The body of `run()` is therefore wrapped in `try/except Exception as exc: return stop(ctx, "api_error", note=f"{type(exc).__name__}: {exc}")` (02 §1).
+Every value in the enum has a row here, `api_error` two of them, because the generated `.diagnosis.txt` reads its rule from this table: a failure class with no row ships to `traces/failures/` with nothing to quote. `no_submission` and `render_failed` are written by `loop.run`, `timeout` by the `run.py` parent (05 §5.3). All three arrived with P-08 and the table did not follow them until now.
+
+**Every exit writes a `run_end` line.** The loop catches `LlmError` and `ReplayMiss` around `llm.call` and `RenderError` around `render_all`, and nothing else, so a raise from `arm.handle_submit`, `arm.gate`, `risk_rating` on a malformed-but-schema-valid record, the renderer on anything but a citation, or the trace writer itself would propagate out of `loop.run` with no `run_end` written and no artefacts on disk. The run would then vanish from both the numerator and the denominator — `run.py`'s rule keys on a `stop_condition` that was never written — and `success + failure == n`, which the README reports and AGENTS.md requires, would stop being derivable. The body of `run()` is therefore wrapped in `try/except Exception as exc: return stop(ctx, "api_error", note=f"{type(exc).__name__}: {exc}")` (02 §1).
 
 **`n` comes from the run plan, not from the results tree.** `report.py` expands cases x arms x seeds exactly as `run.py` did and counts a planned run with no `run_end` line as a failure with `stop_condition: "crashed"`. That is the one case the loop's own guard cannot cover — the process killed, the disk full, the trace writer dead — and counting it from the plan is what makes the identity hold when the machine, not the code, is what failed.
 
-**Diagnosis files are generated, not written by hand.** `evals/harness/run.py` copies the trace of any run whose `stop_condition != "accepted"` to `traces/failures/<arm>/<case>-s<seed>.jsonl` and writes `<same>.diagnosis.txt` with five lines: run id, stop condition, the rule from the table above, the last step's tool calls, and the path of the full trace. For a crashed run the fifth line names the missing run instead. **Assumption:** the contract's `traces/failures/<same>.jsonl` means the same relative path including the arm directory; without the arm segment a baseline failure and an advanced failure on the same case and seed overwrite each other (proposal 3).
+**Diagnosis files are generated, not written by hand.** `evals/harness/run.py` copies the trace of any run whose `stop_condition != "accepted"` to `traces/failures/<arm>/<case>-s<seed>.jsonl` and writes `<same>.diagnosis.txt` with five lines: run id, stop condition, the rule from the table above, the last step's tool calls, and the path of the full trace. For a crashed run the fifth line names the missing run instead. Contract §Repository layout carries the directory form (ADR 0004); without the arm segment a baseline failure and an advanced failure on the same case and seed would overwrite each other.
 
-Two of those five lines are not derivable from the trace as the contract defines it. An API error is raised inside `llm.call`, so no `step` line exists for that step and the `run_end` line has no field to carry the exception message; a refusal does write a `step` line, but the `step` line has nowhere to put `stop_details.category` or its explanation. The generator could produce only the run id, the stop condition and the trace path, which makes `traces/failures/` thinner than the rubric's "failures are shipped with a one-line diagnosis each". Proposal 6 adds `note: string|null` to `run_end` — one field, empty on every successful run, and all five lines become generable.
+All five lines are derivable, and two of them only because the contract now carries the fields. An API error is raised inside `llm.call`, so no `step` line exists for that step: the exception class and message ride in `run_end.note` (ADR 0004 P-13). A refusal does write a `step` line, and `stop_reason` on that line (P-12) carries the category the diagnosis quotes. Without those two fields the generator could produce only the run id, the stop condition and the trace path, which is thinner than the rubric's "failures are shipped with a one-line diagnosis each".
 
 ---
 
@@ -605,6 +627,11 @@ CASES.md's "~10–20 min wall-clock with cases in parallel" holds only for repla
 22. `Decision` carries `edits`. Under `--approve ask` the gate prompts once per `third_party` store for `recipient_kind` and applies the answers to the record before render; under `--approve auto` it stays `unknown` and the render says so.
 23. `end_line` is `{"anyOf": [{"type": "integer"}, {"type": "null"}]}`, stays in `required`, and `tools.py` clamps out-of-range values, so no model-side value choice for "absent" changes the emitted bytes.
 24. `CaseRef` is the seam between harness, CLI and loop. Only `CaseRef.name` may be formatted into the first user message; `CaseRef.root` reaches the tools through `ToolCtx` and nothing else.
+25. `max_tokens` is 32,000 and every request goes through `client.messages.stream(...).get_final_message()`, unconditionally rather than above a threshold (ADR 0004 P-11, amending ADR 0003 item 1).
+26. A truncated response, a replay miss and a dead process each get their own `stop_condition` — `max_tokens`, `replay_miss`, `crashed` — so §9's table maps one trigger to one value and `api_error` is left with the transport and the unhandled exception (ADR 0004 P-08).
+27. The trace carries what the diagnosis and the arm-equality check need: `request_hash` and `stop_reason` per step, `note` on `run_end`, `config` and `prompt_sha` on `run_start`, `wait_s` and `human_completions` on `checkpoint` (ADR 0004 P-10 to P-14). None of it is derived after the fact.
+28. `render_html` takes the record and the repository root, not the rendered Markdown, because the citation tooltips read the cited lines from the repository that was scanned (ADR 0004 P-16).
+29. `RenderError` is caught in `loop.run` around `render_all` and ends the run `render_failed` (02 §1, `07-ui.md` §6). The renderer is the one caller below `_run` whose failure has a written-down symptom, so leaving it to the outer handler reported a diagnosable citation bug as `api_error`. §9's table now carries a row for every value a specified code path writes, `no_submission` and `timeout` included.
 
 ## Open risks
 
@@ -612,21 +639,12 @@ CASES.md's "~10–20 min wall-clock with cases in parallel" holds only for repla
 2. **The 4,000-token static-prefix assumption is unverified.** If the embedded `record.schema.json` is much larger, every step pays more and the record output grows with it. `count_tokens` on the assembled prefix, before the first run, is the cheap fix and it is on the critical path.
 3. **Steps per run are a guess.** CASES.md says 15–30 tool calls synthetic and 40–80 real; parallel tool use makes the step count lower than the call count by an unknown factor. The tool-call budget (60/120) is the hard stop, so the worst case is bounded, but the cost estimate is not.
 4. **A run that is accepted on its first submit is invisible to replay hashing.** The `metrics.json` diff covers it, which means that diff has to actually run in CI-of-one discipline, every time, and not be skipped when someone is in a hurry at hour 68.
-5. **`stop_reason: "max_tokens"` currently reports as `api_error`.** If it happens often, the failure table will read as flaky infrastructure when it is really a truncated record. Proposal 2 exists for that reason.
+5. **Truncation is now visible but not measured.** `stop_reason: "max_tokens"` ends the run with `stop_condition: max_tokens` and the record is lost either way. At 32,000 tokens the cap holds an 8,000-token record and the thinking that produced it with room over, but nobody has measured the hardest step yet.
 6. **Concurrency and the cache interact.** If the pool depth drops to one for a stretch (a long real-repo run at the end of a batch), the shared prefix can age past the five-minute TTL and the next run pays a full write. Visible in `cache_creation_input_tokens`, not in wall clock.
 7. **The gate is simulated in 42 advanced runs.** That is stated in `anticipated-questions.md` #13 and in REPRODUCE.md, but it does mean the gate's own failure modes (a human rejecting a correct record) are unmeasured. It also means `recipient_kind` is `unknown` in all 42 eval records including the Stripe row of `example-record-S10.md`, since only `--approve ask` collects it. The demo record is the one place to show the filled value.
 8. **Three artefacts this document now depends on do not exist yet**, and all three have to land before the first recording, because the first recording freezes the bytes they protect: the committed `.gitattributes`, the golden-output tool test on a reverse-alphabetically created fixture, and the `count_tokens` measurement of the static prefix. A cache recorded before them is a cache that has to be thrown away.
-9. **Proposals 4, 5 and 6 are inside the request hash or the trace schema.** `max_tokens` (proposal 5) is hashed by Decision 4, so raising it after the first recording invalidates every entry; `request_hash` and `note` change the trace lines the diagnosis generator and the arm-equality check read. Deciding them late costs a re-record, which §10 prices at $80 to $176.
+9. **Three amendments have to be in the code before the first recording.** `max_tokens` at 32,000 (P-11) is hashed by Decision 4, so implementing it after the first recording invalidates every entry; `request_hash` and `stop_reason` (P-12) and `note` (P-13) change the trace lines the arm-equality check and the diagnosis generator read. ADR 0004 says the same. Implementing them late costs a re-record, which §10 prices at $80 to $176.
 
 ## Proposed contract changes
 
-1. **Hash scope.** ADR 0003 item 6 lists the hashed fields as model, system, tools, messages, output_config, thinking. Add `max_tokens`. Reason: it is env-overridable, it changes what the response can contain, and excluding it lets a replay silently reuse responses recorded under a different cap.
-2. **`stop_condition` value `max_tokens`.** Reason: an output truncated at 16,000 tokens is a distinct, likely and diagnosable failure; folding it into `api_error` mislabels a prompt-shape problem as an infrastructure problem in the failure table the README shows.
-3. **Failure trace path.** Read `traces/failures/<same>.jsonl` as `traces/failures/<arm>/<case>-s<seed>.jsonl`. Reason: without the arm segment, the baseline and advanced failures of the same case and seed overwrite each other, and both arms failing the same case is exactly the interesting case.
-4. **Trace `step` line: add `request_hash`.** Reason: §4.4 calls the baseline/advanced step-1 hash equality the guarantee of arm equality, and there is no data path for it — the hash lives inside `llm.py` and a plain `live` run persists it nowhere. Sixty-four hex characters per step, machine-independent by construction, and §4.5's invalidation table becomes auditable after the fact from `traces/` alone. Same request as `02-agent-loop.md` proposal 3, which asks for `stop_reason` on the same line.
-
-5. **`max_tokens` 16,000 → 32,000, and stream the request.** Reason: adaptive thinking is on by default at effort `high`, and `max_tokens` is a hard cap on thinking **plus** response text (`shared/model-migration.md` § Migrating to Claude Opus 5, breaking change 1). The 16,000 cap has to hold an 8,000-token record and all the thinking that produced it, on the single hardest step of the run. Truncation ends the run as a failure and lands asymmetrically: the advanced arm emits the full record up to five times per run and the baseline usually once, so a systematic truncation rate inflates the advanced arm's failure count against the baseline's — a measurement artefact pointing the wrong way. `max_tokens` is a cap, not a reservation; unused headroom bills nothing, and Opus 5's ceiling is 128K (`shared/models.md`). The cost: above ~16K the request must go through `client.messages.stream()` and `get_final_message()` or the SDK times out (`shared/model-migration.md` § Migrating to the 4.6 family, item 4; `python/claude-api/streaming.md`), which is a change to `llm.py` and not to the loop. **This has to be decided before the first recording** — `max_tokens` is inside the request hash (Decision 4). Proposal 2 stays either way, so a truncation that still happens is not filed as flaky infrastructure. Contract §API configuration and ADR 0003 item 1 both carry the 16,000 figure, which is why this is a proposal and not an edit.
-
-6. **`run_end` gains `note: string|null`, and `stop_condition` gains `crashed`.** Reason: §9's diagnosis generator can produce only three of its five lines from the contract's trace lines. An API error is raised inside `llm.call`, so no `step` line exists for it and `run_end` has nowhere to put the exception class and message; a refusal writes a `step` line, but that line has no `stop_reason` and no `stop_details`, so the category and explanation are lost. One nullable field carries the exception, the replay-miss slot or `category: explanation`, and costs nothing on a successful run. `crashed` is the value `report.py` assigns a planned run whose trace has no `run_end` line at all — the case no in-process guard can cover, and the one that would otherwise drop a run out of both sides of `success + failure == n`.
-
-7. **Optional per-run USD ceiling.** Add `ART30_MAX_USD` (default unset) that ends a run with `budget_exhausted` when `cost_cum_usd` crosses it. Reason: §10 now puts a real-repo advanced run near $4.40 at the upper estimate and the budget in tool calls does not bound tokens. Not needed if the first measured evaluation lands near the floor.
+All accepted by ADR 0004 on 2026-08-28; the contract now carries them.
