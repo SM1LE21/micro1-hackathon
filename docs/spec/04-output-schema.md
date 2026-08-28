@@ -31,6 +31,7 @@ The schema file is 197 lines and carries a `description` on every load-bearing p
 | `entry_points[]` | `name`, `kind` (`route`…`unknown`), `file`, `line`, `admin_only`, `note`. Empty means no deletion feature was found. | agent, verifier checks | — (Art. 17) | D, header |
 | `stores[].name` / `.kind` | The named place data lives and which of the eight kinds it is. Recipients are stores of kind `third_party`; there is no second list. | agent, verifier's completeness guard adds misses | (c), (d) | A, B, C, D |
 | `stores[].declared_at` | Citation for the store itself. Null where no single line declares it (a cache namespace built from an f-string). | agent | — | A heading, H |
+| `stores[].subject_link` | `{file, line}` or null: the line that ties the store to a data subject — a foreign key to the user model, a subject id inside a cache key, an owner column. Kept even where that key is not listed as a field, which is the case the note field used to absorb. | agent | (c), the link half | A, H |
 | `stores[].fields[]` | `name`, `category` (six values), `file`, `line`, `note`. The `note` is where a comment such as "may contain phone numbers" is quoted — AMBIGUITIES row 1. | agent | (c), second half | A |
 | `stores[].fields[].erasure` | Field-level override, null in the ordinary case. Set only where a field's fate differs from its store's. The scorer reads it when present (contract §Record vocabulary), so §4's invariants are checked over it exactly as over the store block. | agent | — | D, indented sub-row |
 | `stores[].erasure.verdict` | One of ten. `erased`, `erased_after_timer`, `anonymised` reach erasure; the other seven do not. | agent, rewritten by the model after the verifier rejects it | — (Art. 17) | D |
@@ -79,7 +80,7 @@ legal basis smuggled onto a store:         1 error   stores/0 -> Additional prop
 field-level override (valid):              0 errors
 ```
 
-Those eight lines are the first eight cases of the schema's unit test (`tests/test_schema.py`), written before the first advanced run per gap G-05. Re-run 2026-08-28 after `human.data_categories_outside_code` was added to the `human` block (§6 F): the same eight results, and the S10 record validates once the new cell is present.
+Those eight lines are the first eight cases of the schema's unit test (`tests/test_schema.py`), written before the first advanced run per gap G-05. Re-run 2026-08-28 after `human.data_categories_outside_code` was added to the `human` block (§6 F): the same eight results, and the S10 record validates once the new cell is present. Run a third time the same day, after `subject_link` entered the store object (ADR 0004), against an S10 instance rebuilt with the key on all four stores — the block above **is** that run. `subject_link` is in `store.required` like every other property, so the instance the second run used now fails with four `'subject_link' is a required property` errors; nothing else moved, and the four cases below still validate as they did.
 
 Four more cases sit beside them and test the §4 handler invariants rather than the schema, because that is where the checks live:
 
@@ -151,7 +152,7 @@ On write, `record.json` normalises `recipient_kind` from `null` to `"unknown"` f
     "arm": "advanced",
     "model": "claude-opus-5",
     "effort": "high",
-    "config": {"max_tokens": 16000, "tool_budget": 60, "submit_budget": 5, "overridden": []},
+    "config": {"max_tokens": 32000, "tool_budget": 60, "submit_budget": 5, "overridden": []},
     "run_id": "adv-S10-s1-9f3ac1e",
     "case": "S10",
     "seed": 1,
@@ -180,7 +181,7 @@ On write, `record.json` normalises `recipient_kind` from `null` to `"unknown"` f
 | | `config` | `max_tokens`, the tool-call budget, the submit budget, and `overridden` — the names of the `ART30_*` environment variables that were actually set for this run (`07-ui.md` §1). The tool budget is 60 for a synthetic case and 120 for a real one (contract §Budgets), so every real-repo run carries a non-default number and the artefact has to be able to say which |
 | | `fixture.sha256` | sha256 over the fixture tree, so the record names the exact code it read |
 | | `instruction_sha256` | sha256 of `prompts/system.md` + `prompts/taxonomy.md`. Both arms are byte-identical here (ADR 0003 item 4); a differing hash between arms is a bug in the run, and the number is in the artefact so nobody has to take that on trust. |
-| | `gate` | mirrors the trace's `checkpoint` line, `wait_s` included: lead decision G-01 reports the gate's approval time next to the human-time row (`05-eval-harness.md` §9), and a number that lives only in the trace is a number the signed document cannot show |
+| | `gate` | mirrors the trace's `checkpoint` line, `wait_s` included: lead decision G-01 reports the gate's approval time next to the human-time row (`05-eval-harness.md` §9), and a number that lives only in the trace is a number the signed document cannot show. The line's other new field, `human_completions` (contract §Trace contract), is not repeated here — what the approver typed is already in the record as the `recipient_kind` cells it set |
 
 The baseline arm writes the same `verification` keys with its own counters — `submits` and `accepted_on_attempt` as the loop counted them, which are `2` and `2` for the schema-rejected run of `07-ui.md` §5b and `1` and `1` for a record accepted first time — with `rejected_history` carrying its `schema_errors`, the three verifier-only lists empty, `rule_set_sha: null`, and `provenance.gate: null`. Same keys, same types, in the same order: `rule_set_sha: null` is what says no verifier ran, and code that reads `verification["accepted_on_attempt"]` — the report's turns column, for one — must not have to branch on the arm. The render then omits section G and prints one line in its place: `Verification: none. This record was accepted on schema validity alone.` The baseline artefact must be readable as the same document, or the comparison in the video is a comparison of two layouts.
 
@@ -200,7 +201,7 @@ The second sentence is a boundary, not a disclaimer. §1 of gdpr-sources assumes
 |---|---|---|---|
 | `email` | contact | `models.py:14` | |
 
-Data-subject labels sit above the first store as one line each: `account holders — inferred from model name (models.py:9)`. The section ends with `Not scanned:` and one line per `unscanned` entry, or `Not scanned: nothing` when the array is empty.
+The line under each store's table is `Linked to the data subject at <file:line>`, or `No link to a data subject found in code` where `subject_link` is null. Data-subject labels sit above the first store as one line each: `account holders — inferred from model name (models.py:9)`. The section ends with `Not scanned:` and one line per `unscanned` entry, or `Not scanned: nothing` when the array is empty.
 
 **B. Recipients.** Only `third_party` stores. One row each: name, the fields that flow into it with their citation, `recipient_kind` in capitals, and the Art. 28 question the human owns. `unknown` renders as `UNKNOWN — requires human completion`, and a baseline record renders the same cell: `recipient_kind` is normalised to `unknown` on write in both arms (§5), so this table never meets a `null`. The absence of a gate is stated in the one-line replacement for section G, not here. A note under the table states what the tool did and did not establish: personal data flows into the call at the cited line; whether the recipient is a processor or an independent controller, and whether an Art. 28(3) contract exists, is not visible in code (gdpr-sources §5 (d)).
 
@@ -262,6 +263,7 @@ Renderer behaviour that follows: no sentence in the output is generated from a t
 14. The forbidden legal vocabulary is a rejection (I10), not an instruction. The renderer prints the model's `note` strings verbatim, so the check has to sit before the render, in both arms.
 15. `recipient_kind` is normalised to `"unknown"` on write for every `third_party` store in both arms, so the renderer sees the enum and never a `null`.
 16. `human.data_categories_outside_code` is a required human cell. The record says on its own page that it inventories one repository.
+17a. **Every store carries `subject_link`**, nullable, its own cell rather than a sentence in `store.note` (contract §Record vocabulary, ADR 0004). The link is what makes a store personal data at all, and a cell the schema names is a cell the completeness guard and the render can both read.
 17. `run_id` is `<arm prefix>-<case>-s<seed>-<git sha7>` — the hash form of `06-traces.md` §2, not a wall-clock stamp; the arm prefixes are `adv` and `base` (`01-architecture.md` §2) — and every counter quoted in this document, in `02-agent-loop.md` §9, in `07-ui.md` §3 and in `example-record-S10.md` comes from the one invented run in `06-traces.md` §2. When the first real S10 run lands, all five documents are refreshed from that trace in a single commit.
 
 ## Open risks
@@ -272,29 +274,9 @@ Renderer behaviour that follows: no sentence in the output is generated from a t
 - **Description budget.** The schema is sent on every request; its descriptions are cached with the tool block (contract §API configuration) but they still count against the cache write. If the record schema grows past ~250 lines, descriptions get trimmed before enums do.
 - **`rejected_history` and privacy of the model's errors.** The artefact publishes what the model got wrong. That is the point for a judge and might be uncomfortable for a founder handing the document to a lawyer. No mitigation planned: a redaction switch would be the first step towards a document that hides its own corrections.
 - **Two-state `recipient_kind`.** Anything that validates `record.json` with the plain schema (a future harness check, a judge running `jsonschema` by hand) will fail on a gate-set value unless it applies the two relaxations. The renderer is the only code that reads `record.json`, so the exposure is documentation, not runtime.
-- **Sibling documents carried the old invariants — closed, in the reconciliation pass of 2026-08-28.** `10-instructions.md` §4.6 now carries ten strings written from §4: I2 with the backup and third-party exception, I5 without `unverified` and with its second direction, I6 with the citation clause, and I9 and I10, which it did not have at all. `03-verifier.md` §6.4 now returns the `no_entry_point` flag and `10-instructions.md` §5 has a fourth `risk_reason` shape for it. What is left is the contract's own `high` list, which still omits `no_entry_point`: `PROPOSED-CONTRACT-CHANGES.md` P-09.
+- **Sibling documents carried the old invariants — closed, in the reconciliation pass of 2026-08-28.** `10-instructions.md` §4.6 now carries ten strings written from §4: I2 with the backup and third-party exception, I5 without `unverified` and with its second direction, I6 with the citation clause, and I9 and I10, which it did not have at all. `03-verifier.md` §6.4 now returns the `no_entry_point` flag and `10-instructions.md` §5 has a fourth `risk_reason` shape for it. The contract's own `high` list names `no_entry_point` as of ADR 0004 P-09, so all three agree.
 - **I5 makes backup a closed kind.** A repository whose "backup" is a live replica read by the app would be inventoried as a backup and never get an erasure verdict. Correct under AMBIGUITIES row 6, and wrong for that repository. No case in `evals/CASES.md` has this shape; if a real repo does, it goes to the errata section, not into the schema.
 
 ## Proposed contract changes
 
-**1. Contract §Record vocabulary, `recipient_kind`.** The contract reads: "Stores of kind `third_party` carry `recipient_kind: unknown | internal | processor | external_controller`, default `unknown`, set by the human at the gate. The agent may never set it."
-
-Proposed wording: "Every store carries `recipient_kind`. In the submitted record it is typed `null` and the agent cannot set it. The gate writes one of `unknown | internal | processor | external_controller` into `record.json` for stores of kind `third_party`; `unknown` is what an unanswered or auto-approved gate leaves, and it renders as `UNKNOWN — requires human completion`."
-
-Reason: a schema cannot express "null on submission, an enum after the gate" in one property without `if`/`then`, which is outside the strict subset, and the contract's "default `unknown`" reads as though the agent submits `unknown` — which would put a value the agent chose into a human-only cell. The change is a clarification of the two states, not a change of who fills the cell.
-
-**2. Contract §Trace contract, `run_id` grammar.** The contract names `run_id` on the `run_start` line and never says what it is. `04` §5 and `06-traces.md` §2 had invented two different grammars for the same run — `adv-S10-s1-20260830T0945Z` here, `adv-S10-s1-9f3ac1e` there.
-
-Proposed wording: "`run_id` is `<arm prefix>-<case>-s<seed>-<git sha7>`, e.g. `adv-S10-s1-9f3ac1e`. The sha is the seven-hex short sha of the working tree the run was made from, the same column as `results/test-runs.log` and `metrics.json.git_sha`."
-
-Reason: an engineer cannot implement `provenance.run_id` from one document without contradicting the other, and a wall-clock stamp makes a re-run of the same commit look like a different run. This document has been changed to the hash form; the contract is where it has to be settled.
-
-**3. Contract §Trace contract, the `run_start` line — add `config`.** `{"max_tokens": 16000, "tool_budget": 60, "submit_budget": 5, "overridden": ["ART30_TOOL_BUDGET"]}`.
-
-Reason: `07-ui.md` §1 promises that every environment override "is printed in the header line of the run and recorded in `provenance`", and `provenance` as specified had nowhere to put `max_tokens` or either budget. The budgets are not a corner case: the contract itself sets 60 for synthetic and 120 for real, so every R01–R05 run is a run at a non-default tool budget. `provenance.config` is added in §5 above; the trace line should carry the same object, or the header line and the trace disagree.
-
-**4. `evals/CASES.md` errata, for the lead to apply.** Three lines, none of which moves a scored tuple:
-
-- S08 and R04: the manifests carry `no_schedule_evidenced` on the backup store and `external_manual` on the third-party stores, not `no_entry_point`. `03-verifier.md` §6.1 decides kind before reachability, and `reaches_erasure` is `false` under either label. The table's "every store `no_entry_point`" is the finding in prose, not the manifest's literal verdict column.
-- S10: with the `(users, financial, criteria)` row dropped (`fixture-generator.md` §9), the remaining retention row is per store, `category: null`, and renders `all categories`. The illustrative manifest's `category: contact` describes the two-row shape that no longer exists.
-- The illustrative manifest's `{criteria: "kept for the statutory accounting period", file: null, line: null}` row is a shape example, not a submittable one: invariant I6 rejects a retention item with no citation, and a justification of that kind is `human.retention_justification`, not `criteria`.
+All accepted by ADR 0004 on 2026-08-28; the contract now carries them.
