@@ -17,7 +17,7 @@ The official problem statement lives at `docs/problem/problem-statement.pdf` (te
 - **Think Before Coding** — map every piece of work to a rubric line before starting it; work that maps to nothing is cut.
 - **Simplicity First** — single-threaded agent loop, bounded steps, deterministic checks. No orchestrator fan-out, no framework unless it removes more code than it adds. Purposeful choices matter more than the number of components (the PDF says this verbatim).
 - **Surgical Changes** — one variable per iteration. Never bundle a fix with a refactor.
-- **Goal-Driven Execution** — the goal is a scored submission, not a product. Code freeze Sunday ~21:00 UTC (hour 30); after that only evidence work: repro, traces, writeup, video.
+- **Goal-Driven Execution** — the goal is a scored submission, not a product. Code freeze Sunday 2026-08-30 19:30 UTC (21:00 backstop; ADR 0005); after that only evidence work: repro, traces, writeup, video.
 
 ## The four questions (from the PDF — they structure the README and the video)
 
