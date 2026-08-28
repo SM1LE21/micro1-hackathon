@@ -1,6 +1,6 @@
 # Example record — eval case S10, rendered
 
-The target artefact, written by hand before the renderer exists. This is what `record.md` should look like for the hard case (`evals/CASES.md` S10) when the product is finished: the same document the author holds the real output against, and the one on screen at 1:15 of the video. Everything below the rule is the artefact itself, generated from the record in `docs/spec/record.schema.json` shape; nothing in it is prose the model wrote about its own work. File names and line numbers are invented to match the case description and the manifest example in `evals/CASES.md`, and the S10 fixture spec is expected to be generated to match them.
+The target artefact, written by hand before the renderer exists. This is what `record.md` should look like for the hard case (`evals/CASES.md` S10) when the product is finished: the same document the author holds the real output against, and the one on screen at 1:15 of the video. Everything below the rule is the artefact itself, generated from the record in `docs/spec/record.schema.json` shape; nothing in it is prose the model wrote about its own work. File names and line numbers are invented, and where the worked run in `docs/spec/06-traces.md` §2 shows a line — `models.py:12 class User`, `14 id`, `15 email`, the `api/account.py` body, the four `grep` hits — that tool output is the source of truth and this document follows it. The repository name is `tidewharf`, the package `evals/fixtures/specs/S10.yaml` declares. The S10 fixture spec is expected to be generated to match all of it.
 
 **Reads with** `docs/spec/04-output-schema.md` (which section is which and who fills it), `docs/spec/record.schema.json`, `evals/CASES.md` (S10 and the manifest shape), `docs/writing-rules.md`, `docs/spec/07-ui.md` (the run that produced it), `.vault/AMBIGUITIES.md` rows 4, 6, 7, 8.
 
@@ -10,7 +10,7 @@ The target artefact, written by hand before the renderer exists. This is what `r
 
 ---
 
-# Record of processing — acme_saas
+# Record of processing — tidewharf
 
 | | |
 |---|---|
@@ -30,21 +30,21 @@ This is the technical half of a record of processing activities under Article 30
 
 ## A. Data inventory
 
-Data subjects: account holders — inferred from model name (`models.py:9`).
+Data subjects: account holders — inferred from model name (`models.py:12`).
 
-### users — relational — `models.py:9`
+### users — relational — `models.py:12`
 
 SQLAlchemy model backing the accounts table.
 
 | Field | Category | Evidence | Note |
 |---|---|---|---|
-| `email` | contact | `models.py:14` | |
-| `full_name` | identifier | `models.py:15` | |
+| `email` | contact | `models.py:15` | |
+| `full_name` | identifier | `models.py:16` | |
 | `signup_ip` | technical | `models.py:17` | |
 | `last_seen_at` | behavioural | `models.py:18` | |
 | `deleted_at` | technical | `models.py:19` | soft-delete marker; its presence is what the purge job filters on |
 
-Linked to the data subject at `models.py:9`.
+Linked to the data subject at `models.py:12`.
 
 ### uploads — object_storage — declaration not on a single line
 
@@ -93,12 +93,14 @@ Personal data flows into the call at the cited lines. Whether this recipient act
 
 | Store | Category | Envisaged limit | Evidence | Justification |
 |---|---|---|---|---|
-| users | all categories | 30 days after `deleted_at` | `jobs/purge.py:14` | requires human completion |
-| uploads | all categories | NO TIMER EVIDENCED | — | requires human completion |
-| nightly_backup | all categories | 35 days | `jobs/backup.py:12` | requires human completion |
-| stripe | all categories | NO TIMER EVIDENCED | — | requires human completion |
+| users | contact | 30 days after `deleted_at` | `jobs/purge.py:14` | requires human completion |
+| uploads | — | NO TIMER EVIDENCED | — | requires human completion |
+| nightly_backup | contact | 35 days | `jobs/backup.py:12` | requires human completion |
+| stripe | — | NO TIMER EVIDENCED | — | requires human completion |
 
 A period found in code is evidence for a retention schedule. The schedule itself is a policy the controller sets, and the reason for each period belongs in the justification column.
+
+The category cell names the category the timer covers, which is the category the manifest and `evals/fixtures/specs/S10.yaml` carry: `contact`. The other categories held on `users` and `nightly_backup` — identifier, technical, behavioural — carry no timer in this code, and neither does any category on `uploads` or `stripe`, whose rows are synthesised because those stores have no retention item at all.
 
 ## D. Erasure
 
@@ -109,7 +111,7 @@ Erasure entry points: `close_account` — route — `api/account.py:12` (the onl
 | uploads | NOT ERASED | `storage.py:41`<br>`api/account.py:13` | `cleanup_user_files` is defined at `storage.py:41` and has no caller in this repository; no path from `close_account` (`api/account.py:12`) reaches `delete_object`; the docstring at `api/account.py:13` states the opposite |
 | stripe | EXTERNAL MANUAL | `billing.py:30` | no `Customer.delete` call anywhere in the repository; deletion is an action in the vendor's system |
 | nightly_backup | GOVERNED BY RETENTION (35 days) | `jobs/backup.py:12` | dumps older than `RETENTION_DAYS` are removed by the same job |
-| users | ERASED AFTER TIMER (30 days) | `api/account.py:31`<br>`jobs/purge.py:14`<br>`jobs/purge.py:22` | `close_account` writes `deleted_at` only; `purge_closed_accounts` hard-deletes rows whose `deleted_at` is older than 30 days |
+| users | ERASED AFTER TIMER (30 days) | `api/account.py:15`<br>`jobs/purge.py:14`<br>`jobs/purge.py:22` | `close_account` writes `deleted_at` only; `purge_closed_accounts` hard-deletes rows whose `deleted_at` is older than 30 days |
 
 No erasure verdict is rendered for a store of kind backup. This tool reports the retention schedule it found in code and cites it; whether that schedule and the procedure applied to restored systems are adequate is not visible here.
 
@@ -192,18 +194,18 @@ Citations that did not resolve: none. Claims that could not be decided: none.
 |---|---|---|
 | `api/account.py:12` | `close_account` | D |
 | `api/account.py:13` | `including uploaded files` | D |
-| `api/account.py:31` | `deleted_at` | D |
+| `api/account.py:15` | `deleted_at` | D |
 | `billing.py:30` | `Customer`, `email` | A, B, D |
 | `billing.py:31` | `name` | A, B |
 | `config.py:6` | `sslmode=require` | E |
 | `config.py:9` | `eu-central-1` | E |
 | `jobs/backup.py:8` | `email`, `full_name` | A, G |
 | `jobs/backup.py:12` | `RETENTION_DAYS` | C, D |
-| `jobs/purge.py:14` | `timedelta` | C, D |
+| `jobs/purge.py:14` | `purge_closed_accounts` | C, D |
 | `jobs/purge.py:22` | `delete` | D |
-| `models.py:9` | `User` | A |
-| `models.py:14` | `email` | A |
-| `models.py:15` | `full_name` | A |
+| `models.py:12` | `User` | A |
+| `models.py:15` | `email` | A |
+| `models.py:16` | `full_name` | A |
 | `models.py:17` | `signup_ip` | A |
 | `models.py:18` | `last_seen_at` | A |
 | `models.py:19` | `deleted_at` | A |
@@ -231,8 +233,7 @@ Citations that did not resolve: none. Claims that could not be decided: none.
 
 ## Open risks
 
-- **The video narration does not match this case.** `docs/demo-script.md` at 0:25–0:40 says "twelve fields, six stores" and describes a `notes` column on a support ticket, which is case S07. S10 as specified has eleven fields and four stores and no support ticket. `07-ui.md` §9 lists that and four more drifts with their timestamps. Either the narration is re-recorded against the real counts, or the S10 fixture spec grows two stores — and growing a test case to fit a voice-over changes the false-safe denominator on the test split. The narration is the cheap side.
-- **The retention row's category needs a CASES.md errata line.** `evals/CASES.md`'s illustrative manifest gives S10 `{store: users, category: contact, days: 30}`, a shape that made sense while a second `financial` row existed; `fixture-generator.md` §9 drops that row, which leaves one limit covering the whole table. This document renders `all categories` on that basis. The errata was applied to `evals/CASES.md` in the ADR 0004 pass, so this cell and the manifest now agree on a field that F1 does not score in any case.
+- **The category cell on a store with no retention item is this document's reading.** `04-output-schema.md` §6 C says a null category renders `all categories` and, separately, that a store with no retention item gets a `NO TIMER EVIDENCED` row; it does not say what that synthesised row's category cell holds. Rendering an em dash rather than `all categories` is the choice made here, because "all categories" on a row that evidences nothing reads as a finding about every category. The renderer and 04 owe one sentence agreeing with this or overriding it. F1 scores no retention cell in any case.
 - **Invented line numbers.** Every citation here is a guess about a fixture that does not exist yet. When `evals/fixtures/gen.py` lands, either the generator is written to place these symbols on these lines, or this file is regenerated from the first real run and re-read for tone. The second path risks the target quietly becoming whatever the tool produced.
 - **`last_seen_at` as behavioural.** A timestamp on a user row is personal data under AMBIGUITIES row 1 reading B, and its category is arguable — `technical` is defensible. The manifest decides; this file follows it.
 - **Table width.** The erasure table's note column is long enough to wrap awkwardly at 80 columns in a terminal preview. It reads correctly in the HTML render and in any Markdown viewer, which is where the document is meant to be read.
