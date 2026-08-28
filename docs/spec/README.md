@@ -17,6 +17,6 @@ The system as designed before any solution code. Written 2026-08-28 by the lead 
 | 10 | `10-instructions.md` | The instruction text both arms share, the taxonomy, feedback and gate templates |
 | — | `fixture-generator.md` | How `evals/fixtures/gen.py` turns a spec into a repo and its manifest |
 | — | `example-record-S10.md` | The target artefact: the rendered record for the hard case, written by hand |
-| — | `PROPOSED-CONTRACT-CHANGES.md` | Changes the spec agents asked for that the lead has not yet accepted (may be absent) |
+| — | `PROPOSED-CONTRACT-CHANGES.md` | Changes to `00-contract.md` the spec documents need and cannot make, each with the interim reading they have been reconciled to; plus the changes owed to the Makefile, `pyproject.toml`, `README.md`, `REPRODUCE.md`, `evals/CASES.md` and `docs/demo-script.md`, which no spec document may edit |
 
 Decision records live in `.vault/adr/`. Research the specs cite lives in `docs/research/`. Judge-facing requirement mapping and anticipated questions live in `docs/judging/`.
