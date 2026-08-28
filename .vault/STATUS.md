@@ -1,27 +1,25 @@
 # STATUS
 
 status: active
-last_updated: 2026-08-28 21:09 UTC
+last_updated: 2026-08-28 22:15 UTC
 
 ## Where we are
 
 - Hour ~6 of 75 (kickoff 2026-08-28 15:00 UTC; deadline 2026-08-31 18:00 UTC; code freeze Sunday 19:30 UTC, ADR 0005).
 - Direction chosen and recorded: GDPR Art. 30 inventory + erasure-path check, closed over an `ast` reachability verifier (ADR 0002). Runtime decisions in ADR 0003; contract amendments in ADR 0004; plan amendments in ADR 0005.
-- **v1 concept, research and spec are complete and committed**, awaiting the author's review. Entry point: `docs/spec/README.md`. Research with verified sources under `docs/research/`; judge-facing mapping under `docs/judging/`; ten fixture specs under `evals/fixtures/specs/`; the target artefact at `docs/spec/example-record-S10.md`; the build plan at `docs/spec/08-plan.md`; the narrative drafts at `docs/spec/09-narrative.md`.
+- **v1 concept, research and spec are complete, committed and accepted by the author in full (2026-08-29).** The design of record from here on. Entry point: `docs/spec/README.md`. Research with verified sources under `docs/research/`; judge-facing mapping under `docs/judging/`; ten fixture specs under `evals/fixtures/specs/`; the target artefact at `docs/spec/example-record-S10.md`; the build plan at `docs/spec/08-plan.md`; the narrative drafts at `docs/spec/09-narrative.md`.
 - Produced by three verified agent workflows (research → verify → fix; spec → adversarial verify → fix → cross-doc reconcile; apply ADR 0004 → plan + narrative → verify → fix → completeness critic), 42 Opus subagents, plus the lead's own spot-reads. Every proposal the spec pass raised was decided (ADR 0004).
 - Tooling: `pyproject.toml` carries the runtime dependencies and the `art30` console script; `make smoke` passes; Dockerfile has make and git; Makefile has every contract target as a stub.
 - No solution code beyond the empty `art30/__init__.py`. No fixtures generated, no real repo vendored, no manifest written, no run.
-- AMBIGUITIES has 16 rows; NON-GOALS admits the HTML render; QUESTIONS has Q2–Q5 open with defaults.
+- AMBIGUITIES has 16 rows; NON-GOALS admits the HTML render; Q2–Q5 resolved with their defaults (QuickTime; anecdote as drafted; no LICENSE file; $300 ceiling). `.gitattributes` committed (plan item 0).
 
 ## Next action (in order; details in docs/spec/08-plan.md §7 "Saturday's first four hours")
 
-1. Author reviews v1 in the order `docs/spec/README.md` gives; answers or accepts the defaults on Q2–Q5.
-2. `.gitattributes` (`evals/fixtures/** -text -diff`) before any fixture is generated (01-architecture.md Decision 16).
-3. Vendor R01–R04 at pinned SHAs with LICENSE and SOURCE.md.
-4. `evals/fixtures/gen.py` from `docs/spec/fixture-generator.md`; `make fixtures` clean-diff; manifests committed.
-5. Author blind-labels S03 and S05 (timed), then R03/R04, then R01/R02 under the CASES.md protocol.
-6. `art30/` runtime (tools, config, trace, llm, loop, cli, prompts, schema), baseline arm, harness (run, score, report, trace_check), tests — then one live run, then Sweep A.
-7. Verifier + tests, advanced arm, iterations, Sweeps B and C after the freeze, evidence phase (08-plan.md §2).
+1. Vendor R01–R04 at pinned SHAs with LICENSE and SOURCE.md.
+2. `evals/fixtures/gen.py` from `docs/spec/fixture-generator.md`; `make fixtures` clean-diff; manifests committed.
+3. Author blind-labels S03 and S05 (timed), then R03/R04, then R01/R02 under the CASES.md protocol.
+4. `art30/` runtime (tools, config, trace, llm, loop, cli, prompts, schema), baseline arm, harness (run, score, report, trace_check), tests — then one live run, then Sweep A.
+5. Verifier + tests, advanced arm, iterations, Sweeps B and C after the freeze, evidence phase (08-plan.md §2).
 
 ## Plan checkpoints (from docs/spec/08-plan.md §9; UTC)
 
@@ -31,8 +29,8 @@ last_updated: 2026-08-28 21:09 UTC
 | Specs 00–07, 10 written and reconciled; ADR 0004 | Fri 20:00 | — | done |
 | Build plan committed | Fri 20:45 | — | done |
 | ADR 0005; Q5 opened; CASES.md errata for the one-window test sweep | Fri 21:00 | — | done |
-| Packaging, Makefile recipes, Docker path | Fri 21:15 | — | done (`.gitattributes` pending) |
-| Q2, Q3, Q4 resolved by the author | Fri 21:00 | — | open, defaults recorded |
+| Packaging, Makefile recipes, Docker path, `.gitattributes` | Fri 21:15 | — | done |
+| Q2–Q5 resolved by the author | Sat 2026-08-29 | — | done (defaults accepted) |
 | R01–R04 vendored with LICENSE and SOURCE.md | Fri 21:45 | — | |
 | `make fixtures` clean; ten repos and manifests committed | Sat 08:30 | 4 (Sat 11:00) | |
 | S03 and S05 blind-labelled, timed | Sat 09:15 | — | |
