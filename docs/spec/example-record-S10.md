@@ -113,7 +113,7 @@ Erasure entry points: `close_account` — route — `api/account.py:12` (the onl
 | nightly_backup | GOVERNED BY RETENTION (35 days) | `jobs/backup.py:12` | dumps older than `RETENTION_DAYS` are removed by the same job |
 | users | ERASED AFTER TIMER (30 days) | `api/account.py:15`<br>`jobs/purge.py:14`<br>`jobs/purge.py:22` | `close_account` writes `deleted_at` only; `purge_closed_accounts` hard-deletes rows whose `deleted_at` is older than 30 days |
 
-No erasure verdict is rendered for a store of kind backup. This tool reports the retention schedule it found in code and cites it; whether that schedule and the procedure applied to restored systems are adequate is not visible here.
+No `ERASED` or `NOT ERASED` verdict is rendered for a store of kind backup; it carries a retention verdict instead. This tool reports the retention schedule it found in code and cites it; whether that schedule and the procedure applied to restored systems are adequate is not visible here.
 
 Object storage: where bucket versioning is enabled, a delete that passes no `versionId` leaves the previous version of the object in place. No versioning declaration was found in this repository.
 
