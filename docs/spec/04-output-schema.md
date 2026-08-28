@@ -125,7 +125,7 @@ On write, `record.json` normalises `recipient_kind` from `null` to `"unknown"` f
 ```json
 {
   "schema_version": "1",
-  "repository": "acme_saas",
+  "repository": "tidewharf",
   "stores": [ { "name": "stripe", "kind": "third_party", "recipient_kind": "processor", "...": "..." } ],
   "...": "... the submitted record, unchanged ...",
 
@@ -205,7 +205,7 @@ The line under each store's table is `Linked to the data subject at <file:line>`
 
 **B. Recipients.** Only `third_party` stores. One row each: name, the fields that flow into it with their citation, `recipient_kind` in capitals, and the Art. 28 question the human owns. `unknown` renders as `UNKNOWN — requires human completion`, and a baseline record renders the same cell: `recipient_kind` is normalised to `unknown` on write in both arms (§5), so this table never meets a `null`. The absence of a gate is stated in the one-line replacement for section G, not here. A note under the table states what the tool did and did not establish: personal data flows into the call at the cited line; whether the recipient is a processor or an independent controller, and whether an Art. 28(3) contract exists, is not visible in code (gdpr-sources §5 (d)).
 
-**C. Retention.** One row per `retention[]` item, in section A's store order (kind first, then store name), then by category in the order the enum declares them: store, category (or `all categories` where `category` is null), the period, evidence, and a `Justification` column reading `requires human completion` in every row. The period cell is `<days> days` where `days` is set, followed by a space and the `criteria` string where that is set too (`30 days after deleted_at`), or the criteria string alone where there is no number. Every item carries a citation (I6). Every store with no retention item gets a row reading `NO TIMER EVIDENCED` with an empty evidence cell. Under the table, one sentence: a period found in code is evidence for a retention schedule; the schedule itself is a policy the controller sets (gdpr-sources §2.1 [S2], §6 item 2).
+**C. Retention.** One row per `retention[]` item, in section A's store order (kind first, then store name), then by category in the order the enum declares them: store, category (or `all categories` where `category` is null), the period, evidence, and a `Justification` column reading `requires human completion` in every row. The period cell is `<days> days` where `days` is set, followed by a space and the `criteria` string where that is set too (`30 days after deleted_at`), or the criteria string alone where there is no number. Every item carries a citation (I6). Every store with no retention item gets a row reading `NO TIMER EVIDENCED` with an empty evidence cell. Under the table, one sentence: a period found in code is evidence for a retention schedule; the schedule itself is a policy the controller sets (gdpr-sources §2.1 [S2], §6 item 2). A store with no `retention[]` item gets one synthesised row reading `NO TIMER EVIDENCED` with an empty evidence cell and an empty category cell.
 
 **D. Erasure.** The table the tool exists for. Header line above it: `Erasure entry points:` one line per entry point (`close_account — route — api/account.py:12`), or `Erasure entry points: none found.` Then:
 
