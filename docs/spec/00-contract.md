@@ -109,7 +109,7 @@ Tool schemas use `strict: true` (`additionalProperties: false`, all `required` l
 }
 ```
 
-Every list item carries `expected`. `path` on a rejected claim is the structured call path the verifier found (empty when none). `conservative_divergences` are accepted, never rejected: the model may be safer than the evidence, never safer than the code. Baseline feedback contains only `schema_errors`.
+Every item on `rejected_claims`, `missing_stores`, `missing_entry_points`, `bad_citations` and `unverified` carries `expected`; `conservative_divergences` items carry `note` instead. `path` on a rejected claim is the structured call path the verifier found (empty when none). `conservative_divergences` are accepted, never rejected: the model may be safer than the evidence, never safer than the code. Baseline feedback contains only `schema_errors`.
 
 ## Record vocabulary (details in 04-output-schema.md)
 
