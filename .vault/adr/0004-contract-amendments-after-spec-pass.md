@@ -18,7 +18,7 @@ Every change the five spec documents asked of `docs/spec/00-contract.md` during 
 - **P-12** `step` lines gain `request_hash` and `stop_reason`.
 - **P-13** `run_end` gains `note: string|null`.
 - **P-14** `run_start` gains `config` (`max_tokens`, both budgets, `overridden`) and `prompt_sha`; `make report` fails when the two arms' `prompt_sha` differ.
-- **P-15** `path_exists(entry, target, must_pass_through=None, mode=...)` as specified in `03-verifier.md` §5.1.
+- **P-15** `path_exists(graph, entry, target, must_pass_through=None)` as specified in `03-verifier.md` §5.1; the delete mode is carried in the search state, not the signature.
 - **P-16** `render/html.py` reads `record.json` and the repository path.
 - Feedback object: `expected` on all four lists; `conservative_divergences` and `missing_entry_points` added; rejected claims carry a structured `path` array.
 - Citation rule relaxed from the physical line to the logical line (a multi-line call cites its first line).
