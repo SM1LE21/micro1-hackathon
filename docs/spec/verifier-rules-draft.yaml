@@ -1,9 +1,19 @@
 # Verifier rule sets — draft
 #
 # The data behind docs/spec/03-verifier.md. Ships under art30/verify/rules/ split
-# into stores.yaml, primitives.yaml, recipients.yaml, entrypoints.yaml and
-# patterns.yaml (the five top-level sections below, in that order). Kept as one
-# file here so the spec and its data can be read together.
+# into five files. Kept as one file here so the spec and its data can be read together.
+#
+# Section to destination:
+#   1 scan surface + 2 store kinds -> stores.yaml
+#   3 recipients                   -> recipients.yaml
+#   4 entry points                 -> entrypoints.yaml
+#   5 framework semantics          -> primitives.yaml
+#   6 patterns                     -> patterns.yaml
+# Two blocks are not rule data and do not become YAML files. They ship as constants in
+# art30/verify/reach.py: `path_modes` (the search state of 03-verifier.md 5.2) and
+# `verdict_precedence` with `reaches_erasure_true` (the ordered table of 03-verifier.md 6.1).
+# They are here because the rule files are meaningless without them, and reading the
+# precedence next to the store kinds is the point of keeping one file.
 #
 # Every entry carries the rule it implements (R1-R28, docs/research/framework-behaviour.md
 # section 6) and the source ID the behaviour was read from (S1-S47, the tables at the
@@ -22,8 +32,9 @@ generated_for: art30 0.1
 python_target: "3.12"                     # ADR 0003 section 7
 
 # Delete modes carried by a path (03-verifier.md 4.1 and 4.2). A walk starts in `none`,
-# in which only ordinary call edges, SE10 and SE11 are admissible; every mode-bearing
-# synthetic edge waits for a primitive to set one.
+# in which four things are admissible: ordinary call edges, SE10, SE11 and SE12; every other
+# mode-bearing synthetic edge waits for a primitive to set one. Ships as a constant in
+# art30/verify/reach.py, not as a rule file.
 path_modes:
   entry_start_mode: none
   admissible_in_none: [call_edge, SE10, SE11, SE12]
@@ -594,7 +605,8 @@ personal_data_field_patterns:             # completeness guard ONLY (03-verifier
     (03-verifier.md 7.4 carries the run).
 
 # ---------------------------------------------------------------------------
-# 7. Verdict precedence  (03-verifier.md section 6.1) — first match decides
+# 7. Verdict precedence  (03-verifier.md section 6.1) — first match decides.
+# Ships as a constant in art30/verify/reach.py, not as a rule file.
 # ---------------------------------------------------------------------------
 verdict_precedence:
   - {when: "kind == backup",                 verdict: "governed_by_retention | no_schedule_evidenced"}
