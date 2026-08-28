@@ -1,4 +1,4 @@
-.PHONY: setup smoke fixtures run baseline advanced eval eval-replay report traces gate-timing check-secrets
+.PHONY: setup smoke fixtures run baseline advanced eval eval-replay report traces gate-timing check-secrets check-traces verify-docs check-clean
 
 CLAUDE_PROJECT_DIR ?= $(HOME)/.claude/projects/-Users-tun-Documents-micro1-hackathon
 CASE ?= S05
@@ -53,3 +53,18 @@ traces:
 	  exit 0; }
 	uvx claude-code-log@1.5.0 "$(CLAUDE_PROJECT_DIR)" -o traces/build-trajectory.html
 	@echo "rendered traces/build-trajectory.html"
+
+# qualification-gate checks (docs/judging/requirements-matrix.md, 08-plan.md section 2)
+check-traces:
+	@test -n "$$(ls traces/baseline/*.jsonl 2>/dev/null)" || { echo "no baseline traces"; exit 1; }
+	@test -n "$$(ls traces/advanced/*.jsonl 2>/dev/null)" || { echo "no advanced traces"; exit 1; }
+	@test -f traces/build-trajectory.html || { echo "traces/build-trajectory.html missing"; exit 1; }
+	@echo "check-traces OK"
+
+verify-docs:
+	@echo "not implemented - re-run make report and diff its table against the README results block" && exit 1
+
+check-clean:
+	@! git grep -niE "tk ?media|founta" -- ':!docs/problem/*' >/dev/null || { echo "forbidden name in tree"; exit 1; }
+	@! git log -p --all | grep -qiE "tk ?media|founta" || { echo "forbidden name in history"; exit 1; }
+	@echo "check-clean OK"
