@@ -1,0 +1,62 @@
+{
+  "name": "flaskbb-theme-aurora",
+  "description": "The default theme for FlaskBB.",
+  "version": "1.0.0",
+  "license": "BSD-3-Clause",
+  "author": "Peter Justin <peter.justin@outlook.com>",
+  "url": "https://flaskbb.com",
+  "private": true,
+  "main": "src/app.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/flaskbb/flaskbb"
+  },
+  "bugs": "https://github.com/flaskbb/flaskbb/issues",
+  "keywords": [
+    "flaskbb",
+    "theme",
+    "aurora"
+  ],
+  "scripts": {
+    "clean": "rm -f node_modules",
+    "build": "npx webpack --config webpack.prod.js",
+    "watch": "npx webpack --config webpack.dev.js --watch"
+  },
+  "dependencies": {
+    "@flaskbb/markdown-toolbar-element": "^1.0.0",
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "@popperjs/core": "^2.11.8",
+    "@textcomplete/core": "^0.1.13",
+    "@textcomplete/textarea": "^0.1.13",
+    "bootstrap": "^5.3.8",
+    "core-js": "^3.50.0",
+    "dompurify": "^3.4.13",
+    "marked": "^18.0.9",
+    "twemoji": "^14.0.2"
+  },
+  "devDependencies": {
+    "@babel/cli": "^8.0.4",
+    "@babel/core": "^8.0.1",
+    "@babel/plugin-transform-class-properties": "^8.0.1",
+    "@babel/plugin-transform-object-rest-spread": "^8.0.1",
+    "@babel/preset-env": "^8.0.2",
+    "@babel/preset-typescript": "^8.0.1",
+    "autoprefixer": "^10.5.4",
+    "babel-loader": "^10.1.1",
+    "babel-plugin-polyfill-corejs3": "^1.0.0",
+    "clean-webpack-plugin": "^4.0.0",
+    "css-loader": "^7.1.4",
+    "expose-loader": "^5.0.1",
+    "mini-css-extract-plugin": "^2.10.2",
+    "postcss-loader": "^8.2.1",
+    "sass": "1.77.0",
+    "sass-loader": "^14.2.1",
+    "typescript": "^6.0.3",
+    "webpack": "^5.109.2",
+    "webpack-cli": "^7.2.2"
+  },
+  "browserslist": [
+    "> 0.25%",
+    "not dead"
+  ]
+}

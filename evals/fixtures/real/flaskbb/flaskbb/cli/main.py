@@ -1,0 +1,721 @@
+"""
+flaskbb.cli.commands
+~~~~~~~~~~~~~~~~~~~~
+
+This module contains the main commands.
+
+:copyright: (c) 2016 by the FlaskBB Team.
+:license: BSD, see LICENSE for more details.
+"""
+
+import binascii
+import logging
+import os
+import sys
+import time
+import traceback
+from datetime import datetime, UTC
+from typing import Any, override
+
+import click
+from flask import current_app
+from flask.cli import FlaskGroup, ScriptInfo, with_appcontext
+from jinja2 import Environment, FileSystemLoader
+from sqlalchemy_utils.functions import database_exists
+
+from flaskbb.app import create_app
+from flaskbb.cli.utils import (
+    EmailType,
+    get_version,
+    prompt_config_path,
+    prompt_save_user,
+    write_config,
+)
+from flaskbb.extensions import celery, db, flaskbb_search, pluggy
+from flaskbb.utils.database import drop_all
+from flaskbb.utils.populate import (
+    create_default_groups,
+    create_default_settings,
+    create_latest_db,
+    create_test_data,
+    create_welcome_forum,
+    insert_bulk_data,
+    run_plugin_migrations,
+)
+from flaskbb.utils.translations import compile_translations
+
+logger = logging.getLogger(__name__)
+
+
+class FlaskBBGroup(FlaskGroup):
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self._loaded_flaskbb_plugins = False
+
+    def _load_flaskbb_plugins(self, ctx: click.Context):
+        if self._loaded_flaskbb_plugins:
+            return
+
+        app = ctx.ensure_object(ScriptInfo).load_app()
+        try:
+            pluggy.hook.flaskbb_cli(cli=self, app=app)
+            self._loaded_flaskbb_plugins = True
+        except Exception:
+            logger.error(
+                "Error while loading CLI Plugins",
+                exc_info=traceback.format_exc(),  # pyright: ignore[reportArgumentType]
+            )
+        else:
+            shell_context_processors = pluggy.hook.flaskbb_shell_context()
+            for p in shell_context_processors:
+                app.shell_context_processor(p)
+
+    @override
+    def get_command(self, ctx: click.Context, name: str):
+        self._load_flaskbb_plugins(ctx)
+        return super().get_command(ctx, name)
+
+    @override
+    def list_commands(self, ctx: click.Context):
+        self._load_flaskbb_plugins(ctx)
+        return super().list_commands(ctx)
+
+
+def make_app():
+    ctx = click.get_current_context(silent=True)
+    script_info = None
+    if ctx is not None:
+        script_info = ctx.obj
+
+    config_file = getattr(script_info, "config_file", None)
+    instance_path = getattr(script_info, "instance_path", None)
+    return create_app(config_file, instance_path)
+
+
+def set_config(ctx: click.Context, param: str, value: str):
+    """This will pass the config file to the create_app function."""
+    ctx.ensure_object(ScriptInfo).config_file = value  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def set_instance(ctx: click.Context, param: str, value: str):
+    """This will pass the instance path on the script info which can then
+    be used in 'make_app'."""
+    ctx.ensure_object(ScriptInfo).instance_path = value  # pyright: ignore[reportAttributeAccessIssue]
+
+
+@click.group(
+    cls=FlaskBBGroup,
+    create_app=make_app,
+    add_version_option=False,
+    invoke_without_command=True,
+)
+@click.option(
+    "--config",
+    expose_value=False,
+    callback=set_config,
+    required=False,
+    is_flag=False,
+    is_eager=True,
+    metavar="CONFIG",
+    help="Specify the config to use either in dotted module "
+    "notation e.g. 'flaskbb.configs.default.DefaultConfig' "
+    "or by using a path like '/path/to/flaskbb.cfg'",
+)
+@click.option(
+    "--instance",
+    expose_value=False,
+    callback=set_instance,
+    required=False,
+    is_flag=False,
+    is_eager=True,
+    metavar="PATH",
+    help="Specify the instance path to use. By default the folder "
+    "'instance' next to the package or module is assumed to "
+    "be the instance path.",
+)
+@click.option(
+    "--version",
+    expose_value=False,
+    callback=get_version,
+    is_flag=True,
+    is_eager=True,
+    help="Show the FlaskBB version.",
+)
+@click.pass_context
+def flaskbb(ctx: click.Context):
+    """This is the commandline interface for flaskbb."""
+    if ctx.invoked_subcommand is None:
+        # show the help text instead of an error
+        # when just '--config' option has been provided
+        click.echo(ctx.get_help())
+
+
+@flaskbb.command()
+@click.option("--welcome", "-w", default=True, is_flag=True, help="Disable the welcome forum.")
+@click.option("--force", "-f", default=False, is_flag=True, help="Doesn't ask for confirmation.")
+@click.option("--username", "-u", help="The username of the user.")
+@click.option("--email", "-e", type=EmailType(), help="The email address of the user.")
+@click.option("--password", "-p", help="The password of the user.")
+@click.option(
+    "--no-plugins",
+    "-n",
+    default=False,
+    is_flag=True,
+    help="Don't run the migrations for the default plugins.",
+)
+@with_appcontext
+def install(
+    welcome: bool,
+    force: bool,
+    username: str | None,
+    email: str | None,
+    password: str | None,
+    no_plugins: bool,
+):
+    """Installs flaskbb. If no arguments are used, an interactive setup
+    will be run.
+    """
+    if not current_app.config["CONFIG_PATH"]:
+        click.secho(
+            "[!] No 'flaskbb.cfg' config found. "
+            "You can generate a configuration file with 'flaskbb makeconfig'.",
+            fg="red",
+        )
+        sys.exit(1)
+
+    click.secho("[+] Installing FlaskBB...", fg="cyan")
+    if database_exists(db.engine.url):
+        if force or click.confirm(
+            click.style(
+                "Existing database found. Do you want to delete the old one and create a new one?",
+                fg="magenta",
+            )
+        ):
+            drop_all()
+        else:
+            sys.exit(0)
+
+    # creating database from scratch and 'stamping it'
+    create_latest_db()
+
+    click.secho("[+] Creating default settings...", fg="cyan")
+    create_default_groups()
+    create_default_settings()
+
+    click.secho("[+] Creating admin user...", fg="cyan")
+    prompt_save_user(username, email, password, "admin")
+
+    if welcome:
+        click.secho("[+] Creating welcome forum...", fg="cyan")
+        create_welcome_forum()
+
+    if not no_plugins:
+        click.secho("[+] Installing default plugins...", fg="cyan")
+        run_plugin_migrations()
+
+    click.secho("[+] Compiling translations...", fg="cyan")
+    compile_translations()
+
+    click.secho("[+] FlaskBB has been successfully installed!", fg="green", bold=True)
+
+
+@flaskbb.command()
+@click.option("--test-data", "-t", default=False, is_flag=True, help="Adds some test data.")
+@click.option("--bulk-data", "-b", default=False, is_flag=True, help="Adds a lot of data.")
+@click.option(
+    "--posts",
+    default=100,
+    help="Number of posts to create in each topic (default: 100).",
+)
+@click.option("--topics", default=100, help="Number of topics to create (default: 100).")
+@click.option("--force", "-f", is_flag=True, help="Will delete the database before populating it.")
+@click.option(
+    "--initdb",
+    "-i",
+    is_flag=True,
+    help="Initializes the database before populating it.",
+)
+def populate(bulk_data: bool, test_data: bool, posts: int, topics: int, force: bool, initdb: bool):
+    """Creates the necessary tables and groups for FlaskBB."""
+    if force:
+        click.secho("[+] Recreating database...", fg="cyan")
+        drop_all()
+
+        # do not initialize the db if -i is passed
+        if not initdb:
+            create_latest_db()
+
+    if initdb:
+        click.secho("[+] Initializing database...", fg="cyan")
+        create_latest_db()
+        run_plugin_migrations()
+
+    if test_data:
+        click.secho("[+] Adding some test data...", fg="cyan")
+        create_test_data()
+
+    if bulk_data:
+        click.secho("[+] Adding a lot of test data...", fg="cyan")
+        timer = time.time()
+        rv = insert_bulk_data(int(topics), int(posts))
+        if not rv and not test_data:
+            create_test_data()
+            rv = insert_bulk_data(int(topics), int(posts))
+        elapsed = time.time() - timer
+        click.secho(
+            f"[+] It took {elapsed:.2f} seconds to create {rv[0]} topics and {rv[1]} posts.",  # pyright: ignore[reportIndexIssue]  # noqa: E501
+            fg="cyan",
+        )
+
+    # this just makes the most sense for the command name; use -i to
+    # init the db as well
+    if not test_data and not bulk_data:
+        click.secho("[+] Populating the database with some defaults...", fg="cyan")
+        create_default_groups()
+        create_default_settings()
+
+
+@flaskbb.command()
+def reindex():
+    """Reindexes the search index."""
+    click.secho("[+] Reindexing search index...", fg="cyan")
+    flaskbb_search.reindex()
+
+
+@flaskbb.command(
+    "celery",
+    add_help_option=False,
+    context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
+)
+@click.pass_context
+@with_appcontext
+def start_celery(ctx: click.Context):
+    """Preconfigured wrapper around the 'celery' command."""
+    celery.start(ctx.args)
+
+
+@flaskbb.command("shell", short_help="Runs a shell in the app context.")
+@with_appcontext
+def shell_command():
+    """Runs an interactive Python shell in the context of a given
+    Flask application.  The application will populate the default
+    namespace of this shell according to it"s configuration.
+    This is useful for executing small snippets of management code
+    without having to manually configuring the application.
+
+    This code snippet is taken from Flask"s cli module and modified to
+    run IPython and falls back to the normal shell if IPython is not
+    available.
+    """
+    import code
+
+    banner = f"Python {sys.version} on {sys.platform}\nInstance Path: {current_app.instance_path}"  # noqa: E501
+    ctx = {"db": db}
+
+    # Support the regular Python interpreter startup script if someone
+    # is using it.
+    startup = os.environ.get("PYTHONSTARTUP")
+    if startup and os.path.isfile(startup):
+        with open(startup) as f:
+            eval(compile(f.read(), startup, "exec"), ctx)
+
+    ctx.update(current_app.make_shell_context())
+
+    try:
+        import IPython
+        from traitlets.config import (
+            get_config,  # pyright: ignore[reportPrivateImportUsage]
+        )
+
+        c = get_config()
+        # This makes the prompt to use colors again
+        c.InteractiveShellEmbed.colors = "Linux"
+        IPython.embed(config=c, banner1=banner, user_ns=ctx)  # pyright: ignore[reportUnknownMemberType]
+    except ImportError:
+        code.interact(banner=banner, local=ctx)
+
+
+@flaskbb.command("urls", short_help="Show routes for the app.")
+@click.option("--route", "-r", "order_by", flag_value="rule", default=True, help="Order by route")
+@click.option("--endpoint", "-e", "order_by", flag_value="endpoint", help="Order by endpoint")
+@click.option("--methods", "-m", "order_by", flag_value="methods", help="Order by methods")
+@with_appcontext
+def list_urls(order_by: str):
+    """Lists all available routes."""
+    from flask import current_app
+
+    rules = sorted(current_app.url_map.iter_rules(), key=lambda rule: getattr(rule, order_by))
+
+    max_rule_len = max(len(rule.rule) for rule in rules)
+    max_rule_len = max(max_rule_len, len("Route"))
+
+    max_endpoint_len = max(len(rule.endpoint) for rule in rules)
+    max_endpoint_len = max(max_endpoint_len, len("Endpoint"))
+
+    max_method_len = max(len(", ".join(rule.methods if rule.methods else [])) for rule in rules)
+    max_method_len = max(max_method_len, len("Methods"))
+
+    column_header_len = max_rule_len + max_endpoint_len + max_method_len + 4
+    column_template = f"{{:<{max_rule_len}}}  {{:<{max_endpoint_len}}}  {{:<{max_method_len}}}"
+
+    click.secho(column_template.format("Route", "Endpoint", "Methods"), fg="blue", bold=True)
+    click.secho("=" * column_header_len, bold=True)
+
+    for rule in rules:
+        methods = ", ".join(rule.methods if rule.methods else [])
+        click.echo(column_template.format(rule.rule, rule.endpoint, methods))
+
+
+@flaskbb.command("makeconfig")
+@click.option(
+    "--development",
+    "-d",
+    default=False,
+    is_flag=True,
+    help="Creates a development config with DEBUG set to True.",
+)
+@click.option(
+    "--output",
+    "-o",
+    required=False,
+    help="The path where the config file will be saved at. "
+    + "Defaults to the flaskbb's root folder.",
+)
+@click.option(
+    "--force",
+    "-f",
+    default=False,
+    is_flag=True,
+    help="Overwrite any existing config file if one exists.",
+)
+def generate_config(development: bool, output: str | None, force: bool):
+    """Generates a FlaskBB configuration file."""
+    config_env = Environment(
+        loader=FileSystemLoader(os.path.join(current_app.root_path, "configs"))
+    )
+    config_template = config_env.get_template("config.cfg.template")
+
+    if output:
+        config_path = os.path.abspath(output)
+    else:
+        config_path = os.path.dirname(current_app.root_path)
+
+    if os.path.exists(config_path) and not os.path.isfile(config_path):
+        config_path = os.path.join(config_path, "flaskbb.cfg")
+
+    # An override to handle database location paths on Windows environments
+    database_path = "sqlite:///" + os.path.join(
+        os.path.dirname(current_app.instance_path), "flaskbb.sqlite"
+    )
+    if os.name == "nt":
+        database_path = database_path.replace("\\", r"\\")
+
+    default_conf = {
+        "is_debug": False,
+        "server_name": "example.org",
+        "use_https": True,
+        "database_uri": database_path,
+        "redis_enabled": False,
+        "redis_uri": "redis://localhost:6379",
+        "mail_server": "localhost",
+        "mail_port": 25,
+        "mail_use_tls": False,
+        "mail_use_ssl": False,
+        "mail_username": "",
+        "mail_password": "",
+        "mail_sender_name": "FlaskBB Mailer",
+        "mail_sender_address": "noreply@yourdomain",
+        "mail_admin_address": "admin@yourdomain",
+        "secret_key": binascii.hexlify(os.urandom(24)).decode(),
+        "csrf_secret_key": binascii.hexlify(os.urandom(24)).decode(),
+        "timestamp": datetime.now(UTC).strftime("%A, %d. %B %Y at %H:%M"),
+        "log_config_path": "",
+        "deprecation_level": "default",
+    }
+
+    if not force:
+        config_path = prompt_config_path(config_path)
+
+    if force and os.path.exists(config_path):
+        click.secho(f"Overwriting existing config file: {config_path}", fg="yellow")
+
+    if development:
+        default_conf["is_debug"] = True
+        default_conf["use_https"] = False
+        default_conf["server_name"] = "localhost:5000"
+        write_config(default_conf, config_template, config_path)
+        sys.exit(0)
+
+    # SERVER_NAME
+    click.secho(
+        """The name and port number of the exposed server.\n
+        If FlaskBB is accesible on port 80 you can just omit the
+        port.\nFor example, if FlaskBB is accessible via
+        example.org:8080 than this is also what you would set here.""",
+        fg="cyan",
+    )
+    default_conf["server_name"] = click.prompt(
+        click.style("Server Name", fg="magenta"),
+        type=str,
+        default=default_conf.get("server_name"),
+    )
+
+    # HTTPS or HTTP
+    click.secho("Is HTTPS (recommended) or HTTP used for to serve FlaskBB?", fg="cyan")
+    default_conf["use_https"] = click.confirm(
+        click.style("Use HTTPS?", fg="magenta"),
+        default=bool(default_conf["use_https"]),
+    )
+
+    # SQLALCHEMY_DATABASE_URI
+    click.secho(
+        """For Postgres use:\n
+            postgresql://flaskbb@localhost:5432/flaskbb\n
+        For more options see the SQLAlchemy docs:\n
+            http://docs.sqlalchemy.org/en/latest/core/engines.html""",
+        fg="cyan",
+    )
+    default_conf["database_uri"] = click.prompt(
+        click.style("Database URI", fg="magenta"),
+        default=default_conf.get("database_uri"),
+    )
+
+    # REDIS_ENABLED
+    click.secho(
+        "Redis will be used for things such as the task queue, caching and rate limiting.",
+        fg="cyan",
+    )
+    default_conf["redis_enabled"] = click.confirm(
+        click.style("Would you like to use redis?", fg="magenta"), default=True
+    )  # default_conf.get("redis_enabled") is False
+
+    # REDIS_URI
+    if default_conf.get("redis_enabled", False):
+        default_conf["redis_uri"] = click.prompt(
+            click.style("Redis URI", fg="magenta"),
+            default=default_conf.get("redis_uri"),
+        )
+    else:
+        default_conf["redis_uri"] = ""
+
+    # MAIL_SERVER
+    click.secho(
+        """To use 'localhost' make sure that you have sendmail or\n
+        something similar installed. Gmail is also supprted.""",
+        fg="cyan",
+    )
+    default_conf["mail_server"] = click.prompt(
+        click.style("Mail Server", fg="magenta"),
+        default=default_conf.get("mail_server"),
+    )
+    # MAIL_PORT
+    click.secho("The port on which the SMTP server is listening on.", fg="cyan")
+    default_conf["mail_port"] = click.prompt(
+        click.style("Mail Server SMTP Port", fg="magenta"),
+        default=default_conf.get("mail_port"),
+    )
+    # MAIL_USE_TLS
+    click.secho(
+        "If you are using a local SMTP server like sendmail this is "
+        + "not needed. For external servers it is required.",
+        fg="cyan",
+    )
+    default_conf["mail_use_tls"] = click.confirm(
+        click.style("Use TLS for sending mails?", fg="magenta"),
+        default=bool(default_conf["mail_use_tls"]),
+    )
+    # MAIL_USE_SSL
+    click.secho("Same as above. TLS is the successor to SSL.", fg="cyan")
+    default_conf["mail_use_ssl"] = click.confirm(
+        click.style("Use SSL for sending mails?", fg="magenta"),
+        default=bool(default_conf["mail_use_ssl"]),
+    )
+    # MAIL_USERNAME
+    click.secho(
+        "Not needed if you are using a local smtp server.\n"
+        + "For gmail you have to put in your email address here.",
+        fg="cyan",
+    )
+    default_conf["mail_username"] = click.prompt(
+        click.style("Mail Username", fg="magenta"),
+        default=default_conf.get("mail_username"),
+    )
+    # MAIL_PASSWORD
+    click.secho(
+        "Not needed if you are using a local smtp server.\n"
+        + "For gmail you have to put in your gmail password here.",
+        fg="cyan",
+    )
+    default_conf["mail_password"] = click.prompt(
+        click.style("Mail Password", fg="magenta"),
+        default=default_conf.get("mail_password"),
+    )
+    # MAIL_DEFAULT_SENDER
+    click.secho(
+        "The name of the sender. You probably want to change it to "
+        + "something like '<your_community> Mailer'.",
+        fg="cyan",
+    )
+    default_conf["mail_sender_name"] = click.prompt(
+        click.style("Mail Sender Name", fg="magenta"),
+        default=default_conf.get("mail_sender_name"),
+    )
+    click.secho(
+        "On localhost you want to use a noreply address here. "
+        + "Use your email address for gmail here.",
+        fg="cyan",
+    )
+    default_conf["mail_sender_address"] = click.prompt(
+        click.style("Mail Sender Address", fg="magenta"),
+        default=default_conf.get("mail_sender_address"),
+    )
+    # ADMINS
+    click.secho(
+        "Logs and important system messages are sent to this address. "
+        + "Use your email address for gmail here.",
+        fg="cyan",
+    )
+    default_conf["mail_admin_address"] = click.prompt(
+        click.style("Mail Admin Email", fg="magenta"),
+        default=default_conf.get("mail_admin_address"),
+    )
+
+    click.secho(
+        """Optional filepath to load a logging configuration file from.
+        See the Python logging documentation for more detail.\n
+        \thttps://docs.python.org/library/logging.config.html#logging-config-fileformat""",  # noqa
+        fg="cyan",
+    )
+    default_conf["log_config_path"] = click.prompt(
+        click.style("Logging Config Path", fg="magenta"),
+        default=default_conf.get("log_config_path"),
+    )
+
+    deprecation_mesg = (
+        "Warning level for deprecations. options are: \n"
+        "\terror\tturns deprecation warnings into exceptions\n"
+        "\tignore\tnever warns about deprecations\n"
+        "\talways\talways warns about deprecations even if the warning has been issued\n"  # noqa
+        "\tdefault\tshows deprecation warning once per usage\n"
+        "\tmodule\tshows deprecation warning once per module\n"
+        "\tonce\tonly shows deprecation warning once regardless of location\n"
+        "If you are unsure, select default\n"
+        "for more details see: https://docs.python.org/3/library/warnings.html#the-warnings-filter"  # noqa
+    )
+
+    click.secho(deprecation_mesg, fg="cyan")
+    default_conf["deprecation_level"] = click.prompt(
+        click.style("Deperecation warning level", fg="magenta"),
+        default=default_conf.get("deprecation_level"),
+    )
+
+    write_config(default_conf, config_template, config_path)
+
+    # Finished
+    click.secho(
+        f"The configuration file has been saved to:\n{config_path}\n Feel free to adjust it as needed.",  # noqa: E501
+        fg="blue",
+        bold=True,
+    )
+    click.secho(f"Usage: \nflaskbb --config {config_path} run", fg="green")
+
+
+@flaskbb.command("serve", short_help="Starts a gunicorn server.")
+@click.option(
+    "--host",
+    "-h",
+    default=None,
+    help="The interface to bind FlaskBB to. Defaults to '127.0.0.1'.",
+)
+@click.option(
+    "--port",
+    "-p",
+    default=None,
+    type=int,
+    help="The port to bind FlaskBB to. Defaults to 8000.",
+)
+@click.option(
+    "--workers",
+    "-w",
+    default=None,
+    type=int,
+    help="The number of worker processes for handling requests. Defaults to 1.",
+)
+@click.option(
+    "--worker-class",
+    "-k",
+    default=None,
+    help="The type of worker to use. Defaults to 'sync'.",
+)
+@click.option(
+    "--daemon",
+    "-d",
+    default=False,
+    is_flag=True,
+    help="Runs gunicorn in the background.",
+)
+@click.option(
+    "--gunicorn-config",
+    "-c",
+    default=None,
+    help="A gunicorn configuration file. Options given on the command line "
+    "take precedence over the ones in the configuration file.",
+)
+@click.pass_context
+def serve(
+    ctx: click.Context,
+    host: str | None,
+    port: int | None,
+    workers: int | None,
+    worker_class: str | None,
+    daemon: bool,
+    gunicorn_config: str | None,
+):
+    """Starts a gunicorn server with FlaskBB."""
+    try:
+        from gunicorn.app.base import Application
+    except ImportError:
+        click.secho(
+            "[!] gunicorn is not installed. "
+            "You can install it with 'pip install FlaskBB[gunicorn]'.",
+            fg="red",
+        )
+        sys.exit(1)
+
+    app = ctx.ensure_object(ScriptInfo).load_app()
+
+    options: dict[str, Any] = {"workers": workers, "worker_class": worker_class}
+    if host is not None or port is not None:
+        options["bind"] = f"{host or '127.0.0.1'}:{port or 8000}"
+    if daemon:
+        options["daemon"] = True
+
+    class FlaskBBApplication(Application):
+        @override
+        def load_config(self):
+            if gunicorn_config is not None:
+                self.load_config_from_file(gunicorn_config)
+
+            for key, value in options.items():
+                if value is not None:
+                    self.cfg.set(key, value)
+
+            configured_post_fork = self.cfg.post_fork
+
+            def post_fork(server: Any, worker: Any):
+                # the app is created before gunicorn forks its workers, so the
+                # pooled connections belong to the master process - get rid of
+                # them in the worker without closing them
+                with app.app_context():
+                    for engine in db.engines.values():
+                        engine.dispose(close=False)
+
+                configured_post_fork(server, worker)
+
+            self.cfg.set("post_fork", post_fork)
+
+        @override
+        def load(self) -> Any:
+            return app
+
+    FlaskBBApplication().run()

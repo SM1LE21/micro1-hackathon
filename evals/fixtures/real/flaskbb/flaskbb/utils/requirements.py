@@ -1,0 +1,435 @@
+"""
+flaskbb.utils.requirements
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Authorization requirements for FlaskBB.
+
+:copyright: (c) 2015 by the FlaskBB Team.
+:license: BSD, see LICENSE for more details
+"""
+
+import logging
+from typing import Any, override
+
+from flask_allows2 import And, Or, Permission, Requirement
+from sqlalchemy import select
+
+from flaskbb.exceptions import FlaskBBError
+from flaskbb.forum.locals import current_forum, current_post, current_topic
+from flaskbb.forum.models import Forum, Post, Topic
+from flaskbb.user.models import User
+
+logger = logging.getLogger(__name__)
+
+
+class Has(Requirement):
+    def __init__(self, permission: str):
+        self.permission = permission
+
+    @override
+    def __repr__(self):
+        return f"<Has({self.permission!s})>"
+
+    @override
+    def fulfill(self, user: User):
+        return user.permissions.get(self.permission, False)
+
+
+class IsAuthed(Requirement):
+    @override
+    def fulfill(self, user: User) -> bool:
+        return user.is_authenticated
+
+
+class IsModeratorInForum(IsAuthed):
+    def __init__(self, forum: Forum | None = None, forum_id: int | None = None):
+        self.forum_id = forum_id
+        self.forum = forum
+
+    @override
+    def fulfill(self, user: User):
+        moderators = self._get_forum_moderators()
+        return super().fulfill(user) and self._user_is_forum_moderator(user, moderators)
+
+    def _user_is_forum_moderator(self, user: User, moderators: list[User]):
+        return user in moderators
+
+    def _get_forum_moderators(self) -> list[User]:
+        forum = self._get_forum()
+        if forum is not None:
+            return forum.moderators
+        return []
+
+    def _get_forum(self):
+        if self.forum is not None:
+            return self.forum
+        elif self.forum_id is not None:
+            return self._get_forum_from_id()
+        return self._get_forum_from_request()
+
+    def _get_forum_from_id(self):
+        return Forum.get_by(id=self.forum_id)
+
+    def _get_forum_from_request(self):
+        if not current_forum:
+            raise FlaskBBError("Could not load forum data")
+        return current_forum
+
+
+def _privilege_level(user: User) -> int:
+    """Ranks a user by the highest privilege any of their groups grants."""
+    permissions = user.permissions
+    if permissions.get("admin"):
+        return 3
+    if permissions.get("super_mod"):
+        return 2
+    if permissions.get("mod"):
+        return 1
+    return 0
+
+
+class IsMorePrivilegedThan(Requirement):
+    """Fulfilled when the acting user outranks ``target``.
+
+    The comparison is strict, so it is never fulfilled for an equally
+    privileged target - including the acting user themselves.
+    """
+
+    def __init__(self, target: User):
+        self.target = target
+
+    @override
+    def __repr__(self):
+        return f"<IsMorePrivilegedThan({self.target!s})>"
+
+    @override
+    def fulfill(self, user: User):
+        return _privilege_level(user) > _privilege_level(self.target)
+
+
+class IsSelf(Requirement):
+    """Fulfilled when the acting user *is* ``target``."""
+
+    def __init__(self, target: User):
+        self.target = target
+
+    @override
+    def __repr__(self):
+        return f"<IsSelf({self.target!s})>"
+
+    @override
+    def fulfill(self, user: User):
+        return user.id == self.target.id
+
+
+class IsSameUser(IsAuthed):
+    def __init__(self, topic_or_post: Post | Topic | int | None = None):
+        self._topic_or_post = topic_or_post
+
+    @override
+    def fulfill(self, user: User):
+        return super().fulfill(user) and user.id == self._determine_user()
+
+    def _determine_user(self):
+        if isinstance(self._topic_or_post, int) or self._topic_or_post is None:
+            return self._get_user_id_from_post()
+        return self._topic_or_post.user_id
+
+    def _get_user_id_from_post(self):
+        if current_post:
+            return current_post.user_id
+        elif current_topic:
+            return current_topic.user_id
+        else:
+            raise FlaskBBError("Could not determine user")
+
+
+class TopicNotLocked(Requirement):
+    def __init__(
+        self,
+        topic: Topic | None = None,
+        topic_id: int | None = None,
+        post_id: int | None = None,
+        post: Post | None = None,
+    ):
+        self._topic = topic
+        self._topic_id = topic_id
+        self._post = post
+        self._post_id = post_id
+
+    @override
+    def fulfill(self, user: User):
+        return not any(self._determine_locked())
+
+    def _determine_locked(self):
+        """
+        Returns a pair of booleans:
+            * Is the topic locked?
+            * Is the forum the topic belongs to locked?
+
+        Except in the case of a topic instance being provided to the
+        constructor, all of these tuples are SQLA KeyedTuples.
+        """
+        if self._topic is not None:
+            return self._topic.locked, self._topic.forum.locked
+        elif self._post is not None:
+            return self._post.topic.locked, self._post.topic.forum.locked
+        elif self._topic_id is not None:
+            from flaskbb.extensions import db
+
+            result = db.session.execute(
+                select(Topic.locked, Forum.locked)
+                .join(Forum, Forum.id == Topic.forum_id)
+                .where(Topic.id == current_topic.id)
+            ).first()
+            if not result:
+                return False, False
+            return result.t
+        else:
+            return self._get_topic_from_request()
+
+    def _get_topic_from_request(self):
+        if current_topic:
+            return current_topic.locked, current_forum.locked
+        else:
+            raise FlaskBBError("How did you get this to happen?")
+
+
+class ForumNotLocked(Requirement):
+    def __init__(self, forum: Forum | None = None, forum_id: int | None = None):
+        self._forum = forum
+        self._forum_id = forum_id
+
+    @override
+    def fulfill(self, user: User):
+        return not self._is_forum_locked()
+
+    def _is_forum_locked(self):
+        forum = self._determine_forum()
+        return forum is not None and forum.locked
+
+    def _determine_forum(self):
+        if self._forum is not None:
+            return self._forum
+        elif self._forum_id is not None:
+            return Forum.get_by(id=self._forum_id)
+        else:
+            return self._get_forum_from_request()
+
+    def _get_forum_from_request(self):
+        if current_forum:
+            return current_forum
+        raise FlaskBBError("Could not determine forum")
+
+
+class CanAccessForum(Requirement):
+    @override
+    def fulfill(self, user: User):
+        if not current_forum:
+            raise FlaskBBError("Could not load forum data")
+
+        forum_groups = {g.id for g in current_forum.groups}
+        user_groups = {g.id for g in user.groups}
+        return bool(forum_groups & user_groups)
+
+
+def IsAtleastModeratorInForum(forum_id: int | None = None, forum: Forum | None = None):
+    return Or(
+        IsAtleastSuperModerator,
+        IsModeratorInForum(forum_id=forum_id, forum=forum),
+    )
+
+
+IsMod = And(IsAuthed(), Has("mod"))
+IsSuperMod = And(IsAuthed(), Has("super_mod"))
+IsAdmin = And(IsAuthed(), Has("admin"))
+
+IsAtleastModerator = Or(IsAdmin, IsSuperMod, IsMod)
+
+IsAtleastSuperModerator = Or(IsAdmin, IsSuperMod)
+
+CanBanUser = Or(IsAtleastSuperModerator, Has("mod_banuser"))
+
+CanEditUser = Or(IsAtleastSuperModerator, Has("mod_edituser"))
+
+
+def CanBanTargetUser(target: User):
+    """``CanBanUser``, restricted to targets the acting user outranks.
+
+    Administrators are exempt from the ranking check so that they can still
+    manage each other.
+    """
+    return And(CanBanUser, Or(IsAdmin, IsMorePrivilegedThan(target)))
+
+
+def CanEditTargetUser(target: User):
+    """``CanEditUser``, restricted to targets the acting user outranks.
+
+    Administrators are exempt from the ranking check so that they can still
+    manage each other. Everyone who may edit users at all may reach their own
+    account - which fields they actually get is decided by the form, so this
+    does not let anyone raise their own privileges.
+    """
+    return And(CanEditUser, Or(IsAdmin, IsSelf(target), IsMorePrivilegedThan(target)))
+
+
+CanEditPost = Or(
+    IsAtleastSuperModerator,
+    And(IsModeratorInForum(), Has("editpost")),
+    And(CanAccessForum(), IsSameUser(), Has("editpost"), TopicNotLocked()),
+)
+
+CanDeletePost = CanEditPost
+
+CanPostReply = Or(
+    And(CanAccessForum(), Has("postreply"), TopicNotLocked()),
+    IsModeratorInForum(),
+    IsAtleastSuperModerator,
+)
+
+CanPostAttachment = Or(
+    IsAtleastSuperModerator,
+    And(IsAuthed(), Has("postattachment")),
+    IsModeratorInForum(),
+)
+
+CanPostTopic = Or(
+    And(CanAccessForum(), Has("posttopic"), ForumNotLocked()),
+    IsAtleastSuperModerator,
+    IsModeratorInForum(),
+)
+
+CanDeleteTopic = Or(
+    IsAtleastSuperModerator,
+    And(IsModeratorInForum(), Has("deletetopic")),
+    And(CanAccessForum(), IsSameUser(), Has("deletetopic"), TopicNotLocked()),
+)
+
+
+def permission_with_identity(requirement: Requirement, name: str | None = None):
+    """
+    Permission instance factory that can set a user at construction time
+    can optionally name the closure for nicer debugging
+    """
+
+    def _(user: User):
+        return Permission(requirement, identity=user)
+
+    if name is not None:
+        _.__name__ = name
+
+    return _
+
+
+# Template Requirements
+
+
+def has_permission(permission: str):
+    def _(user: User):
+        return Permission(Has(permission), identity=user)
+
+    _.__name__ = f"Has_{permission}"
+    return _
+
+
+def can_edit_user(user: User, target: User | None = None):
+    if target is None:
+        return Permission(CanEditUser, identity=user)
+
+    return Permission(CanEditTargetUser(target), identity=user)
+
+
+def can_ban_user(user: User, target: User | None = None):
+    if target is None:
+        return Permission(CanBanUser, identity=user)
+
+    return Permission(CanBanTargetUser(target), identity=user)
+
+
+def can_moderate(user: User, forum: Forum | int | None):
+    kwargs: dict[str, Any] = {}
+
+    if isinstance(forum, int):
+        kwargs["forum_id"] = forum
+    elif isinstance(forum, Forum):
+        kwargs["forum"] = forum
+
+    return Permission(IsAtleastModeratorInForum(**kwargs), identity=user)
+
+
+def can_post_reply(user: User, topic: Topic | int | None = None):
+    kwargs: dict[str, Any] = {}
+
+    if isinstance(topic, int):
+        kwargs["topic_id"] = topic
+    elif isinstance(topic, Topic):
+        kwargs["topic"] = topic
+
+    return Permission(
+        Or(
+            IsAtleastSuperModerator,
+            IsModeratorInForum(),
+            And(Has("postreply"), TopicNotLocked(**kwargs)),
+        ),
+        identity=user,
+    )
+
+
+def can_edit_post(user: User, topic_or_post: Topic | Post | int | None = None):
+    kwargs: dict[str, Any] = {}
+
+    if isinstance(topic_or_post, int):
+        kwargs["topic_id"] = topic_or_post
+    elif isinstance(topic_or_post, Topic):
+        kwargs["topic"] = topic_or_post
+    elif isinstance(topic_or_post, Post):
+        kwargs["post"] = topic_or_post
+
+    return Permission(
+        Or(
+            IsAtleastSuperModerator,
+            And(IsModeratorInForum(), Has("editpost")),
+            And(
+                IsSameUser(topic_or_post),
+                Has("editpost"),
+                TopicNotLocked(**kwargs),
+            ),
+        ),
+        identity=user,
+    )
+
+
+def can_post_topic(user: User, forum: Forum | int | None):
+    kwargs: dict[str, Any] = {}
+
+    if isinstance(forum, int):
+        kwargs["forum_id"] = forum
+    elif isinstance(forum, Forum):
+        kwargs["forum"] = forum
+
+    return Permission(
+        Or(
+            IsAtleastSuperModerator,
+            IsModeratorInForum(**kwargs),
+            And(Has("posttopic"), ForumNotLocked(**kwargs)),
+        ),
+        identity=user,
+    )
+
+
+def can_delete_topic(user: User, topic: Topic | int | None = None):
+    kwargs: dict[str, Any] = {}
+
+    if isinstance(topic, int):
+        kwargs["topic_id"] = topic
+    elif isinstance(topic, Topic):
+        kwargs["topic"] = topic
+
+    return Permission(
+        Or(
+            IsAtleastSuperModerator,
+            And(IsModeratorInForum(), Has("deletetopic")),
+            And(IsSameUser(), Has("deletetopic"), TopicNotLocked(**kwargs)),
+        ),
+        identity=user,
+    )

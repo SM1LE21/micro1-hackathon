@@ -1,0 +1,180 @@
+/* The private messages in the main navbar */
+.dropdown-messages {
+    min-width: 20em;
+    .message-subject {
+        font-style: italic;
+    }
+    .author-name {
+        font-weight: bold;
+    }
+}
+
+/* Sidebar Nav */
+.sidebar {
+    padding-top: 1em;
+    padding-bottom: 1em;
+    text-shadow: none;
+    background-color: $fbb-navigation-bg;
+    border: 1px solid $border-color;
+
+    .sidenav {
+        display: block;
+    }
+
+    .sidenav-header {
+        padding-left: 1.25em;
+        padding-bottom: 1em;
+        font-size: 12px;
+        font-weight: bold;
+        line-height: 20px;
+        color: $fbb-sidenav-header-color;
+        text-transform: uppercase;
+    }
+
+    .sidenav-btn {
+        padding-bottom: 1em;
+        text-transform: uppercase;
+        text-align: center;
+    }
+
+    .nav-item > a {
+        display: block;
+    }
+
+    .nav-item > a:hover,
+    .nav-item > a:focus {
+        text-decoration: none;
+        background-color: $fbb-navigation-hover-color;
+    }
+
+    .nav-item > .active,
+    .nav-item > .active:hover,
+    .nav-item > .active:focus {
+        font-weight: normal;
+        color: $fbb-navigation-color;
+        background-color: $fbb-navigation-hover-color;
+    }
+}
+
+.nav-sidebar {
+    width: 100%;
+    padding: 0;
+
+    .nav-header {
+        position: relative;
+        display: block;
+        padding: 8px 16px;
+        margin-top: 4px;
+        font-size: 13px;
+        line-height: 24px;
+        font-weight: bold;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: $fbb-sidenav-header-color;
+        background-color: $page-hover;
+        border-bottom: 1px solid $border-color;
+        cursor: default;
+    }
+    .nav-item:first-child.nav-header {
+        margin-top: 0;
+    }
+    > .nav > .nav-header:not(:first-child) {
+        border-top: 1px solid $border-color;
+    }
+    .nav-item {
+        width: 100%;
+    }
+
+    .nav-link {
+        color: $fbb-navigation-color;
+        border-top: 1px solid transparent;
+        border-bottom: 1px solid transparent;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+
+        &:hover {
+            background-color: $fbb-navigation-bg;
+        }
+
+        &.active {
+            border-top-color: $border-color;
+            border-bottom-color: $border-color;
+
+            cursor: default;
+            background-color: $fbb-navigation-bg;
+        }
+    }
+
+    .nav-header + .nav-item > .nav-link.active {
+        border-top-color: transparent;
+    }
+
+    .tree-parent-row {
+        position: relative;
+
+        > .nav-link {
+            padding-right: 32px;
+        }
+    }
+
+    .tree-toggle {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 32px;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+
+        &:hover {
+            background-color: $fbb-navigation-hover-color;
+        }
+    }
+
+    .tree-chevron {
+        font-size: 10px;
+        transition: transform 0.15s ease;
+    }
+
+    .tree-parent.expanded .tree-chevron {
+        transform: rotate(90deg);
+    }
+
+    .tree-children {
+        display: none;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+
+        .nav-header {
+            padding-left: 40px;
+        }
+
+        > .nav-header:not(:first-child) {
+            border-top: 1px solid $border-color;
+        }
+
+        .nav-link {
+            padding-left: 40px;
+            font-size: 13px;
+
+            &.active {
+                border-top-color: transparent;
+                border-bottom-color: transparent;
+                background-color: transparent;
+                font-weight: bold;
+                color: $fbb-link-color;
+            }
+        }
+    }
+
+    .tree-parent.expanded > .tree-children {
+        display: block;
+    }
+}

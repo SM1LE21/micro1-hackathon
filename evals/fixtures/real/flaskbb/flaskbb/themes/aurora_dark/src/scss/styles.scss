@@ -1,0 +1,57 @@
+// Aurora Dark reuses aurora's partials directly by relative import, since
+// only the color palette (_variables.scss) and the generated pygments
+// stylesheet (_pygments.scss) differ between the two themes. Renaming,
+// removing, or adding a partial in aurora requires updating this import list.
+
+// Import custom Bootstrap variables
+@import "variables";
+@import "bootstrap/scss/bootstrap";
+
+// Import fontawesome icons.
+// The font files themselves are reused from the default theme's static
+// folder (served at /static), so they are not re-emitted for this theme.
+$fa-font-path: "/static";
+@import "@fortawesome/fontawesome-free/scss/fontawesome";
+@import "@fortawesome/fontawesome-free/scss/solid";
+@import "@fortawesome/fontawesome-free/scss/regular";
+
+// Import FlaskBB theme (shared with the default theme)
+@import "../../../aurora/src/scss/text";
+@import "../../../aurora/src/scss/misc";
+@import "../../../aurora/src/scss/navigation";
+@import "../../../aurora/src/scss/button";
+
+@import "../../../aurora/src/scss/category";
+@import "../../../aurora/src/scss/forum";
+@import "../../../aurora/src/scss/topic";
+@import "../../../aurora/src/scss/page";
+@import "../../../aurora/src/scss/profile";
+@import "../../../aurora/src/scss/search";
+
+@import "../../../aurora/src/scss/management";
+
+// Import pygments style (monokai)
+@import "pygments";
+
+// Bootstrap's .bg-white utility uses !important, so it needs a targeted
+// override rather than a variable.
+.profile-header.bg-white {
+    background-color: $page-head-bg !important;
+}
+
+// The monokai background clashes with the theme's blue-grey background.
+// use a more sane background
+.highlight {
+    padding: 0.75rem 1rem;
+    background: $fbb-bg-dark;
+    border: 1px solid $fbb-border-color;
+    border-radius: $border-radius;
+
+    pre {
+        margin-bottom: 0;
+    }
+
+    .hll {
+        background-color: rgba(240, 246, 252, 0.08);
+    }
+}
