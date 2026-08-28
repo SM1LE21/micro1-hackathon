@@ -117,7 +117,7 @@ def extract(doc, prefixes, known):
 Three things this fixes:
 
 - **The field-level override is read first.** `00-contract.md`: "a field whose fate differs from its store carries its own `erasure` block that overrides the store's for that field. The scorer reads the field-level block when present." S07 is the case that exercises it: `users` is `pseudonymised`, `users.full_name` overrides to `anonymised`, and the two tuples land on opposite sides of `reaches_erasure`.
-- **Backup verdicts are forced to the false side** (AMBIGUITIES row 6, `gdpr-sources.md` §3.1). An arm that writes `erased` on a store it declared `kind: backup` gets `reaches=False` — no free false safe — and the contradiction is reported in `invalid_verdict_for_kind`, a secondary row. `unverified` on a backup store lands there too, which is what the contract says: `governed_by_retention` and `no_schedule_evidenced` are "the only verdicts rendered for stores of kind `backup`". Two other documents have to agree with it and one does not: `03-verifier.md` §6.1 row 1 never emits anything else for a backup, but `10-instructions.md` I5 tells both arms that a backup store "takes `governed_by_retention`, `no_schedule_evidenced` **or unverified**". The tool would then bless what this scorer books as a contradiction, and only the advanced arm reads that feedback. The contract wins; I5's third value is listed as a change for the lead at the end of this document, and until it lands the row is reported and never quietly excused.
+- **Backup verdicts are forced to the false side** (AMBIGUITIES row 6, `gdpr-sources.md` §3.1). An arm that writes `erased` on a store it declared `kind: backup` gets `reaches=False` — no free false safe — and the contradiction is reported in `invalid_verdict_for_kind`, a secondary row. `unverified` on a backup store lands there too, which is what the contract says: `governed_by_retention` and `no_schedule_evidenced` are "the only verdicts rendered for stores of kind `backup`". The two documents that have to agree with it do: `03-verifier.md` §6.1 row 1 never emits anything else for a backup, and `10-instructions.md` I5 now offers both arms two labels and not three. The third value would have had the instruction text bless what this scorer books as a contradiction, with only the advanced arm reading the feedback that said so.
 - **The same function reads manifests and records.** Manifests are the identical shape (`evals/CASES.md` §Manifest shape), so `extract` is called twice with the same `prefixes` and the same `known` set and no special-casing, and a manifest that violates the backup rule fails the same way a record would.
 
 ---
@@ -247,9 +247,9 @@ Live concurrency is capped at 4 because four Opus 5 conversations are enough to 
 | `submit_record` attempts | 5 | 5 |
 | Wall clock per run (`--timeout`) | 900 s | 1800 s |
 
-On timeout the child is terminated, the parent appends a `run_end` line with `stop_condition: "timeout"`, and the run is a failure. `timeout` is not one of the contract's six values; proposal 2 below asks for it and `PROPOSED-CONTRACT-CHANGES.md` P-08 asks for it together with the other three values specified code paths write (`crashed`, `replay_miss`, `render_failed`), so the enum takes one edit rather than four. `06-traces.md` check 14 admits `timeout` in the meantime because check 16 keys on it. On an unhandled exception the parent appends `stop_condition: "api_error"` and writes the traceback to `results/runs/<arm>/<case>/s<seed>/error.txt`.
+On timeout the child is terminated, the parent appends a `run_end` line with `stop_condition: "timeout"`, and the run is a failure. `timeout` is one of the contract's twelve values (ADR 0004 P-08), alongside the other three that specified code paths write — `crashed`, `replay_miss`, `render_failed` — so `06-traces.md` check 14 validates against the enum with nothing admitted on the side. On an unhandled exception the parent appends `stop_condition: "api_error"` and writes the traceback to `results/runs/<arm>/<case>/s<seed>/error.txt`.
 
-**The parent repairs the file before it appends.** A child killed mid-write leaves a partial JSON line, and appending `run_end` after it produces a trace that fails the validator's first check — so every timeout would ship a broken trace and turn `make smoke` red on a clean clone. Before appending, the parent truncates the file to the last byte following a `\n` that begins a parseable line, counts the discarded bytes, and records the count in the `run_end` line's `note` field (`01-architecture.md` proposed change 6) and in the diagnosis. The validator then allows exactly one recorded truncation on a trace whose `stop_condition` is `timeout`, and none anywhere else (`06-traces.md` §3, check 16). A run killed by Ctrl-C takes the same path.
+**The parent repairs the file before it appends.** A child killed mid-write leaves a partial JSON line, and appending `run_end` after it produces a trace that fails the validator's first check — so every timeout would ship a broken trace and turn `make smoke` red on a clean clone. Before appending, the parent truncates the file to the last byte following a `\n` that begins a parseable line, counts the discarded bytes, and records the count in the `run_end` line's `note` field (contract §Trace contract, ADR 0004 P-13) and in the diagnosis. The validator then allows exactly one recorded truncation on a trace whose `stop_condition` is `timeout`, and none anywhere else (`06-traces.md` §3, check 16). A run killed by Ctrl-C takes the same path.
 
 Every run that does not end `accepted` has its trace copied to `traces/failures/<arm>/<case>-s<seed>.jsonl` with a generated `.diagnosis.txt` beside it (`06-traces.md` §4). `--fail-fast` is off by default: a sweep finishes and reports, because a partial sweep is worth less than a complete one with failures in it.
 
@@ -345,6 +345,8 @@ results/
 uv run python -m evals.harness.report [--runs results/runs] [--out results/metrics.json]
                                       [--markdown] [--diff OLD.json NEW.json --stage "..."]
 ```
+
+Before it writes anything, `report.py` reads the `prompt_sha` on every run's `run_start` line and refuses — exit 1, both values and the offending cases printed — when the two arms do not carry the same one (contract §Trace contract, ADR 0004 P-14). The whole comparison rests on the arms sharing byte-identical instructions (ADR 0003 item 4), and a report that cannot see the instruction bytes cannot tell a design result from an edited prompt. The recording-window check of `01-architecture.md` §4.2 is the other refusal on the same path.
 
 ### 7.1 The PDF's table
 
@@ -448,7 +450,7 @@ The blind synthetic labelling exists so the row is not a real-repo-only number: 
 **The tool's number** is two components, reported separately and never summed into a single "human minute" that hides which is which:
 
 - *Machine minutes* — `wall_s_mean / 60` per run, for both arms, read from `results/timing.json` (§10). Unattended. Reported next to the human number, not as it.
-- *Gate review minutes* — the wall time a human spends at the approval checkpoint, from the `wait_s` field on the trace's `checkpoint` line (`06-traces.md` §2, and the proposed contract change at the end of that document). `--approve auto` records `wait_s: 0.0` and `by: "simulated"`, so an eval sweep contributes nothing to this number and cannot inflate it.
+- *Gate review minutes* — the wall time a human spends at the approval checkpoint, from the `wait_s` field on the trace's `checkpoint` line (contract §Trace contract, ADR 0004 P-10; worked example in `06-traces.md` §2). `--approve auto` records `wait_s: 0.0` and `by: "simulated"`, so an eval sweep contributes nothing to this number and cannot inflate it.
 
 Gate time is measured in one dedicated pass:
 
@@ -562,7 +564,7 @@ What belongs here is the budget discipline that follows from it, in this documen
 1. Failed runs score `f1 = 0.0` and are counted; the report prints `f1_mean` and `f1_mean_success_only` side by side with `success + failure == n`, so the reading is visible rather than trusted.
 2. A wrong `reaches_erasure` on a matched key counts as both FP and FN. Exact-tuple matching, as CASES.md defines it.
 3. `pass` also requires `stop_condition == "accepted"`: a rejected or truncated run cannot pass on the strength of its draft.
-4. Backup-kind stores are forced to `reaches_erasure = false` whatever verdict the record carries, and the contradiction is reported as `invalid_verdict_for_kind`. No arm gets a free false safe by mislabelling a store kind. The contract's two-label rule for backups holds; `10-instructions.md` I5, which offers a third, is listed for correction below.
+4. Backup-kind stores are forced to `reaches_erasure = false` whatever verdict the record carries, and the contradiction is reported as `invalid_verdict_for_kind`. No arm gets a free false safe by mislabelling a store kind. The contract's two-label rule for backups holds, and `10-instructions.md` I5 offers the model those two and no third.
 5. Normalisation lives in `score.py` and is imported by the verifier, so there is one implementation and the fixture generator can assert injectivity against it. `-es` plurals are handled (`addresses` → `address`), irregular plurals are refused by the generator, prefix stripping is conditional on a known store stem and never applied to field names, and eleven unit tests ship in the same commit as the function.
 6. The citation check is the scorer's own, not the verifier's, so both arms are measured by the same ruler.
 7. Concurrency is process-level over runs, 4 live and **1 replay** (`01-architecture.md` §8); inside a run nothing is parallel, and every list `report.py` writes is sorted so scheduling can never reach the file that gets diffed.
@@ -575,6 +577,7 @@ What belongs here is the budget discipline that follows from it, in this documen
 14. Dev iteration runs on dev cases (S02, S05, S07). Rules whose failure shape exists only on a test case are developed against `tests/verify/` fixtures, and the worked changelog row in §8 shows that workflow rather than the one the lock forbids.
 15. In every scored run the gate approves by construction, so the measured delta is the verifier's. §7.1 says so beside the table.
 16. The cost and runtime model is `01-architecture.md` §10's, cited and not duplicated.
+17. `report.py` refuses to write `metrics.json` when the two arms' `prompt_sha` differ, on the same footing as the recording-window refusal. Arm equality is checked from the trace, not asserted in prose.
 
 ## Open risks
 
@@ -589,14 +592,4 @@ What belongs here is the budget discipline that follows from it, in this documen
 
 ## Proposed contract changes
 
-1. **`00-contract.md` §Trace contract — add `wait_s` to the `checkpoint` line.** Seconds between the prompt appearing and the decision, `0.0` when `by: "simulated"`. Reason: lead decision G-01 requires the gate's approval time to be reported next to human time, and no line in the trace currently carries a duration. Detail in `06-traces.md`.
-2. **`00-contract.md` §Trace contract — add `timeout` to the `stop_condition` enum.** Reason: §5.3 needs a distinct label for a run killed on wall clock; folding it into `api_error` loses the one distinction that tells us whether to raise the budget or fix a bug.
-3. **`00-contract.md` §Repository layout — add `results/test-runs.log`, `results/timing.json` and `results/gate-timing.yaml`.** Reason: §5.4's lock needs a committed chained ledger, §10 needs a home for the durations that cannot sit in the diffed file, and §9 needs a hand-committed sidecar for the gate's approval time.
-4. **`00-contract.md` §Repository layout — `traces/failures/<arm>/<case>-s<seed>.jsonl`.** The layout currently reads `traces/failures/<same>.jsonl`, which collides between arms for the same case and seed. The directory form is `01-architecture.md`'s proposal 3 and `06-traces.md` has been amended to match, so one amendment reaches the contract rather than two incompatible ones. Reason: both arms fail on the same cases, which is exactly when the comparison is interesting.
-
-### Changes for the lead in documents this one does not own
-
-1. **`evals/CASES.md` §Primary metric, Pass row — errata line.** "Pass also requires `stop_condition == accepted`; a run whose artifact was never produced cannot pass." Reason: §4.2 adds that requirement to a definition CASES.md freezes, and a frozen definition changes through its dated errata section or not at all.
-2. **`evals/CASES.md` §Counts and budget — errata line.** The synthetic set carries 90 tuples (38 reaching, 52 not) after S10 was reconciled with `example-record-S10.md`; the cost line's "$20–40 per full eval" is superseded by `01-architecture.md` §10.
-3. **`docs/spec/10-instructions.md` I5 — drop `unverified`.** The string both arms read is "a backup store takes `governed_by_retention`, `no_schedule_evidenced` or unverified"; the contract permits two labels for that kind and §3 books the third as `invalid_verdict_for_kind`. The handler invariant already fails closed in both arms, so dropping the third value is a one-word edit that stops the tool blessing what the metric punishes.
-4. **`docs/spec/10-instructions.md` — state the store-identity convention once.** Both arms must be told to name a store after the identifier the code uses, in the same terms the verifier derives it (`03-verifier.md` §3.1–§3.8: table name, bucket constant, index name, cache key prefix, logger name, queue name, SDK module, `<model>.<field>` for a Django file field). `fixture-generator.md` §7 rule 1 now makes that mechanical on the manifest side; without the matching sentence in the instructions, only the manifest keeps the convention.
+All accepted by ADR 0004 on 2026-08-28; the contract now carries them, and the edits owed to `evals/CASES.md`, `10-instructions.md` and the Makefile were applied in the same pass.
