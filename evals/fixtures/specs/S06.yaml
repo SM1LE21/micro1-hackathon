@@ -1,0 +1,99 @@
+# S06 — dev — Django, everything erased.
+# Rows cascade (one child by CASCADE, one by the 6.1 DB_CASCADE, research §6 R1 and R4),
+# the avatar ImageField sits on the model the view deletes directly, and a post_delete
+# receiver registered for that exact model removes the file. The receiver lives in
+# signals.py and is imported from AppConfig.ready(), so it is genuinely connected (R12).
+# Extends CASES.md's S06 row with the DB_CASCADE child; see fixture-generator.md §9.
+# Store names are the identifiers the code carries: the explicit db_table of each model, and
+# <model>.<field> for the ImageField store, which is the id 03-verifier.md §3.1 derives and the
+# name the completeness guard uses in missing_stores (fixture-generator.md §7 rule 1).
+# Frozen once the first run against S06 exists.
+case: S06
+split: dev
+flavour: django
+package: northgate
+apps: [accounts, catalog]
+intent: "Django done right: rows cascade, and the avatar file is removed by a post_delete receiver wired to the correct sender"
+engine: "sqlite:///./northgate.sqlite3"
+
+models:
+  - name: Account
+    table: accounts_account
+    store: accounts_account
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: email, type: str, category: contact, nullable: false}
+      - {name: full_name, type: str, category: identifier}
+      - {name: avatar, type: image, category: null, store: account.avatar}   # the column is the pointer; the bytes are the account.avatar store
+      - {name: joined_at, type: datetime, category: technical}
+  - name: Comment
+    table: accounts_comment
+    store: accounts_comment
+    parent: Account
+    on_delete: DB_CASCADE
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: body, type: text, category: free_text_may_contain}
+      - {name: posted_at, type: datetime, category: technical}
+  - name: Address
+    table: accounts_address
+    store: accounts_address
+    parent: Account
+    on_delete: CASCADE
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: street, type: str, category: contact}
+      - {name: postcode, type: str, category: contact}
+  - name: Product
+    table: catalog_product
+    negative: true
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: sku, type: str}
+      - {name: title, type: str}
+
+stores:
+  - name: account.avatar
+    kind: object_storage
+    client: file
+    module: accounts/models.py
+    fields:
+      - {name: avatar, category: identifier}
+    writes_from: null
+    write_called_by: null
+    delete_call: null
+    delete_called_by: null
+    key_template: "avatars/{user_id}.jpg"
+
+receivers:
+  - name: delete_avatar_file
+    signal: post_delete
+    sender: Account
+    module: accounts/signals.py
+    weak: true
+    registered_in: apps_ready
+    body: delete_file
+
+entry_points:
+  - name: delete_account
+    kind: view
+    module: accounts/views.py
+    action: hard_delete
+    deletes_via: model_delete
+    docstring: "Delete the account. Comments and addresses go with it."
+
+routes:
+  - {name: profile, module: accounts/views.py, reads: [Account.email, Account.full_name]}
+
+admin: [Account]
+
+extra_files:
+  - {path: accounts/utils.py, kind: helpers}
+
+expect:
+  entry_points: [delete_account]
+  stores:
+    accounts_account: {verdict: erased, evidence: "accounts/views.py::delete_account!delete"}
+    accounts_address: {verdict: erased, evidence: "accounts/models.py::Address.account"}
+    accounts_comment: {verdict: erased, evidence: "accounts/models.py::Comment.account"}
+    account.avatar:   {verdict: erased, evidence: "accounts/signals.py::delete_avatar_file!delete"}
