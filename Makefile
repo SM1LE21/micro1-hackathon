@@ -1,29 +1,53 @@
-.PHONY: setup smoke baseline advanced eval eval-replay report traces
+.PHONY: setup smoke fixtures run baseline advanced eval eval-replay report traces gate-timing check-secrets
+
+CLAUDE_PROJECT_DIR ?= $(HOME)/.claude/projects/-Users-tun-Documents-micro1-hackathon
+CASE ?= S10
 
 setup:
 	uv sync --locked
 
 smoke:
 	uv run python -c "import sys; assert sys.version_info[:2] == (3, 12), sys.version"
+	uv run python -c "import anthropic, yaml, jsonschema"
 	@test -f .env.example || (echo "missing .env.example" && exit 1)
 	@test -f docs/problem/problem-statement.pdf || (echo "missing problem statement" && exit 1)
+	@if [ -f evals/harness/trace_check.py ]; then uv run python -m evals.harness.trace_check traces/; else echo "trace_check.py not built yet - skipped"; fi
 	@echo "smoke OK"
 
+fixtures:
+	@echo "not implemented - evals/fixtures/gen.py (docs/spec/fixture-generator.md); must leave a clean git diff" && exit 1
+
+run:
+	@echo "not implemented - art30 scan evals/fixtures/synthetic/$(CASE) --arm advanced --approve ask (docs/spec/07-ui.md)" && exit 1
+
 baseline:
-	@echo "not implemented — built after direction decision (ADR 0002)" && exit 1
+	@echo "not implemented - built after fixtures and harness (ADR 0002 order)" && exit 1
 
 advanced:
-	@echo "not implemented — built after eval harness + baseline" && exit 1
+	@echo "not implemented - built after the baseline number exists" && exit 1
 
 eval:
-	@echo "not implemented — live evaluation, requires API key in .env" && exit 1
+	@echo "not implemented - live evaluation, requires ANTHROPIC_API_KEY in .env" && exit 1
 
 eval-replay:
-	@echo "not implemented — must reproduce results/metrics.json with NO api key" && exit 1
+	@echo "not implemented - reproduces results/metrics.json with NO api key, then: git diff --exit-code -- results/metrics.json" && exit 1
 
 report:
-	@echo "not implemented — regenerates tables/figures from results/" && exit 1
+	@echo "not implemented - regenerates tables from results/ (docs/spec/05-eval-harness.md section 7)" && exit 1
 
+gate-timing:
+	@echo "not implemented - docs/spec/05-eval-harness.md section 9" && exit 1
+
+# author-only: gitleaks over full history before the final push (AGENTS.md code rules)
+check-secrets:
+	@command -v gitleaks >/dev/null || { echo "gitleaks not installed (author-only target): brew install gitleaks"; exit 1; }
+	gitleaks detect --source . --log-opts="--all" --redact
+
+# author-only: the transcripts live outside the repository. Judges read the committed HTML.
 traces:
-	uvx claude-code-log@latest ~/.claude/projects/-Users-tun-Documents-micro1-hackathon -o traces/build-trajectory.html
+	@test -d "$(CLAUDE_PROJECT_DIR)" || { \
+	  echo "author-only target; transcripts not present."; \
+	  echo "the rendered trajectory is committed at traces/build-trajectory.html"; \
+	  exit 0; }
+	uvx claude-code-log@1.5.0 "$(CLAUDE_PROJECT_DIR)" -o traces/build-trajectory.html
 	@echo "rendered traces/build-trajectory.html"
