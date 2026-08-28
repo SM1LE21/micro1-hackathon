@@ -1,6 +1,6 @@
 # 00 — Interface contract
 
-The shared vocabulary every spec document and every line of code must use. Written by the lead before the spec fan-out; changed only through an ADR. Where a later spec document and this file disagree, this file wins until the ADR lands.
+The shared vocabulary every spec document and every line of code must use. Written by the lead before the spec fan-out; amended by ADR 0004 after it; changed only through an ADR. Where a later spec document and this file disagree, this file wins until the ADR lands.
 
 ## Names
 
@@ -27,7 +27,7 @@ art30/                    shared runtime (both arms)
   verify/check.py         claim-by-claim check of a submitted record → feedback object
   verify/rules/*.yaml     data: store kinds, deletion primitives, recipients, entry-point patterns, soft-delete markers
   render/markdown.py      validated record → record.md
-  render/html.py          record.md → record.html (single template, no JS)
+  render/html.py          record.json + repository path → record.html (single template, no JS)
 baseline/arm.py           tool set + submit handler (schema only) + no gate
 advanced/arm.py           tool set + submit handler (schema + verifier + completeness guard) + gate
 evals/
@@ -40,10 +40,20 @@ evals/
   harness/run.py          cases × arms × seeds → results/runs/…, traces/…
   harness/score.py        manifest vs record → per-case metrics
   harness/report.py       results/runs → results/metrics.json + Markdown tables
-  cache/                  recorded API responses for replay (committed)
-results/                  metrics.json, runs/<arm>/<case>/s<seed>/{record.json,record.md,metrics.json}
-traces/{baseline,advanced}/<case>-s<seed>.jsonl ; traces/failures/<same>.jsonl + .diagnosis.txt
+  harness/trace_check.py  trace validator (run by make smoke and after every run)
+  cache/                  recorded API responses for replay (committed; path-addressed, hash-verified)
+tests/
+  verify/test_*.py        unit tests over hand-written repos (fixtures inline)
+  verify/conftest.py      mkrepo() and the shared fixtures
+  test_schema.py          record.schema.json + handler invariants; asserts the shipped schema and the spec copy hash equal
+  test_score.py           normalisation, tuple extraction, the scoring rows
+  test_tools.py           golden tool output, the jail, the step-1 request hash constant
+results/                  metrics.json, timing.json, gate-timing.yaml, test-runs.log (chained ledger),
+                          runs/<arm>/<case>/s<seed>/{record.json,record.md,record.html,metrics.json}
+traces/{baseline,advanced}/<case>-s<seed>.jsonl ; traces/failures/<arm>/<case>-s<seed>.jsonl + .diagnosis.txt
 ```
+
+`docs/spec/record.schema.json` is a byte-identical spec copy of `art30/schema/record.schema.json`; `tests/test_schema.py` asserts it.
 
 Files stay under ~300 lines; one responsibility each.
 
@@ -60,6 +70,8 @@ One run = one case, one arm, one seed.
 
 - Tool calls per run: 60 synthetic, 120 real. Exceeded → `stop_condition: budget_exhausted`, run counted as failure.
 - `submit_record` attempts per run: 5. Exceeded → `max_submits`, failure.
+- Both budgets are overridable per run by `ART30_TOOL_BUDGET` and `ART30_SUBMIT_BUDGET`. Both are named in the first user message, so both change the request hash. The harness sets the tool budget from the case kind.
+- `ART30_MAX_USD` (optional, unset by default) ends a run with `budget_exhausted` when `cost_cum_usd` crosses it.
 - `read_file` returns at most 400 lines per call; `grep` at most 100 matches; `list_tree` excludes `.git`, `__pycache__`, `node_modules`, `static`, `media`.
 
 ## Tools (model-facing; identical in both arms)
@@ -84,15 +96,18 @@ Tool schemas use `strict: true` (`additionalProperties: false`, all `required` l
   "rejected_claims": [
     {"store": "uploads", "field": null, "claim": "erasure.verdict=erased",
      "reason": "no path from entry point close_account (api/account.py:12) to any object-storage deletion primitive; cleanup_user_files (storage.py:41) is defined but has no callers",
+     "path": [],
      "expected": "verdict not_erased, or cite the path"}
   ],
-  "missing_stores": [{"store": "sessions", "kind": "cache", "evidence": "app/cache.py:18 writes user email under key session:<id>"}],
-  "bad_citations": [{"file": "models.py", "line": 14, "symbol": "email", "problem": "line 14 does not contain 'email'"}],
-  "unverified": [{"store": "stripe", "claim": "erasure.verdict=external_manual", "reason": "call resolved through getattr; treated as unverified"}]
+  "missing_stores": [{"store": "sessions", "kind": "cache", "evidence": "app/cache.py:18 writes user email under key session:<id>", "expected": "add the store with its fields and an erasure verdict"}],
+  "missing_entry_points": [{"name": "delete_user", "file": "cli.py", "line": 40, "kind": "cli", "expected": "declare it, or say why it is not an erasure entry point"}],
+  "bad_citations": [{"file": "models.py", "line": 14, "symbol": "email", "problem": "line 14 does not contain 'email'", "expected": "cite the line that carries the symbol"}],
+  "unverified": [{"store": "stripe", "claim": "erasure.verdict=external_manual", "reason": "call resolved through getattr; treated as unverified", "expected": "keep the verdict, or cite a resolvable call"}],
+  "conservative_divergences": [{"store": "orders", "claim": "erasure.verdict=not_erased", "verifier": "erased via on_delete=CASCADE models.py:40", "note": "accepted; the record is more conservative than the evidence"}]
 }
 ```
 
-Baseline feedback contains only `schema_errors`.
+Every list item carries `expected`. `path` on a rejected claim is the structured call path the verifier found (empty when none). `conservative_divergences` are accepted, never rejected: the model may be safer than the evidence, never safer than the code. Baseline feedback contains only `schema_errors`.
 
 ## Record vocabulary (details in 04-output-schema.md)
 
@@ -105,20 +120,22 @@ Baseline feedback contains only `schema_errors`.
 - The record has an `activities` layer (Art. 30's unit is a processing activity) that the agent leaves empty; the render shows the empty layer with "requires human completion" rather than hiding it.
 - Hint fields the agent may fill, each rendered under a heading that says it is not a finding: `observed_module_names` (not purposes), `observed_region_hints` (region strings and API hosts with `file:line`; not a transfer finding), `security_evidence` (Art. 32(1)(a) technical measures only: hashing, TLS, encryption at rest, each `file:line`).
 - Entry-point kinds: `route | view | cli | admin | task | signal | unknown`.
-- Every field, entry point and erasure evidence item carries `file` and `line` (1-based, relative to the repo root).
+- Every field, entry point and erasure evidence item carries `file` and `line` (1-based, relative to the repo root). The cited line is the logical line: a statement spanning several physical lines is cited by its first.
+- Every store carries `subject_link {file, line}` (nullable): the citation that ties the store to a data subject, kept even when subject foreign keys are not listed as fields.
 - Human-only cells (never filled by the agent): controller identity and contact, DPO, purposes, legal basis, data-subject category confirmation, transfer existence and safeguards, recipient kind, activity grouping, retention justification.
 - Name normalisation (used by scorer and verifier alike): lowercase; non-alphanumerics → `_`; collapse repeats; strip a leading app prefix when the remainder matches a known model name; compare plural and singular as equal.
 
 ## Verifier contract
 
 - Input: the submitted record + the repo path + rule sets. Output: the feedback object. No access to manifests, ever.
-- `path_exists(entry, primitive, must_pass_through=None)` over a name-based intra-repo call graph. Django `on_delete=CASCADE` edges and SQLAlchemy relationship cascades are synthetic edges added by rules. Unresolvable calls (dynamic dispatch, `getattr`, string imports) yield `unverified`, never a guess.
+- `path_exists(entry, target, must_pass_through=None, mode=...)` as specified in `03-verifier.md` §5.1, over a name-based intra-repo call graph with delete modes. Django `on_delete=CASCADE` edges and SQLAlchemy relationship cascades are synthetic edges added by rules. Unresolvable calls (dynamic dispatch, `getattr`, string imports) yield `unverified`, never a guess.
 - Completeness guard: any store the verifier's own scan finds with a personal-data-looking field (rule-set patterns) that is absent from the record → `missing_stores`.
-- Citation check: for each cited `file:line`, the line must contain the cited symbol (after normalisation).
+- Citation check: for each cited `file:line`, the logical line must contain the cited symbol (after normalisation).
+- Store identity: a store is named after the identifier the code carries (table name or model name, bucket or prefix constant, SDK name, job module for backups); the same rule binds the manifests and the instruction text.
 
 ## API configuration (ADR 0003)
 
-`model=claude-opus-5`, `thinking={"type":"adaptive","display":"summarized"}`, `output_config={"effort":"high"}`, `max_tokens=16000`, no sampling parameters, no fallbacks. System prompt and tools carry `cache_control` so the repeated prefix is cached across steps. Thinking blocks are echoed back unchanged on the next turn. `stop_reason == "refusal"` → run failure.
+`model=claude-opus-5`, `thinking={"type":"adaptive","display":"summarized"}`, `output_config={"effort":"high"}`, `max_tokens=32000` with the request streamed (`messages.stream(...).get_final_message()`), no sampling parameters, no fallbacks. The replay hash covers model, system, tools, messages, output_config, thinking and `max_tokens` (ADR 0004 P-11). System prompt and tools carry `cache_control` so the repeated prefix is cached across steps. Thinking blocks are echoed back unchanged on the next turn. `stop_reason == "refusal"` → run failure.
 
 Cost per step from `usage`: input $5/MTok, output $25/MTok, cache write ×1.25, cache read ×0.1.
 
@@ -126,14 +143,14 @@ Cost per step from `usage`: input $5/MTok, output $25/MTok, cache write ×1.25, 
 
 `traces/<arm>/<case>-s<seed>.jsonl`, one JSON object per line:
 
-- `{"type":"run_start", "run_id", "arm", "case", "seed", "model", "effort", "mode": "live|replay", "ts"}`
-- `{"type":"step", "step", "phase":"agent|verify", "ts", "request_id", "reasoning", "text", "tool_calls":[{"id","name","input"}], "tool_results":[{"call_id","output","is_error","bytes"}], "usage":{"input","cache_read","cache_write","output"}, "cost_usd", "cost_cum_usd"}`
-- `{"type":"checkpoint", "tool":"request_approval", "caller":"harness", "risk":"low|medium|high", "summary", "decision":"approved|rejected", "by":"human|simulated", "ts"}`
-- `{"type":"run_end", "stop_condition":"accepted|gate_rejected|budget_exhausted|max_submits|api_error|refusal", "steps", "tool_calls_total", "submits", "verify_rounds", "wall_s", "cost_usd", "record_path"}`
+- `{"type":"run_start", "run_id", "arm", "case", "seed", "model", "effort", "mode": "live|replay", "prompt_sha", "config":{"max_tokens","tool_budget","submit_budget","overridden":[...]}, "ts"}`
+- `{"type":"step", "step", "phase":"agent|verify", "ts", "request_id", "request_hash", "stop_reason", "reasoning", "text", "tool_calls":[{"id","name","input"}], "tool_results":[{"call_id","output","is_error","bytes"}], "usage":{"input","cache_read","cache_write","output"}, "cost_usd", "cost_cum_usd"}`
+- `{"type":"checkpoint", "tool":"request_approval", "caller":"harness", "risk":"low|medium|high", "summary", "decision":"approved|rejected", "by":"human|simulated", "wait_s", "human_completions":{...}|null, "ts"}`
+- `{"type":"run_end", "stop_condition":"accepted|gate_rejected|budget_exhausted|max_submits|max_tokens|no_submission|timeout|crashed|replay_miss|render_failed|api_error|refusal", "steps", "tool_calls_total", "submits", "verify_rounds", "wall_s", "cost_usd", "record_path", "note":string|null}`
 
-`reasoning` is the summarised thinking text (may be empty). Tool outputs are stored in full.
+`run_id` is `<adv|base>-<case>-s<seed>-<sha7>` (seven-hex short sha of the working tree). `submits` counts `submit_record` calls; `verify_rounds` counts the ones that returned `accepted: false`. `prompt_sha` is the SHA-256 of the spliced instruction text; `make report` fails when the two arms' values differ. `reasoning` is the summarised thinking text (may be empty). Tool outputs are stored in full. `wait_s` is 0.0 when `by` is `simulated`.
 
-Risk rating for the checkpoint: `high` if any store is `not_erased`, `pseudonymised`, `external_manual`, `no_schedule_evidenced` or `unverified` with an `identifier` or `contact` field; `medium` if every store reaches erasure but at least one only after a timer; `low` otherwise. The gate fires at every rating.
+Risk rating for the checkpoint: `high` if any store is `not_erased`, `pseudonymised`, `external_manual`, `no_entry_point`, `no_schedule_evidenced` or `unverified` with an `identifier` or `contact` field; `medium` if every store reaches erasure but at least one only after a timer; `low` otherwise. The gate fires at every rating.
 
 ## Scoring contract
 
@@ -144,7 +161,7 @@ As in `evals/CASES.md`: tuple `(store, field, reaches_erasure)`; per-case precis
 ```
 art30 scan <repo> --arm advanced|baseline [--case ID] [--seed N] [--mode live|replay] [--approve ask|auto] [--out DIR]
 ```
-Makefile targets: `setup`, `smoke`, `fixtures`, `run CASE=`, `baseline`, `advanced`, `eval`, `eval-replay`, `report`, `traces`.
+Makefile targets: `setup`, `smoke` (runs `trace_check.py` over committed traces), `fixtures` (must leave a clean `git diff`), `run CASE=`, `baseline`, `advanced`, `eval`, `eval-replay` (ends with `git diff --exit-code -- results/metrics.json`), `report`, `traces` (author-only, pinned `claude-code-log`), `gate-timing`, `check-secrets` (gitleaks over full history, author-only).
 
 ## Writing contract for the rendered record
 
