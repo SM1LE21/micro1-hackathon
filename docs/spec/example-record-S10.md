@@ -44,6 +44,8 @@ SQLAlchemy model backing the accounts table.
 | `last_seen_at` | behavioural | `models.py:18` | |
 | `deleted_at` | technical | `models.py:19` | soft-delete marker; its presence is what the purge job filters on |
 
+Linked to the data subject at `models.py:9`.
+
 ### uploads — object_storage — declaration not on a single line
 
 Avatar objects written under the key prefix `AVATAR_PREFIX`.
@@ -52,6 +54,8 @@ Avatar objects written under the key prefix `AVATAR_PREFIX`.
 |---|---|---|---|
 | `avatar_key` | identifier | `storage.py:9` | object key is built from the user id |
 | `original_filename` | free_text_may_contain | `storage.py:10` | the uploader's own file name is stored as object metadata |
+
+Linked to the data subject at `storage.py:9`.
 
 ### nightly_backup — backup — `jobs/backup.py:8`
 
@@ -62,6 +66,8 @@ Full database dump written to the backup bucket.
 | `email` | contact | `jobs/backup.py:8` | carried in the users table of the dump |
 | `full_name` | identifier | `jobs/backup.py:8` | carried in the users table of the dump |
 
+Linked to the data subject at `jobs/backup.py:8`.
+
 ### stripe — third_party — `billing.py:30`
 
 Payment processor; a customer object is created at signup.
@@ -70,6 +76,8 @@ Payment processor; a customer object is created at signup.
 |---|---|---|---|
 | `email` | contact | `billing.py:30` | |
 | `name` | identifier | `billing.py:31` | |
+
+Linked to the data subject at `billing.py:30`.
 
 Not scanned: `README.md` (not Python), `requirements.txt` (not Python).
 
@@ -214,7 +222,8 @@ Citations that did not resolve: none. Claims that could not be decided: none.
 4. Retention rows exist for every store, including the two with no number in the code, which render `NO TIMER EVIDENCED` with an empty evidence cell. The `(users, financial, criteria)` row of the CASES.md shape example is not rendered: it describes a financial field kept for an accounting period on a table the same fixture hard-deletes at 30 days, and `docs/spec/fixture-generator.md` §9 drops it from the S10 spec for the same reason.
 5. A table with no link to a data subject is not in the record, and listing it would cost precision in the score as well as space on the page. S10 does not contain one — it declares no `negative` model, so the fixture has no `catalog.py` and no `products` table — and the case that measures the rule is S07, which does carry a negative table. The rule is stated here because it decides what section A omits on every case, not because this case exercises it.
 6. Section F is the longest section. That is the honest shape of this artefact: the machine fills the columns a machine can fill, and the page shows how much is left.
-7. The provenance block carries the instruction hash and the fixture sha, so the artefact names the exact code and the exact prompt it came from without a reader opening the trace. It also carries the run id in the hash form (`04-output-schema.md` §Proposed contract changes 2) and the time the approver spent at the gate, which is the number lead decision G-01 reports next to hand-labelling minutes.
+7. The provenance block carries the instruction hash and the fixture sha, so the artefact names the exact code and the exact prompt it came from without a reader opening the trace. It also carries the run id in the hash form (contract §Trace contract, ADR 0004 P-02) and the time the approver spent at the gate, which is the number lead decision G-01 reports next to hand-labelling minutes.
+7a. Each store carries its `subject_link` as one line under its table (`04-output-schema.md` §6 A), because the link to a person is what puts the store in this document at all. `users` cites its own model declaration; the other three cite the line where the subject's data arrives.
 8. Each store's `declared_at` renders in its own heading in section A, so the one place a reader meets the store is not the one place its declaration is missing. `uploads` shows the null branch: its key prefix is built in code and no single line declares the bucket.
 9. Every Symbol cell in section H is a name or a literal that is on the cited line. The contradicting docstring is cited by a fragment of itself (`including uploaded files`) rather than by a description of it, because the verifier reads the line and looks for the symbol; a prose description would be rejected as a bad citation and, if it reached the renderer, would stop the render (`07-ui.md` §6, `render_failed`).
 10. The backup note says what this tool did and did not look at. The regulator sources for the rule (ICO "beyond use", EDPB Issue 6) stay in `04-output-schema.md` §6, where a specification can cite them; the artefact states no rule of its own.
@@ -223,7 +232,7 @@ Citations that did not resolve: none. Claims that could not be decided: none.
 ## Open risks
 
 - **The video narration does not match this case.** `docs/demo-script.md` at 0:25–0:40 says "twelve fields, six stores" and describes a `notes` column on a support ticket, which is case S07. S10 as specified has eleven fields and four stores and no support ticket. `07-ui.md` §9 lists that and four more drifts with their timestamps. Either the narration is re-recorded against the real counts, or the S10 fixture spec grows two stores — and growing a test case to fit a voice-over changes the false-safe denominator on the test split. The narration is the cheap side.
-- **The retention row's category needs a CASES.md errata line.** `evals/CASES.md`'s illustrative manifest gives S10 `{store: users, category: contact, days: 30}`, a shape that made sense while a second `financial` row existed; `fixture-generator.md` §9 drops that row, which leaves one limit covering the whole table. This document renders `all categories` on that basis. The errata is requested in `04-output-schema.md` §Proposed contract changes 4 and belongs to the lead; until it lands, this cell and the manifest disagree on a field that F1 does not score.
+- **The retention row's category needs a CASES.md errata line.** `evals/CASES.md`'s illustrative manifest gives S10 `{store: users, category: contact, days: 30}`, a shape that made sense while a second `financial` row existed; `fixture-generator.md` §9 drops that row, which leaves one limit covering the whole table. This document renders `all categories` on that basis. The errata was applied to `evals/CASES.md` in the ADR 0004 pass, so this cell and the manifest now agree on a field that F1 does not score in any case.
 - **Invented line numbers.** Every citation here is a guess about a fixture that does not exist yet. When `evals/fixtures/gen.py` lands, either the generator is written to place these symbols on these lines, or this file is regenerated from the first real run and re-read for tone. The second path risks the target quietly becoming whatever the tool produced.
 - **`last_seen_at` as behavioural.** A timestamp on a user row is personal data under AMBIGUITIES row 1 reading B, and its category is arguable — `technical` is defensible. The manifest decides; this file follows it.
 - **Table width.** The erasure table's note column is long enough to wrap awkwardly at 80 columns in a terminal preview. It reads correctly in the HTML render and in any Markdown viewer, which is where the document is meant to be read.
