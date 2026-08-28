@@ -30,7 +30,7 @@ make advanced          # advanced arm, 3 seeded runs
 make eval              # full evaluation, both arms
 ```
 
-Model: [TO FILL — exact model ID], temperature and seeds pinned in [TO FILL]. Temperature 0 does not guarantee bit-identical outputs; we run 3 trials per arm and report mean ± std. Approximate live cost: [TO FILL]. Approximate runtime: [TO FILL].
+Model: `claude-opus-5`, adaptive thinking, effort `high`, `max_tokens` 32000 (ADR 0003, ADR 0004). This model exposes no sampling parameters and no seed; the request rejects `temperature`. "Seeds" are harness labels (`s1`–`s3`) and the three runs per arm measure sampling variance, reported as mean ± std. Approximate live cost: [TO FILL from results/metrics.json]. Approximate runtime: [TO FILL from results/timing.json].
 
 ## Data
 
