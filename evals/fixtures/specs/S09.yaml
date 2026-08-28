@@ -93,7 +93,14 @@ extra_files:
   - {path: gallery/utils.py, kind: helpers}
 
 expect:
-  entry_points: [delete_account]
+  # As on S06: `admin.site.register(...)` gives admin_delete_model and admin_delete_selected,
+  # both flagged admin_only (03-verifier.md §2.2, R16). Two entry points, not two per
+  # registered model — 03-verifier.md §4.2 and §5.2 speak of "the two admin ones", and SE10
+  # adds one edge per registered model from each of them, here to Account and to Photo.
+  # Neither changes a verdict: the planted variable is the receiver's sender, and a receiver
+  # registered for Comment does not fire for Photo however the row is deleted (R14, R15), so
+  # photo.image stays not_erased and the eight tuples are unchanged.
+  entry_points: [delete_account, admin_delete_model, admin_delete_selected]
   stores:
     gallery_account: {verdict: erased, evidence: "gallery/views.py::delete_account!delete"}
     gallery_photo:   {verdict: erased, evidence: "gallery/models.py::Photo.account"}
