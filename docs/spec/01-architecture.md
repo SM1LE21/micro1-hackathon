@@ -29,10 +29,9 @@ flowchart TD
   SCORE["evals/harness/score.py"]
   REP["evals/harness/report.py"]
 
+  HRUN -. "subprocess: art30 scan" .-> CLI
   CLI --> CFG
-  HRUN --> CFG
   CLI --> LOOP
-  HRUN --> LOOP
   LOOP --> LLM
   LOOP --> TOOLS
   LOOP --> TRACE
@@ -48,7 +47,7 @@ flowchart TD
   HRUN --> SCORE --> REP
 ```
 
-Solid arrows are calls; dotted arrows are the two implementations of one protocol. Nothing calls upward: `tools.py`, `llm.py`, `trace.py` and `verify/` know nothing about arms, and the arms know nothing about the loop's budgets beyond the counters handed to them in `RunCtx`.
+Solid arrows are calls inside one process; the unlabelled dotted arrows are the two implementations of one protocol. The labelled dotted arrow is a process boundary: `run.py` launches `art30 scan` as a child per cell and never imports `loop.run`, which is what lets it map exit codes and kill a run on the wall-clock timeout (§1.2, `05-eval-harness.md` §5, `07-ui.md` §6). Nothing calls upward: `tools.py`, `llm.py`, `trace.py` and `verify/` know nothing about arms, and the arms know nothing about the loop's budgets beyond the counters handed to them in `RunCtx`.
 
 ### 1.1 Runtime modules
 
@@ -64,13 +63,13 @@ Solid arrows are calls; dotted arrows are the two implementations of one protoco
 | `art30/render/html.py` | `record.json` plus the repository path to a single-file static page; reads each cited line for its tooltip | 120 | Ship JavaScript; fetch anything |
 | `baseline/arm.py` | Tool set, schema-only submit handler, no gate | 45 | Import anything under `art30/verify/` |
 | `advanced/arm.py` | Tool set, schema + verifier + completeness guard submit handler, risk rating, gate | 90 | Reach a manifest; alter the record it was handed |
-| `art30/verify/callgraph.py`, `rules.py`, `reach.py`, `check.py` | Spec `03`. Public surface used here: `check(record, root, rules) -> Feedback` and `path_exists(graph, entry, target, must_pass_through=None)` (contract §Verifier contract, which carries the signature of `03-verifier.md` §5.1) | 4 x ~200 | See spec `03` |
+| `art30/verify/callgraph.py`, `rules.py`, `reach.py`, `check.py` | Spec `03`. Public surface used here: `check(record, root, rules) -> Feedback` and `path_exists(graph, entry, target, must_pass_through=None)`, with the delete mode carried in the search state rather than in the signature (contract §Verifier contract, which carries the signature of `03-verifier.md` §5.1) | 4 x ~200 | See spec `03` |
 
 ### 1.2 Evaluation modules
 
 | Module | Responsibility | Lines | Must NOT |
 |---|---|---:|---|
-| `evals/harness/run.py` | Expand cases x arms x seeds into a run plan, execute it with a worker pool, copy failed runs into `traces/failures/`, write the diagnosis file | 180 | Skip a failed run; retry a failed run silently; touch `results/metrics.json` |
+| `evals/harness/run.py` | Expand cases x arms x seeds into a run plan; execute each cell as a child `art30 scan` process in a `ProcessPoolExecutor`, mapping the child's exit code to a stop condition and killing it on the wall-clock timeout; copy failed runs into `traces/failures/`, write the diagnosis file; write `results/timing.json` at the end of a live sweep (`05-eval-harness.md` §5, §6) | 180 | Import `loop.run` or run a cell in-process; skip a failed run; retry a failed run silently; touch `results/metrics.json` |
 | `evals/harness/score.py` | Manifest vs record to per-case metrics (spec `05`) | 200 | Read a trace; read the verifier's feedback |
 | `evals/harness/report.py` | Run plan + `results/runs/**` to `results/metrics.json` and the Markdown tables | 160 | Recompute a metric; take `n` from the results tree instead of the run plan; write `metrics.json` when the two arms' recording windows do not overlap |
 | `evals/fixtures/gen.py` | YAML spec to repo + manifest, deterministic | 200 | Depend on the clock, the filesystem order, or a random seed |
@@ -272,7 +271,7 @@ A run is one case, one arm, one seed. `run_id` is `<arm prefix>-<case>-s<seed>-<
 | 4 | agent | Every `tool_use` in the batch dispatched in response order; all results returned in one user message | same `step` line carries `tool_results` in full | trace |
 | 5 | verify | A `submit_record` call goes to `arm.handle_submit`. Baseline validates the schema. Advanced validates the schema, then runs `verify/check.py` | `step` line with `phase: "verify"`; `verify_rounds` incremented when the submit is rejected | trace |
 | 6 | verify | Rejected: the feedback object goes back as the `tool_result` for that call and step 2 repeats. Accepted: the loop leaves | — | — |
-| 7 | gate | Advanced only: risk rating computed from the accepted record, `--approve ask` prompts (`recipient_kind` per `third_party` store first, then approve/reject — the printed order of `10-instructions.md` §5, which owns the template), `--approve auto` records `by: "simulated"`, `wait_s: 0.0` and collects no edits | `checkpoint` line | trace |
+| 7 | gate | Advanced only: risk rating computed from the accepted record, `--approve ask` prompts (`recipient_kind` per `third_party` store first, then approve/reject — the printed order of `10-instructions.md` §5, which owns the template), `--approve auto` records `by: "simulated"`, `wait_s: 0.0` and collects no edits. On a rejection `loop.py` writes the accepted record to `record.draft.json` and stops before render | `checkpoint` line; `record.draft.json` on a rejection | trace; `results/runs/<arm>/<case>/s<seed>/` |
 | 8 | render | Accepted record, with any gate edits applied, written and rendered to Markdown, then to HTML | `record.json`, `record.md`, `record.html` | `results/runs/<arm>/<case>/s<seed>/` |
 | 9 | close | Stop condition, counters, wall time and cost written | `run_end` line | trace |
 | 10 | harness | Failure: trace copied and diagnosed. Success: record scored against the manifest | `<run>.jsonl` + `<run>.diagnosis.txt`, or `metrics.json` | `traces/failures/<arm>/`, `results/runs/<arm>/<case>/s<seed>/metrics.json` |
@@ -459,6 +458,8 @@ Written in three places, each derived from the one before: `step.cost_usd` and `
 | `ART30_TOOL_BUDGET` | unset | Overrides the tool-call budget; default comes from the case kind (60 synthetic, 120 real), and the harness sets it per run from the case's `source` field (`07-ui.md` §1). **Changes every request hash** — the budget is named in the first user message (`10-instructions.md` §3) |
 | `ART30_SUBMIT_BUDGET` | `5` | Contract §Budgets; both arms. **Changes every request hash**, same reason |
 | `ART30_MAX_USD` | unset | Per-run ceiling on `cost_cum_usd`; crossing it ends the run with `budget_exhausted` (contract §Budgets). Outside the request hash: it is never named in a message |
+| `ART30_UNLOCK_TEST` | unset | `=1` lets `art30 scan` run on a repository that resolves to a test case; without it the CLI refuses with exit 2 (contract §Budgets, `05-eval-harness.md` §5.4). The harness has `--unlock-test` for the same lock |
+| `ART30_REPRODUCIBLE` | unset | `=1` is set by `make eval-replay` and suppresses every file a replay must not rewrite: `results/timing.json`, `results/gate-timing.yaml` and the `results/test-runs.log` ledger (contract §Budgets, `05-eval-harness.md` §6, §10) |
 | `ART30_CONCURRENCY` | `4` | Harness worker pool; ignored by `art30 scan` |
 | `ART30_CACHE_DIR` | `evals/cache` | Cache root |
 
@@ -492,7 +493,7 @@ Effort and thinking are pinned per run and never varied mid-run: changing either
 
 ## 8. Harness concurrency
 
-**Decision: four runs in parallel by default, one thread each, single-threaded loop inside a run.**
+**Decision: four runs in parallel by default, one child `art30 scan` process each, single-threaded loop inside a run.**
 
 - Per-run parallelism buys nothing: the loop is a strict request/tool/request chain and the tools are microseconds of local I/O against minutes of model time.
 - Four is the value that keeps the shared prefix warm without a burst. The cache TTL is five minutes and a step takes 12–25 s, so any pool depth of two or more keeps the tools+system prefix alive across an entire evaluation (shared/prompt-caching.md §Choosing the TTL).
@@ -509,7 +510,7 @@ Effort and thinking are pinned per run and never varied mid-run: changing either
 | `stop_condition` | Trigger | Enforced in | Diagnosis line written |
 |---|---|---|---|
 | `accepted` | Submit accepted; gate approved or absent | `loop.run` | — (success) |
-| `gate_rejected` | `Decision.approved is False` | `loop.run` after `arm.gate` | `gate rejected at risk=<r>: <first reason>` |
+| `gate_rejected` | `Decision.approved is False` | `loop.run` after `arm.gate`, which writes the accepted-but-rejected record to `<out>/record.draft.json` before it calls `stop()` | `gate rejected at risk=<r>: <first reason>` |
 | `budget_exhausted` | The next tool call would exceed 60 (synthetic) or 120 (real), or `cost_cum_usd` crosses `ART30_MAX_USD` where it is set | `loop.run`, checked per call before dispatch | `budget <n> exhausted at step <k>; last 3 calls: <names>; submits=<s>`, or `cost ceiling $<x> crossed at step <k>` |
 | `max_submits` | Fifth `submit_record` rejected | `loop.run` after `arm.handle_submit` | `5 submits rejected; last rejection: <first rejected_claim.reason>` |
 | `api_error` | `APIStatusError`, `APIConnectionError`, `APITimeoutError` after SDK retries; `stop_reason == "pause_turn"` | `llm.call`, surfaced in `loop.run` | `<exception class>: <message>; request_id=<id>` or `pause_turn on a request with no server tools` |
@@ -611,7 +612,7 @@ CASES.md's "~10–20 min wall-clock with cases in parallel" holds only for repla
 6. No absolute path, date, UUID or machine-specific string may enter the system prompt, the first user message, or any tool output. A committed step-1 hash constant for case S01 is the test that enforces it.
 7. `make eval-replay` regenerates `results/` and diffs the regenerated `metrics.json` against the committed one; a mismatch is a non-zero exit. That diff is what catches changes replay hashes cannot see (a changed verifier rule on a first-submit acceptance, a changed scorer, a changed manifest).
 8. The harness asserts that the baseline and advanced step-1 request hashes match per case; a mismatch invalidates the arm comparison and fails the run plan.
-9. Harness concurrency defaults to 4, with the first request of a batch serialised to warm the shared prefix; replay runs at concurrency 1.
+9. `run.py` runs each cell as a child `art30 scan` process rather than calling `loop.run`, so a wall-clock timeout is a kill and a failure is an exit code rather than an exception in the parent. Concurrency defaults to 4, with the first request of a batch serialised to warm the shared prefix; replay runs at concurrency 1.
 10. Failed runs are never retried at the harness level. `max_retries=4` inside the SDK is the only retry, and an exhausted retry is a reported failure.
 11. Diagnosis files are generated from a fixed rule table over the last trace lines, so `traces/failures/` cannot drift from what happened.
 12. Tools return repo-relative paths only; the jail resolves symlinks before the containment check.
