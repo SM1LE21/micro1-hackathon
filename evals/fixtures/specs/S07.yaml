@@ -1,0 +1,98 @@
+# S07 — dev — what the code means, not what it is called.
+# Three fields a grep will not classify: a notes column whose only evidence is a comment,
+# a JSON blob, and an IP address written by a logging middleware. One table with no personal
+# data at all, to cost precision if it is listed.
+# The middleware names both log fields in the code (ip_address = request.client.host,
+# path = request.url.path) and logs through logging.getLogger("request_log"), so the store and
+# both its fields are tokens a citation can point at (fixture-generator.md §6.1, §7 rule 1).
+# Extended per gdpr-sources §3.2: close_account calls anonymize_user(), which SHA-256s the
+# email and writes a constant name. The store is pseudonymised (the row, its id and the
+# ticket foreign keys survive); full_name overrides to anonymised, because a constant
+# overwrite with no surviving key is irreversible. This is the false-safe idiom the EDPB
+# found in the field, and it is planted on dev so the rule can be built before the test
+# sweep. See fixture-generator.md §9.
+# Frozen once the first run against S07 exists.
+case: S07
+split: dev
+flavour: sqlalchemy
+package: quillrest
+intent: "semantic classification and the pseudonymisation trap: a hashed email is not erasure, and a field-level override sits inside a store that did not reach it"
+engine: "sqlite:///./quillrest.db"
+
+models:
+  - name: User
+    table: users
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: email, type: str, category: contact, nullable: false}
+      - {name: full_name, type: str, category: identifier}
+      - {name: metadata_json, type: json, category: free_text_may_contain, comment: "arbitrary key/value set by the client; support pastes contact details in here"}
+      - {name: deleted_at, type: datetime, category: technical}
+  - name: SupportTicket
+    table: tickets
+    parent: User
+    cascade: "save-update, merge"
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: subject, type: str, category: free_text_may_contain}
+      - {name: notes, type: text, category: free_text_may_contain, comment: "free text; may contain phone numbers"}
+      - {name: opened_at, type: datetime, category: technical}
+  - name: Product
+    table: products
+    negative: true
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: sku, type: str}
+      - {name: title, type: str}
+      - {name: price_cents, type: int}
+
+stores:
+  - name: request_log
+    kind: log
+    client: logging
+    module: middleware.py
+    fields:
+      - {name: ip_address, category: technical}
+      - {name: path, category: behavioural}
+    writes_from: log_request
+    write_called_by: module      # the middleware is registered when app.py imports it
+    delete_call: null
+    delete_called_by: null
+
+entry_points:
+  - name: close_account
+    kind: route
+    module: api/account.py
+    action: anonymise
+    calls: [anonymize_user]
+    docstring: "Close the account and anonymise the profile."
+
+routes:
+  - {name: get_profile, module: api/profile.py, reads: [User.email, User.metadata_json]}
+  - {name: list_tickets, module: api/profile.py, reads: [SupportTicket.subject, SupportTicket.notes]}
+
+extra_files:
+  - {path: utils/text.py, kind: helpers}
+
+expect:
+  entry_points: [close_account]
+  stores:
+    users:
+      verdict: pseudonymised
+      evidence: "privacy.py::anonymize_user!sha256"
+      note: "the email is replaced by a SHA-256 digest at {privacy.py::anonymize_user!sha256}; the row, its primary key and every ticket foreign key survive"
+    tickets:
+      verdict: not_erased
+      evidence: null
+      note: "anonymize_user does not touch this table and the relationship at {models.py::User.tickets} carries no delete token"
+    request_log:
+      verdict: not_erased
+      evidence: null
+      note: "the client address is bound at {middleware.py::log_request@ip_address} and written at {middleware.py::log_request!info}; nothing on the account-closure path removes log lines"
+  fields:
+    users.full_name:
+      verdict: anonymised
+      evidence: "privacy.py::anonymize_user@full_name"
+    users.metadata_json:
+      verdict: not_erased
+      evidence: null
