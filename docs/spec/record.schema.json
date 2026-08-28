@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tun/micro1-hackathon/art30/schema/record.schema.json",
+  "title": "art30 submitted record",
+  "description": "The record the model submits through submit_record. Technical half of a GDPR Art. 30(1) record of processing plus an erasure verdict per store. Legal cells are typed null: the agent cannot fill them. Every claim taken from code carries file and line, 1-based, relative to the repository root.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "repository", "unscanned", "data_subjects", "entry_points", "stores", "retention", "activities", "hints", "human"],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "repository": {"type": "string", "description": "Name of the application or repository as the code calls it (CNIL registre field 'nom du logiciel ou de l'application')."},
+    "unscanned": {"type": "array", "description": "Paths this scan did not analyse. Coverage stated, never implied.", "items": {"$ref": "#/$defs/unscanned_item"}},
+    "data_subjects": {"type": "array", "description": "Art. 30(1)(c) categories of data subjects, inferred from model and route names. The human confirms them at the gate.", "items": {"$ref": "#/$defs/data_subject"}},
+    "entry_points": {"type": "array", "description": "Places a user account can be deleted from. Empty means no deletion feature was found; every store is then no_entry_point.", "items": {"$ref": "#/$defs/entry_point"}},
+    "stores": {"type": "array", "description": "Every named place personal data lives. Recipients are stores of kind third_party; there is no separate recipients list.", "items": {"$ref": "#/$defs/store"}},
+    "retention": {"type": "array", "description": "Art. 30(1)(f) envisaged time limits, per (store, category) where the code distinguishes them, per store otherwise. Never invent a number.", "items": {"$ref": "#/$defs/retention_item"}},
+    "activities": {"type": "array", "const": [], "description": "Art. 30's unit is a processing activity. Grouping stores into activities is human work: this array is always empty and the render shows it as such."},
+    "hints": {"$ref": "#/$defs/hints"},
+    "human": {"$ref": "#/$defs/human"}
+  },
+  "$defs": {
+    "store_kind": {"enum": ["relational", "object_storage", "cache", "search_index", "queue", "third_party", "log", "backup"]},
+    "field_category": {"enum": ["identifier", "contact", "financial", "behavioural", "free_text_may_contain", "technical"]},
+    "entry_point_kind": {"enum": ["route", "view", "cli", "admin", "task", "signal", "unknown"]},
+    "erasure_verdict": {
+      "description": "erased, erased_after_timer and anonymised are the only verdicts that reach erasure. pseudonymised means a hash, token, UUID, mask or a surviving key to the subject. governed_by_retention and no_schedule_evidenced are for backup stores and no others, and they are the only two a backup store takes. external_manual is for third_party stores. unverified is the answer whenever a call cannot be resolved by name, on any store kind but backup, whose kind decides its verdict first.",
+      "enum": ["erased", "erased_after_timer", "anonymised", "pseudonymised", "not_erased", "external_manual", "no_entry_point", "governed_by_retention", "no_schedule_evidenced", "unverified"]
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "line", "symbol"],
+      "description": "A line of code. The verifier reads the line and rejects the citation if it does not contain the symbol.",
+      "properties": {
+        "file": {"type": "string", "description": "Path relative to the repository root, no leading slash."},
+        "line": {"type": "integer", "description": "1-based line number."},
+        "symbol": {"type": "string", "description": "The name or literal on that line the claim rests on, e.g. delete_object, timedelta, eu-central-1."}
+      }
+    },
+    "unscanned_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "reason"],
+      "properties": {
+        "path": {"type": "string"},
+        "reason": {"enum": ["not_python", "orm_not_supported", "generated_or_vendored", "read_budget_exhausted"]}
+      }
+    },
+    "data_subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "basis", "file", "line"],
+      "properties": {
+        "label": {"type": "string", "description": "e.g. account holders, support requesters."},
+        "basis": {"enum": ["model_name", "route_name", "comment"], "description": "What the label was read off. Renders as 'inferred from <basis>'."},
+        "file": {"type": "string"},
+        "line": {"type": "integer"}
+      }
+    },
+    "entry_point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "file", "line", "admin_only", "note"],
+      "properties": {
+        "name": {"type": "string", "description": "Function, view or command name. Must appear on the cited line."},
+        "kind": {"$ref": "#/$defs/entry_point_kind"},
+        "file": {"type": "string"},
+        "line": {"type": "integer"},
+        "admin_only": {"type": "boolean", "description": "True when the only way in is an operator surface such as the Django admin, so a data subject cannot trigger it."},
+        "note": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "One sentence at most. Not a purpose, not a legal statement. Invariant I10 rejects the words of a legal conclusion here."}
+      }
+    },
+    "erasure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "evidence", "timer_days", "note"],
+      "properties": {
+        "verdict": {"$ref": "#/$defs/erasure_verdict"},
+        "evidence": {"type": "array", "description": "The lines that carry the path: the entry point's write, each hop, the deletion primitive. Empty is allowed only for verdicts that claim nothing was reached and no schedule was found; invariant I3 names the verdicts that need at least one citation.", "items": {"$ref": "#/$defs/citation"}},
+        "timer_days": {"anyOf": [{"type": "integer"}, {"type": "null"}], "description": "Whole days, only for erased_after_timer and governed_by_retention, and only where a number is in the code. Both of those verdicts require it (invariants I3 and I4)."},
+        "note": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "Why the verdict is what it is, in the code's own terms. Names the dead helper, the missing hop, the docstring that disagrees. Invariant I10 rejects the words of a legal conclusion here."}
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "category", "file", "line", "note", "erasure"],
+      "properties": {
+        "name": {"type": "string", "description": "Column, key, attribute or payload name. Must appear on the cited line."},
+        "category": {"$ref": "#/$defs/field_category"},
+        "file": {"type": "string"},
+        "line": {"type": "integer"},
+        "note": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "Why this is personal data when the name alone does not say so, e.g. a comment on the column. Invariant I10 rejects the words of a legal conclusion here."},
+        "erasure": {"anyOf": [{"$ref": "#/$defs/erasure"}, {"type": "null"}], "description": "Set only where this field's fate differs from its store's. Overrides the store verdict for this field in the render and in scoring, so invariants I3, I4, I5 and I9 are checked over it as well as over the store block."}
+      }
+    },
+    "store": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "declared_at", "fields", "erasure", "recipient_kind", "note"],
+      "properties": {
+        "name": {"type": "string", "description": "Table, bucket or prefix, cache namespace, index, queue, service, log sink, backup target."},
+        "kind": {"$ref": "#/$defs/store_kind"},
+        "declared_at": {"anyOf": [{"$ref": "#/$defs/citation"}, {"type": "null"}], "description": "Where the store is defined or first written to. Null where no single line declares it. Rendered in the store's own heading in section A, so the reader meets the store and its declaration together."},
+        "fields": {"type": "array", "description": "At least one. A store with no personal-data field does not belong in the record.", "items": {"$ref": "#/$defs/field"}},
+        "erasure": {"$ref": "#/$defs/erasure"},
+        "recipient_kind": {"type": "null", "description": "Art. 30(1)(d). Set by the human at the gate to internal, processor or external_controller; unknown until then. The agent submits null and cannot do otherwise."},
+        "note": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "One sentence at most. What the store is, in the code's terms. Invariant I10 rejects the words of a legal conclusion here."}
+      }
+    },
+    "retention_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["store", "category", "days", "criteria", "file", "line", "justification"],
+      "properties": {
+        "store": {"type": "string", "description": "Name of a store in this record."},
+        "category": {"anyOf": [{"$ref": "#/$defs/field_category"}, {"type": "null"}], "description": "Null means the limit applies to the whole store because the code does not distinguish categories."},
+        "days": {"anyOf": [{"type": "integer"}, {"type": "null"}], "description": "Only from a number in the code: timedelta(days=N), a TTL, a lifecycle rule, a RETENTION_DAYS constant, a cron window."},
+        "criteria": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "The code's own condition for deletion where no number exists, quoted or paraphrased in one line. Art. 30(1)(f) allows criteria in place of a period. It is read off a line of code like everything else, so it carries file and line too, and invariant I10 rejects a legal justification written here."},
+        "file": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "The line the number or the criteria was read from. Invariant I6 rejects a retention item whose file or line is null: a period nobody can open is a period this tool invented."},
+        "line": {"anyOf": [{"type": "integer"}, {"type": "null"}], "description": "1-based line number. Required by invariant I6, for the same reason as file."},
+        "justification": {"type": "null", "description": "The legal or business reason for the period. Human-only, always."}
+      }
+    },
+    "hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed_module_names", "observed_region_hints", "security_evidence"],
+      "description": "Observations, not findings. Each renders under a heading that says so.",
+      "properties": {
+        "observed_module_names": {
+          "type": "array",
+          "description": "Module and package names that suggest what the code is for. A module name is not a purpose under Art. 30(1)(b).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "file"],
+            "properties": {"name": {"type": "string"}, "file": {"type": "string"}}
+          }
+        },
+        "observed_region_hints": {
+          "type": "array",
+          "description": "Region strings, API hosts and bucket locations, with the line each was read from. Where a service runs is not a transfer finding under Art. 30(1)(e). Use symbol for the literal string.",
+          "items": {"$ref": "#/$defs/citation"}
+        },
+        "security_evidence": {
+          "type": "array",
+          "description": "Art. 32(1)(a) technical measures only, one entry per cited line. The organisational half is human-only.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["measure", "file", "line", "symbol"],
+            "properties": {
+              "measure": {"enum": ["hashing", "encryption_in_transit", "encryption_at_rest", "pseudonymisation", "backup_configuration"]},
+              "file": {"type": "string"},
+              "line": {"type": "integer"},
+              "symbol": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "human": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["controller", "joint_controller", "representative", "dpo", "purposes", "legal_basis", "data_subject_categories_confirmed", "data_categories_outside_code", "special_categories", "transfers", "retention_justification", "security_organisational"],
+      "description": "Art. 30(1) cells no static reader can evidence. Every one is typed null, so a record that fills one fails validation and is returned to the model.",
+      "properties": {
+        "controller": {"$ref": "#/$defs/party"},
+        "joint_controller": {"$ref": "#/$defs/party"},
+        "representative": {"$ref": "#/$defs/party"},
+        "dpo": {"$ref": "#/$defs/party"},
+        "purposes": {"type": "null", "description": "Art. 30(1)(b). See hints.observed_module_names, which is not this."},
+        "legal_basis": {"type": "null", "description": "Not an Art. 30(1) item. Present so the render can show the cell empty rather than omit the question."},
+        "data_subject_categories_confirmed": {"type": "null", "description": "Art. 30(1)(c). The agent's inferred labels sit in data_subjects; confirmation is human."},
+        "data_categories_outside_code": {"type": "null", "description": "Art. 30(1)(c). Paper files, inboxes, spreadsheets, an uncommitted CRM: personal data a static reader of this repository cannot see. The store map is an inventory of one repository, not of a company."},
+        "special_categories": {"type": "null", "description": "Art. 9 data. A column name is not evidence of a special category."},
+        "transfers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["occurs", "countries", "safeguards"],
+          "description": "Art. 30(1)(e). See hints.observed_region_hints, which is not this.",
+          "properties": {"occurs": {"type": "null"}, "countries": {"type": "null"}, "safeguards": {"type": "null"}}
+        },
+        "retention_justification": {"type": "null", "description": "Art. 30(1)(f). The number's location in code is evidence for a schedule; the reason for the number is not in the code."},
+        "security_organisational": {"type": "null", "description": "Art. 30(1)(g) and Art. 32(1)(b)-(d): access control practice, staff training, sub-processor review, restoration and testing."}
+      }
+    },
+    "party": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "contact"],
+      "description": "Art. 30(1)(a). A company name in settings.py is a string, not a legal identity.",
+      "properties": {"name": {"type": "null"}, "contact": {"type": "null"}}
+    }
+  }
+}
