@@ -1,0 +1,58 @@
+# S01 — dev — the floor.
+# A clean repository: hard delete on the route, an ORM delete cascade to the child table,
+# one table with no personal data. Nothing is planted. If an arm reports a problem here,
+# the problem is the arm.
+# Frozen once the first run against S01 exists (docs/spec/fixture-generator.md §8).
+case: S01
+split: dev
+flavour: sqlalchemy
+package: orderly
+intent: "a clean repository: hard delete with an ORM delete cascade, nothing planted; measures precision on a repo with no findings"
+engine: "sqlite:///./orderly.db"
+
+models:
+  - name: User
+    table: users
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: email, type: str, category: contact, nullable: false}
+      - {name: full_name, type: str, category: identifier}
+      - {name: created_at, type: datetime, category: technical}
+  - name: Order
+    table: orders
+    parent: User
+    cascade: "all, delete"
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: shipping_address, type: str, category: contact}
+      - {name: amount_cents, type: int, category: financial}
+      - {name: placed_at, type: datetime, category: technical}
+  - name: Product
+    table: products
+    negative: true
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: sku, type: str}
+      - {name: title, type: str}
+      - {name: price_cents, type: int}
+
+entry_points:
+  - name: delete_account
+    kind: route
+    module: api/account.py
+    action: hard_delete
+    deletes_via: session_delete
+    docstring: "Delete the account and every order attached to it."
+
+routes:
+  - {name: get_profile, module: api/profile.py, reads: [User.email, User.full_name]}
+  - {name: list_orders, module: api/profile.py, reads: [Order.shipping_address, Order.amount_cents]}
+
+extra_files:
+  - {path: utils/text.py, kind: helpers}
+
+expect:
+  entry_points: [delete_account]
+  stores:
+    users:  {verdict: erased, evidence: "api/account.py::delete_account!delete"}
+    orders: {verdict: erased, evidence: "models.py::User.orders"}
