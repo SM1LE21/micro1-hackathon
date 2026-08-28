@@ -540,7 +540,7 @@ def path_exists(graph, entry, target, must_pass_through=None) -> Path | None:
 
 Not "the lexicographically smallest shortest path": the search carries one `seen` set over states, so it never enumerates the competing shortest paths a lexicographic minimum would be selected from — a node first reached from a later-expanded predecessor keeps that predecessor's path. Sorting the out-edges gives determinism, which is the property §5.2 actually needs.
 
-Contract §Verifier contract carries this signature by pointing at this section (ADR 0004 P-15): the search needs the graph, and the target is a store node as often as it is a primitive.
+Contract §Verifier contract carries this signature by pointing at this section (ADR 0004 P-15): the search needs the graph, and the target is a store node as often as it is a primitive. There is no `mode` parameter. The delete mode is carried in the search state (§5.2), set by `mode_of(entry)` at the start and by the mode-setting edges along the way, so no caller can hand the walk a mode the code did not establish. `01-architecture.md` §1.1 carries the same signature and the same sentence.
 
 A `Path` is a list of steps, each `{from, to, kind, file, line, rule, ambiguous}`. `Path.ambiguous` is true when any step is; `Path.mode` is the delete mode at the target.
 
@@ -567,7 +567,7 @@ while frontier:
 return None
 ```
 
-`mode_of(entry)` is `none` for every entry point except the two admin ones (§4.2). `none` is a real mode in the state tuple and in `admissible_modes`, so the state space is `|V| × 7 × 2`.
+`mode_of(entry)` is `none` for every entry point except the two admin ones (§4.2). `none` is a real mode in the state tuple and in `admissible_modes`, so the state space is `|V| × 7 × 2`. The mode table itself (`path_modes` in `verifier-rules-draft.yaml`) is not a rule file: it ships as a constant in `art30/verify/reach.py` beside this search, because it is the search's own state space and not data a rule set may vary.
 
 **Cycles** are handled by the `seen` set over states, not nodes: recursion and mutual calls terminate, and a cycle can still be traversed once per mode. The state space is `|V| × |modes| × 2`, so at most fourteen times the node count.
 
@@ -587,7 +587,7 @@ Per repository: one BFS per `(entry point, edge set)` pair, with the reachable s
 
 ### 6.1 Precedence
 
-Applied in order; the first row that fires decides. Ordering is itself the safety property: the conservative labels sit above the reaching ones wherever the evidence is weaker.
+Applied in order; the first row that fires decides. Ordering is itself the safety property: the conservative labels sit above the reaching ones wherever the evidence is weaker. Like `path_modes`, this table (`verdict_precedence` and `reaches_erasure_true` in `verifier-rules-draft.yaml`) ships as a constant in `art30/verify/reach.py` rather than under `verify/rules/`: a rule file that could reorder the precedence could put a reaching verdict above a conservative one.
 
 | # | Condition | Verdict |
 |---|---|---|
