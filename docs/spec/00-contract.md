@@ -39,7 +39,7 @@ evals/
   fixtures/manifests/<case>.yaml       ground truth; header carries labelling_minutes for real repos
   fixtures/manifests/<case>.labelling.yaml   blind-labelling sidecar for S03, S05 (author's minutes; never generated)
   fixtures/synthetic/.gen-index.json   generator index: spec sha → output sha per case (clean-diff check)
-  harness/run.py          cases × arms × seeds → results/runs/…, traces/…
+  harness/run.py          cases × arms × seeds → results/runs/…, traces/…; launches art30 scan as a subprocess per cell; writes results/timing.json after a live sweep
   harness/score.py        manifest vs record → per-case metrics
   harness/report.py       results/runs → results/metrics.json + Markdown tables
   harness/trace_check.py  trace validator (run by make smoke and after every run)
@@ -51,7 +51,7 @@ tests/
   test_score.py           normalisation, tuple extraction, the scoring rows
   test_tools.py           golden tool output, the jail, the step-1 request hash constant
 results/                  metrics.json, timing.json, gate-timing.yaml, test-runs.log (chained ledger),
-                          runs/<arm>/<case>/s<seed>/{record.json,record.md,record.html,metrics.json}
+                          runs/<arm>/<case>/s<seed>/{record.json,record.md,record.html,metrics.json,record.draft.json (gate-rejected runs only)}
 traces/{baseline,advanced}/<case>-s<seed>.jsonl ; traces/failures/<arm>/<case>-s<seed>.jsonl + .diagnosis.txt
 ```
 
@@ -74,6 +74,7 @@ One run = one case, one arm, one seed.
 - `submit_record` attempts per run: 5. Exceeded → `max_submits`, failure.
 - Both budgets are overridable per run by `ART30_TOOL_BUDGET` and `ART30_SUBMIT_BUDGET`. Both are named in the first user message, so both change the request hash. The harness sets the tool budget from the case kind.
 - `ART30_MAX_USD` (optional, unset by default) ends a run with `budget_exhausted` when `cost_cum_usd` crosses it.
+- `ART30_UNLOCK_TEST=1` lets `art30 scan` run on a repository that resolves to a test case (the harness has `--unlock-test`); `ART30_REPRODUCIBLE=1` is set by `make eval-replay` and suppresses every file a replay must not rewrite (`results/timing.json`, `results/gate-timing.yaml`, the ledger).
 - `read_file` returns at most 400 lines per call; `grep` at most 100 matches; `list_tree` excludes `.git`, `__pycache__`, `node_modules`, `static`, `media`.
 
 ## Tools (model-facing; identical in both arms)
@@ -130,7 +131,7 @@ Every item on `rejected_claims`, `missing_stores`, `missing_entry_points`, `bad_
 ## Verifier contract
 
 - Input: the submitted record + the repo path + rule sets. Output: the feedback object. No access to manifests, ever.
-- `path_exists(entry, target, must_pass_through=None, mode=...)` as specified in `03-verifier.md` §5.1, over a name-based intra-repo call graph with delete modes. Django `on_delete=CASCADE` edges and SQLAlchemy relationship cascades are synthetic edges added by rules. Unresolvable calls (dynamic dispatch, `getattr`, string imports) yield `unverified`, never a guess.
+- `path_exists(graph, entry, target, must_pass_through=None)` as specified in `03-verifier.md` §5.1, over a name-based intra-repo call graph; the delete mode is carried in the search state, not the signature. Django `on_delete=CASCADE` edges and SQLAlchemy relationship cascades are synthetic edges added by rules. Unresolvable calls (dynamic dispatch, `getattr`, string imports) yield `unverified`, never a guess.
 - Completeness guard: any store the verifier's own scan finds with a personal-data-looking field (rule-set patterns) that is absent from the record → `missing_stores`.
 - Citation check: for each cited `file:line`, the logical line must contain the cited symbol (after normalisation).
 - Store identity: a store is named after the identifier the code carries (table name or model name, bucket or prefix constant, SDK name, job module for backups); the same rule binds the manifests and the instruction text.
@@ -163,7 +164,7 @@ As in `evals/CASES.md`: tuple `(store, field, reaches_erasure)`; per-case precis
 ```
 art30 scan <repo> --arm advanced|baseline [--case ID] [--seed N] [--mode live|replay] [--approve ask|auto] [--out DIR]
 ```
-Makefile targets: `setup`, `smoke` (runs `trace_check.py` over committed traces), `fixtures` (must leave a clean `git diff`), `run CASE=`, `baseline`, `advanced`, `eval`, `eval-replay` (ends with `git diff --exit-code -- results/metrics.json`), `report`, `traces` (author-only, pinned `claude-code-log`), `gate-timing`, `check-secrets` (gitleaks over full history, author-only).
+Makefile targets: `setup`, `smoke` (runs `trace_check.py` over committed traces), `fixtures` (must leave a clean `git diff`), `run CASE=`, `baseline`, `advanced`, `eval`, `eval-replay` (ends with `git diff --exit-code -- results/metrics.json`), `report`, `traces` (author-only, pinned `claude-code-log`), `gate-timing`, `check-secrets` (gitleaks over full history, author-only), `check-traces`, `verify-docs`, `check-clean` (qualification-gate checks).
 
 ## Writing contract for the rendered record
 
