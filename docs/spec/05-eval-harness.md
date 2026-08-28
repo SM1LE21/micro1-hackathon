@@ -1,6 +1,6 @@
 # 05 — Evaluation harness
 
-Three files under `evals/harness/`: `score.py` turns one record and one manifest into one number, `run.py` produces the runs that get scored, `report.py` turns a directory of runs into the tables the README and `CHANGELOG_EVAL.md` quote. This document fixes the arithmetic precisely enough that two people implementing it separately get the same number, and fixes the two pieces of discipline that are easy to promise and easy to lose: that a failed run is counted, and that the test split is touched twice.
+Three files under `evals/harness/`: `score.py` turns one record and one manifest into one number, `run.py` produces the runs that get scored, `report.py` turns a directory of runs into the tables the README and `CHANGELOG_EVAL.md` quote. This document fixes the arithmetic precisely enough that two people implementing it separately get the same number, and fixes the two pieces of discipline that are easy to promise and easy to lose: that a failed run is counted, and that the test split is swept at most twice live, with the reported comparison coming from a single recording window (ADR 0005).
 
 **Reads with** `docs/spec/00-contract.md` (§Scoring contract, §Budgets, §Trace contract — it wins), `evals/CASES.md` (the metric, the secondary rows, the definition of a good result, the labelling protocol), `docs/spec/fixture-generator.md` (manifest shape and the `spec_sha256` freeze), `docs/spec/06-traces.md` (what the runner writes and what the report reads back), `docs/spec/04-output-schema.md` (`record.json`), `.vault/adr/0003-runtime-and-api-decisions.md` (§2 no seed, §6 record/replay), `docs/judging/requirements-matrix.md` (E1–E9, X05, X07–X09).
 
@@ -119,6 +119,7 @@ Three things this fixes:
 - **The field-level override is read first.** `00-contract.md`: "a field whose fate differs from its store carries its own `erasure` block that overrides the store's for that field. The scorer reads the field-level block when present." S07 is the case that exercises it: `users` is `pseudonymised`, `users.full_name` overrides to `anonymised`, and the two tuples land on opposite sides of `reaches_erasure`.
 - **Backup verdicts are forced to the false side** (AMBIGUITIES row 6, `gdpr-sources.md` §3.1). An arm that writes `erased` on a store it declared `kind: backup` gets `reaches=False` — no free false safe — and the contradiction is reported in `invalid_verdict_for_kind`, a secondary row. `unverified` on a backup store lands there too, which is what the contract says: `governed_by_retention` and `no_schedule_evidenced` are "the only verdicts rendered for stores of kind `backup`". The two documents that have to agree with it do: `03-verifier.md` §6.1 row 1 never emits anything else for a backup, and `10-instructions.md` I5 now offers both arms two labels and not three. The third value would have had the instruction text bless what this scorer books as a contradiction, with only the advanced arm reading the feedback that said so.
 - **The same function reads manifests and records.** Manifests are the identical shape (`evals/CASES.md` §Manifest shape), so `extract` is called twice with the same `prefixes` and the same `known` set and no special-casing, and a manifest that violates the backup rule fails the same way a record would.
+- **A file store is matched by its declaration line when the names do not.** A Django `FileField`/`ImageField` is a store of its own named `<model>.<field>` — `account.avatar`, `photo.image` (`fixture-generator.md` §7 rule 1, `10-instructions.md` §1) — and a record will call it `uploads`, `avatars` or `media`. Those never normalise equal, so after key matching the scorer takes one fallback pass: a predicted store whose `declared_at` is the same `file:line` as a manifest file store's `declared_at` is that store, whatever it is named, and its tuples are re-keyed to the manifest's name before precision and recall are computed. Name normalisation is tried first; this is the fallback, keyed on a citation the arm already has to get right, and it is the same reconciliation `03-verifier.md` §7.3 gives the verifier — the scorer implements its own so the baseline, which has no verifier, is measured by the same ruler (§4.2). A predicted store with a null `declared_at`, or one whose line matches no manifest file store, is unaffected and stays an FP. Unit test: `test_file_store_matched_by_declared_at`, beside `test_file_store_unmatched_when_line_differs`.
 
 ---
 
@@ -152,7 +153,7 @@ unverified = sum(1 for t in pred.values() if t["verdict"] == "unverified")
 
 **`false_safe` is the matched half of a larger number, and both halves are reported.** The count above is computed only over keys that matched, so an arm that names the store something the manifest does not carry — `avatars` for `uploads`, `media` for `photo.image` — and declares it erased scores FP+FN and contributes nothing to the row the README leads with. That is the most likely wrong shape on S09 and S10, which is why `unmatched_reaching_claims` sits beside it in every table: predicted tuples with `reaches=true` whose `(store, field)` key is not in the manifest. The report states the relationship in words — "false safe 0" means zero *matched* false safes, and the unmatched count is the rest of the sentence. Neither is folded into F1.
 
-**A gate-rejected run's draft is scored too.** §4.4 scores a run with no `record.json` as zero, which would let the advanced arm's gate launder a false safe out of the headline row while the baseline, which has no gate, cannot. On `gate_rejected` the arm writes the record it was about to render to `results/runs/<arm>/<case>/s<seed>/record.draft.json` — one name, now also in `07-ui.md` §6 and its Decision 9, which called the file `record.rejected.json`; had the arm written that name and the scorer read this one, `false_safe_in_draft` would have been silently zero for ever, which is the exact failure this row exists to remove — and the scorer produces a parallel `draft` block from it. The run's own `f1`, `pass` and `false_safe` are unchanged (zero, false, zero — the artifact was never signed); the draft's numbers are reported as `false_safe_in_draft` and `f1_draft`, so the gate's contribution to the safety row is visible rather than invisible. *Assumption:* `advanced/arm.py` persists that draft; it is one write on a path that already holds the record.
+**A gate-rejected run's draft is scored too.** §4.4 scores a run with no `record.json` as zero, which would let the advanced arm's gate launder a false safe out of the headline row while the baseline, which has no gate, cannot. On `gate_rejected` the record that was about to be rendered is written to `results/runs/<arm>/<case>/s<seed>/record.draft.json` — one name, also in `07-ui.md` §6 and its Decision 9, which called the file `record.rejected.json`; had the writer used that name and the scorer read this one, `false_safe_in_draft` would have been silently zero for ever, which is the exact failure this row exists to remove — and the scorer produces a parallel `draft` block from it. **The writer is `art30/loop.py`**, on the `gate_rejected` exit path, before it calls `stop()` (`01-architecture.md` §2 and §9; `02-agent-loop.md` §1 line 87 owes the same line). Not the arm: the arm returns a `Decision` and never touches the results tree, and putting the write in the one function every exit passes through is what makes the file exist whenever the stop condition does. The run's own `f1`, `pass` and `false_safe` are unchanged (zero, false, zero — the artifact was never signed); the draft's numbers are reported as `false_safe_in_draft` and `f1_draft`, so the gate's contribution to the safety row is visible rather than invisible.
 
 Two cheap checks run alongside, reported and never scored:
 
@@ -191,7 +192,7 @@ Retention rows and entry points are compared the same way and reported as `reten
          "gate": {"risk": "high", "decision": "approved", "by": "simulated"}}}
 ```
 
-The `run` block is read from the trace's `run_end` line and its `checkpoint` line, not recomputed — one source for cost and turns (`06-traces.md` §3). It carries **no duration**: `wall_s` and `wait_s` are machine-dependent and live in `results/timing.json` (§10), which is not diffed. `01-architecture.md` Decision 19 fixes the same rule for `results/metrics.json`, and this file follows it.
+The `run` block is read from the trace's `run_end` line and its `checkpoint` line, not recomputed — one source for cost and turns (`06-traces.md` §3). It carries **no duration**: `wall_s` and `wait_s` are machine-dependent and live in `results/timing.json` (§6), which is not diffed. `01-architecture.md` Decision 19 fixes the same rule for `results/metrics.json`, and this file follows it.
 
 ### 4.4 Failed runs
 
@@ -255,7 +256,7 @@ Every run that does not end `accepted` has its trace copied to `traces/failures/
 
 ### 5.4 The test-split lock
 
-CASES.md: "test is touched twice (baseline once, final once)". Enforced in four steps:
+CASES.md caps the test split at two live sweeps. ADR 0005 spends the first on **one sweep carrying both arms in one recording window** and holds the second for a re-record, because `01-architecture.md` §4.2 refuses to report two arms whose recording windows do not overlap; the "baseline once, final once" reading is superseded and `evals/CASES.md` §Errata carries the dated line. The ceiling of two is unchanged and is enforced in four steps:
 
 1. If the selected cases intersect `split.yaml: test` and `--unlock-test` is absent → **exit 2**, naming the offending cases and printing the flag.
 2. With `--unlock-test`, `--reason "<text>"` is required, and one line is appended to `results/test-runs.log` before the first model call:
@@ -263,7 +264,7 @@ CASES.md: "test is touched twice (baseline once, final once)". Enforced in four 
 3. Before appending, the runner counts existing lines with `mode = live`. If there are already 2 → **exit 3**, printing both, with the message that a third live sweep needs an ADR and `--adr NNNN` on the command line. Replay sweeps append with `mode = replay` and never count: they re-score responses already recorded and reveal nothing new.
 4. `--adr NNNN` is the only thing that turns exit 3 into a run. It requires `--unlock-test`, requires `.vault/adr/NNNN-*.md` to exist and to contain the string `test sweep`, and writes the ADR number into the ledger line's reason field. Absent the file, the runner exits 3 with the path it looked for. An ADR is cheap to write and impossible to write by accident, which is the whole mechanism: a third sweep is allowed and it is on the record.
 
-**The ledger is chained.** Each line ends with the sha256 of the previous line's bytes (the first line ends with 64 zeros), and the runner verifies the chain before appending — a mismatch is exit 1. Without it, `results/test-runs.log` is an ordinary file and deleting two lines resets the budget silently, which makes the artifact that proves "touched twice" the easiest thing in the repository to falsify. `results/test-runs.log` is committed, so `git log` on it shows when each sweep happened as well.
+**The ledger is chained.** Each line ends with the sha256 of the previous line's bytes (the first line ends with 64 zeros), and the runner verifies the chain before appending — a mismatch is exit 1. Without it, `results/test-runs.log` is an ordinary file and deleting two lines resets the budget silently, which makes the artifact that proves the two-sweep ceiling the easiest thing in the repository to falsify. `results/test-runs.log` is committed, so `git log` on it shows when each sweep happened as well.
 
 **The lock also lives in the CLI.** `00-contract.md` §CLI contract exposes `art30 scan <repo> --arm advanced` directly, so pointing it at `evals/fixtures/synthetic/S10/` would iterate on the test set with no flag and no ledger entry. `art30/cli.py` therefore resolves the repo path, and refuses with exit 2 when it resolves to a case in `split.yaml: test` unless `ART30_UNLOCK_TEST=1` is set in the environment. An environment variable rather than a flag, deliberately: it does not appear in shell history by habit, and REPRODUCE.md documents it in the same paragraph as the two-sweep rule. Replay is exempt (`--mode replay` re-scores recorded responses).
 
@@ -285,8 +286,8 @@ CASES.md: "test is touched twice (baseline once, final once)". Enforced in four 
 ```
 results/
   metrics.json                    aggregate, produced by report.py; diffed by make eval-replay
-  timing.json                     wall clock from the recorded live sweep; committed, never diffed
-  timing.replay.json              wall clock of the last replay; written by replay, not committed
+  timing.json                     wall clock from the recorded live sweep, written by run.py; committed, never diffed (§6)
+  timing.replay.json              wall clock of the last replay; not committed, and not written at all under ART30_REPRODUCIBLE=1
   gate-timing.yaml                hand-committed gate-review times (§9)
   test-runs.log                   the chained sweep ledger (§5.4)
   runs/<arm>/<case>/s<seed>/
@@ -337,6 +338,21 @@ results/
 
 `identity_check.ok` is `success + failure == n` (AGENTS.md; matrix X05). `report.py` asserts it and exits 1 if it is false, so the README's identity sentence cannot become untrue without the report failing.
 
+### `results/timing.json`
+
+Written by `evals/harness/run.py`, at the end of a **live** sweep and only then. Not by `report.py` — the durations are the runner's own clock, and `report.py` writes the one file `make eval-replay` diffs. Never written in replay: `ART30_REPRODUCIBLE=1`, which `make eval-replay` sets (contract §Budgets), suppresses it along with `results/gate-timing.yaml` and the ledger, so a judge's replay cannot overwrite the recorded sweep's clock with their own machine's. A plain `--mode replay` run without that variable writes `results/timing.replay.json` instead, which is not committed.
+
+```json
+{"recorded_at": "2026-08-30T16:41:07Z",
+ "git_sha": "9f3ac1e",
+ "per_case": {"S10": {"advanced": {"wall_s_mean": 209.0, "wall_s_std": 11.4, "n": 3},
+                      "baseline": {"wall_s_mean": 61.0, "wall_s_std": 4.2, "n": 3}}},
+ "per_arm":  {"advanced": {"wall_s_mean": 96.4, "wall_s_std": 41.7, "n": 42},
+              "baseline": {"wall_s_mean": 84.1, "wall_s_std": 33.2, "n": 42}}}
+```
+
+`wall_s` per run comes from the trace's `run_end` line; `wall_s_std` is the population standard deviation over the runs in that cell, and `n` is how many were scored, failures included. `recorded_at` and `git_sha` are real values here — this file is committed and never diffed, so it carries the two things `metrics.json` cannot (§10). `report.py` reads it for `human_time.machine_minutes` (§9) and for the secondary table's machine-minutes row (§7.2); if it is absent, both print `n/a (no live sweep recorded)`.
+
 ---
 
 ## 7. `report.py`
@@ -382,7 +398,7 @@ Below it, never inside it, dev and test separately, mean ± std over seeds:
 | Bad citations | `citation_bad_total` |
 | Cost per run | `cost_usd_mean` |
 | Turns · tool calls | `turns_mean`, `tool_calls_mean` |
-| Machine minutes per run | `results/timing.json`, `wall_s_mean / 60` (§10 — not in `metrics.json`) |
+| Machine minutes per run | `results/timing.json`, `per_arm[arm].wall_s_mean / 60` (§6 — not in `metrics.json`) |
 | success + failure = n | `identity_check` |
 
 ### 7.3 Statistics
@@ -449,7 +465,7 @@ The blind synthetic labelling exists so the row is not a real-repo-only number: 
 
 **The tool's number** is two components, reported separately and never summed into a single "human minute" that hides which is which:
 
-- *Machine minutes* — `wall_s_mean / 60` per run, for both arms, read from `results/timing.json` (§10). Unattended. Reported next to the human number, not as it.
+- *Machine minutes* — `per_arm[arm].wall_s_mean / 60`, for both arms, read from `results/timing.json` (§6), which the runner wrote at the end of the recorded live sweep and no replay rewrites. Unattended. Reported next to the human number, not as it.
 - *Gate review minutes* — the wall time a human spends at the approval checkpoint, from the `wait_s` field on the trace's `checkpoint` line (contract §Trace contract, ADR 0004 P-10; worked example in `06-traces.md` §2). `--approve auto` records `wait_s: 0.0` and `by: "simulated"`, so an eval sweep contributes nothing to this number and cannot inflate it.
 
 Gate time is measured in one dedicated pass:
@@ -583,8 +599,8 @@ What belongs here is the budget discipline that follows from it, in this documen
 
 - **The cost estimate is arithmetic, not a measurement**, and it is `01-architecture.md` §10's arithmetic, whose spread ($80–$176) rests on one unmeasured quantity. If the first live dev sweep comes in near the ceiling, the three-case dev subset is the lever, and CASES.md's budget line needs an errata rather than quiet reinterpretation.
 - **`unmatched_reaching_claims` is a count, not a diagnosis.** It tells a reader that an arm claimed erasure on a store the manifest does not carry; it cannot tell them whether that store is a hallucination or the manifest's own store under a name the normaliser could not reach. The per-run `unmatched_reaching_tuples` list is what makes the difference readable, and reading it is a manual step on the first dev sweep.
-- **Scoring a gate-rejected draft depends on the arm persisting it.** If `advanced/arm.py` does not write `record.draft.json`, `false_safe_in_draft` is silently always zero — the same invisibility the row exists to remove. A unit test on the arm, asserting the file exists after a rejected gate, is the only thing that keeps it honest.
-- **Three rules first appear on test.** `no_entry_point` and `no_schedule_evidenced` are exercised by no dev case (`fixture-generator.md` §9 records this and names the unit tests that stand in), so a bug in either is discovered by spending one of the two test sweeps. The dead-helper shape now has a dev rehearsal on S05; the other two do not.
+- **Scoring a gate-rejected draft depends on the loop persisting it.** If `art30/loop.py`'s `gate_rejected` path does not write `record.draft.json`, `false_safe_in_draft` is silently always zero — the same invisibility the row exists to remove. A unit test on the loop, asserting the file exists after a rejected gate, is the only thing that keeps it honest.
+- **Two rules first appear on test.** `no_entry_point` and `no_schedule_evidenced` are exercised by no dev case (`fixture-generator.md` §9 records this and names the unit tests that stand in), so a bug in either is discovered by spending one of the two test sweeps. Two shapes that had the same problem no longer do: the dead helper is rehearsed on S05, and the admin-only entry point on S06, whose `expect.entry_points` now carries `admin_delete_model` and `admin_delete_selected`.
 - **Five test cases is a small denominator for everything.** The bootstrap interval on test F1 will be wide and McNemar cannot reach significance there. Both are stated in the output rather than left for a reader to work out, but no amount of stating fixes the sample size inside the weekend.
 - **`f1_mean` with failures as zero rewards an arm that never crashes over one that crashes on the hardest case.** That is intended, and it means a single flaky API error can move the headline. The mitigation is that the same table shows `success + failure` and the failure traces are shipped.
 - **Gate timing is measured on a replay pass, not on the live run a user would do.** The prompt and the record are identical; what differs is that the reviewer already knows the case. The number is therefore a lower bound and the README should call it one.
