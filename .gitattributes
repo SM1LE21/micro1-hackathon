@@ -1,0 +1,5 @@
+# Fixture bytes are pinned: no EOL conversion, no textual diff for generated repos (01-architecture.md D16)
+evals/fixtures/** -text -diff
+# The hand-written specs and manifests keep readable diffs; -text still applies
+evals/fixtures/specs/*.yaml diff
+evals/fixtures/manifests/*.yaml diff
