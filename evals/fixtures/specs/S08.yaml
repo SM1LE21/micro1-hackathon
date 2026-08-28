@@ -1,0 +1,122 @@
+# S08 — TEST — there is no way to delete a user.
+# Six stores of five kinds, and no deletion feature anywhere: no delete route, no CLI command,
+# no admin, no purge job. The correct answer is that every store has no entry point and the
+# nightly dump has no schedule behind it at all. The failure this case looks for is an arm
+# that invents a path, or hedges instead of saying so.
+# Extends CASES.md's S08 row from five stores to six: the search index, the queue and the
+# unscheduled backup complete synthetic coverage of the contract's store kinds, and
+# no_schedule_evidenced is the EDPB's own finding (gdpr-sources §3.1).
+# The index is doc_search, not documents: this case already has a `documents` table, and two
+# store names that normalise to the same string lose one of the two silently in scoring
+# (fixture-generator.md §7 rule 2).
+# no_entry_point (10 of the 13 tuples) and no_schedule_evidenced (3) are rehearsed by no dev
+# case; their pre-test coverage is verifier unit tests 41 and 49 (fixture-generator.md §9).
+# Frozen once the first run against S08 exists. Test split: see evals/split.yaml.
+case: S08
+split: test
+flavour: sqlalchemy
+package: civicbeam
+intent: "no deletion feature exists anywhere; six stores of five kinds, and a nightly dump with no schedule behind it"
+engine: "sqlite:///./civicbeam.db"
+
+models:
+  - name: User
+    table: users
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: email, type: str, category: contact, nullable: false}
+      - {name: full_name, type: str, category: identifier}
+      - {name: phone, type: str, category: contact}
+      - {name: created_at, type: datetime, category: technical}
+  - name: Document
+    table: documents
+    parent: User
+    cascade: "all, delete"
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: title, type: str, category: free_text_may_contain}
+      - {name: body, type: text, category: free_text_may_contain}
+  - name: Plan
+    table: plans
+    negative: true
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: code, type: str}
+      - {name: monthly_cents, type: int}
+
+stores:
+  - name: uploads
+    kind: object_storage
+    client: boto3
+    module: storage.py
+    fields:
+      - {name: document_key, category: free_text_may_contain}
+    writes_from: upload_document
+    write_called_by: create_document
+    delete_call: null
+    delete_called_by: null
+    key_template: "docs/{user_id}/{document_id}.pdf"
+    versioning_declared: false
+  - name: doc_search
+    kind: search_index
+    client: elasticsearch
+    module: search.py
+    fields:
+      - {name: owner_email, category: contact}
+      - {name: title, category: free_text_may_contain}
+    writes_from: index_document
+    write_called_by: create_document
+    delete_call: null
+    delete_called_by: null
+  - name: events
+    kind: queue
+    client: pika
+    module: queue.py
+    fields:
+      - {name: email, category: contact}
+    writes_from: publish_document_created
+    write_called_by: create_document
+    delete_call: null
+    delete_called_by: null
+  - name: nightly_dump
+    kind: backup
+    client: file
+    module: jobs/dump.py
+    fields:
+      - {name: email, category: contact}
+      - {name: full_name, category: identifier}
+      - {name: phone, category: contact}
+    writes_from: write_dump
+    write_called_by: module      # jobs/dump.py calls it under __main__; no cron, no beat entry
+    delete_call: null
+    delete_called_by: null
+
+entry_points: []
+
+jobs:
+  - name: write_dump
+    module: jobs/dump.py
+    kind: backup
+    target: null
+    schedule: null
+    retention_days: null
+
+routes:
+  - {name: create_document, module: api/account.py, reads: [User.email, Document.title]}
+  - {name: get_profile, module: api/account.py, reads: [User.email, User.phone]}
+
+extra_files:
+  - {path: utils/text.py, kind: helpers}
+
+expect:
+  entry_points: []
+  stores:
+    users:           {verdict: no_entry_point, evidence: null}
+    documents:       {verdict: no_entry_point, evidence: null}
+    uploads:         {verdict: no_entry_point, evidence: null}
+    doc_search:      {verdict: no_entry_point, evidence: null}
+    events:          {verdict: no_entry_point, evidence: null}
+    nightly_dump:
+      verdict: no_schedule_evidenced
+      evidence: null
+      note: "the dump is written at {jobs/dump.py::write_dump!open}; no schedule, cron expression or retention constant exists anywhere in the repository"
