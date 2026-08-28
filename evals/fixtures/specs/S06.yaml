@@ -91,7 +91,13 @@ extra_files:
   - {path: accounts/utils.py, kind: helpers}
 
 expect:
-  entry_points: [delete_account]
+  # The admin registration below is a deletion surface too: 03-verifier.md §2.2 discovers
+  # admin_delete_model (mode model_delete) and admin_delete_selected (mode queryset_delete)
+  # from `admin.site.register(Account)`, both flagged admin_only (AMBIGUITIES 15, R16). They
+  # are entry points, not scored tuples, so no store verdict and no F1 count moves; what
+  # changes is entry_point_check, which now expects three names instead of one. This is the
+  # dev rehearsal of the admin-only rule (fixture-generator.md §9).
+  entry_points: [delete_account, admin_delete_model, admin_delete_selected]
   stores:
     accounts_account: {verdict: erased, evidence: "accounts/views.py::delete_account!delete"}
     accounts_address: {verdict: erased, evidence: "accounts/models.py::Address.account"}
