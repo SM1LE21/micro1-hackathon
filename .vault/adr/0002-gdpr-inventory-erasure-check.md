@@ -50,3 +50,5 @@ Kill switches, in order:
 2. Saturday 2026-08-29 18:00 UTC — no baseline number on the dev set: switch to the prospect-researcher fallback on a synthetic corpus, in a new ADR superseding this one.
 
 What would reopen this decision: an "unverified" rate on real repos so high that the advanced arm cannot separate from the baseline, or a real-repo set that cannot be labelled inside the cap (2 h each, max 5 repos).
+
+Amended 2026-08-28: the verifier signature is `path_exists(graph, entry, target, must_pass_through=None)` (ADR 0004 P-15) and lives under `art30/verify/`, not `advanced/verify.py`. Kill switch 2's action is narrowed by ADR 0005. Signature amended by ADR 0004.
