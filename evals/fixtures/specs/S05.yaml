@@ -1,0 +1,140 @@
+# S05 — dev — six stores, one delete route, four misses.
+# Rows are genuinely erased. Everything that is not a row is not: a Redis session cache
+# keyed by email, a Stripe customer, a Mixpanel event, a SendGrid send, and a Sentry SDK
+# initialised with no flags (research §6 R23 — the request URL, the query string, request
+# bodies and stack-frame locals go out by default).
+# Extends CASES.md's S05 row: Sentry added; the analytics and mail SDKs are stores of kind
+# third_party with verdict external_manual, because the contract has no separate recipients
+# list. Neither change moves a scored tuple. See fixture-generator.md §9.
+# The four Sentry field names are emitted as SENTRY_DEFAULT_FIELDS in app.py so each one is
+# a token the code writes and the manifest can cite it; without that line the advanced arm's
+# citation check rejects the tuples the baseline is credited with (fixture-generator.md §6.1).
+# The session cache carries a delete helper nothing calls: the dead-helper rule is developed
+# here, on dev, instead of first appearing on S10 (test).
+# Frozen once the first run against S05 exists.
+case: S05
+split: dev
+flavour: sqlalchemy
+package: pulsedeck
+intent: "the inventory case: rows are erased, and five non-relational stores are not; recipients are discovered from the argument that flows into the SDK call"
+engine: "sqlite:///./pulsedeck.db"
+
+models:
+  - name: User
+    table: users
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: email, type: str, category: contact, nullable: false}
+      - {name: full_name, type: str, category: identifier}
+      - {name: marketing_opt_in, type: bool, category: behavioural}
+      - {name: created_at, type: datetime, category: technical}
+  - name: Product
+    table: products
+    negative: true
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: sku, type: str}
+      - {name: title, type: str}
+
+stores:
+  - name: sessions
+    kind: cache
+    client: redis
+    module: cache.py
+    fields:
+      - {name: email, category: contact}
+    writes_from: store_session
+    write_called_by: login
+    delete_call: purge_session      # defined in cache.py and called by nothing
+    delete_called_by: null
+    key_template: "sessions:{email}"
+    ttl_seconds: 86400
+  - name: stripe
+    kind: third_party
+    client: stripe
+    module: billing.py
+    fields:
+      - {name: email, category: contact}
+      - {name: name, category: identifier}    # the keyword Customer.create actually passes
+    writes_from: create_customer
+    write_called_by: signup
+    delete_call: null
+    delete_called_by: null
+  - name: mixpanel
+    kind: third_party
+    client: mixpanel
+    module: analytics.py
+    fields:
+      - {name: email, category: contact}
+    writes_from: track_signup
+    write_called_by: signup
+    delete_call: null
+    delete_called_by: null
+  - name: sendgrid
+    kind: third_party
+    client: sendgrid
+    module: mail.py
+    fields:
+      - {name: email, category: contact}
+      - {name: full_name, category: identifier}
+    writes_from: send_welcome
+    write_called_by: signup
+    delete_call: null
+    delete_called_by: null
+  - name: sentry
+    kind: third_party
+    client: sentry
+    module: app.py
+    fields:
+      - {name: url, category: technical}
+      - {name: query_string, category: technical}
+      - {name: request_body, category: free_text_may_contain}
+      - {name: local_variables, category: free_text_may_contain}
+    writes_from: init_observability
+    write_called_by: module        # called at the bottom of app.py, so the init runs at import
+    delete_call: null
+    delete_called_by: null
+    sdk_options: {}
+
+entry_points:
+  - name: delete_account
+    kind: route
+    module: api/account.py
+    action: hard_delete
+    deletes_via: session_delete
+    docstring: "Delete the account row."
+
+routes:
+  - {name: signup, module: api/profile.py, reads: [User.email, User.full_name]}
+  - {name: login, module: api/profile.py, reads: [User.email]}
+
+extra_files:
+  - {path: utils/text.py, kind: helpers}
+
+retention:
+  - {store: sessions, category: contact, days: 1, anchor: "cache.py::SESSION_TTL_SECONDS"}
+
+expect:
+  entry_points: [delete_account]
+  stores:
+    users:
+      verdict: erased
+      evidence: "api/account.py::delete_account!delete"
+    sessions:
+      verdict: not_erased
+      evidence: null
+      note: "the session key is written at {cache.py::store_session!setex}; purge_session is defined at {cache.py::purge_session} and called by nothing, so no path from the account-closure route reaches it, and the TTL is a retention timer rather than an erasure path"
+    stripe:
+      verdict: external_manual
+      evidence: null
+      note: "customer created at {billing.py::create_customer!create}; no deletion call anywhere in the repository"
+    mixpanel:
+      verdict: external_manual
+      evidence: null
+    sendgrid:
+      verdict: external_manual
+      evidence: null
+    sentry:
+      verdict: external_manual
+      evidence: null
+      note: "initialised at {app.py::init_observability!init} with no send_default_pii flag; request URLs, query strings, request bodies and stack-frame locals are sent by default"
