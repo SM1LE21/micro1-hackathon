@@ -316,7 +316,7 @@ First to go at the top. Each line names what it costs, what it returns, and the 
 - [ ] Model, effort, `max_tokens`, the no-temperature-no-seed paragraph, and what the three seeds do and do not control (D2e, X09, X10)
 - [ ] `ART30_UNLOCK_TEST` and the two-sweep rule documented in the same paragraph (`05-eval-harness.md` §5.4)
 - [ ] `docker build && docker run --rm hackathon make eval-replay` exit 0, or the file says the path is unrehearsed
-- [ ] All ten Makefile targets copy-pasteable with no hidden flags (D2b)
+- [ ] All fifteen Makefile targets copy-pasteable with no hidden flags (D2b)
 
 ### Deliverable 03 — video
 
