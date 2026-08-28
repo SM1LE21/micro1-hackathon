@@ -60,6 +60,7 @@ entry_points:
 stores:
   - name: users
     kind: relational
+    subject_link: {file: models.py, line: 9}   # the citation that ties the store to a data subject; nullable
     fields:
       - {name: email,     category: contact,    file: models.py, line: 14}
       - {name: full_name, category: identifier, file: models.py, line: 15}
@@ -156,3 +157,4 @@ Test-set discipline: R03 and R04 manifests are labelled by Saturday morning and 
   7. Failure traces live at `traces/failures/<arm>/<case>-s<seed>.jsonl`.
 - 2026-08-28 (ADR 0005): the test split is swept live once, both arms in one recording window (Sweep C, Sunday after the freeze); the second of the two ledger slots is held for a re-record. "Touched twice" reads: at most two live sweeps, the reported comparison from one window. The baseline arm is frozen from Saturday 18:15 UTC before any test case is run.
 - 2026-08-28: three rules (`no_entry_point`, `no_schedule_evidenced`, the admin-only entry point) are first exercised on the test split; their dev rehearsal is unit tests under `tests/verify/` (`docs/spec/fixture-generator.md` §9).
+- 2026-08-28: every manifest store carries `subject_link {file, line}` (nullable); Django file fields are stores of their own named `<model>.<field>` (`docs/spec/fixture-generator.md` §7); the scorer matches a predicted store to a file store by its `declared_at` line when names differ (`docs/spec/05-eval-harness.md` §3).
