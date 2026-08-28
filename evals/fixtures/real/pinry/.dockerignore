@@ -1,0 +1,36 @@
+# local data
+docker/data/
+.github/
+
+# static
+static
+.idea
+pinry-spa/node_modules
+pinry-spa/dist
+local_settings.py
+
+# git
+.git
+.gitignore
+
+# docs
+docs
+
+# docker
+.dockerignore
+Dockerfile*
+docker-compose*
+
+# database
+db.sqlite3
+
+# misc conf
+.flake8
+.travis.yml
+
+# vscode
+.vscode
+
+# markdown
+LICENSE.md
+README.md
