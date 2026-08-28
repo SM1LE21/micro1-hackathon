@@ -1,0 +1,123 @@
+# S10 — TEST — the hard case.
+# Existence versus reachability. cleanup_user_files() is defined in storage.py and called
+# by nothing. close_account's docstring says it removes all user data including files.
+# The rows really do go, thirty days later, through jobs/purge.py. The avatars never do,
+# and the Stripe customer never does.
+# This is the shape of the bug ADR 0002 describes: the purge job cleaned the database on
+# schedule, the object store kept every file, and the hand-written record said otherwise
+# for a month.
+# The four stores and both evidence notes match the example manifest in evals/CASES.md, and the
+# field list matches docs/spec/example-record-S10.md, the hand-written target artefact: eleven
+# tuples, not seven. Scored against the shorter list the project's own model answer read
+# precision 0.64 and pass false. See fixture-generator.md §9.
+# The second retention row in that example is dropped: it says a financial field on `users`
+# is kept for the statutory accounting period while the same table is hard-deleted at
+# thirty days. See fixture-generator.md §9.
+# Frozen once the first run against S10 exists. Test split: see evals/split.yaml.
+case: S10
+split: test
+flavour: sqlalchemy
+package: tidewharf
+intent: "a defined-but-uncalled cleanup helper and a docstring that contradicts the call graph; rows are erased after a timer, files and the payment customer are not"
+engine: "sqlite:///./tidewharf.db"
+
+models:
+  - name: User
+    table: users
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: email, type: str, category: contact, nullable: false}
+      - {name: full_name, type: str, category: identifier}
+      - {name: signup_ip, type: str, category: technical}
+      - {name: last_seen_at, type: datetime, category: behavioural}
+      - {name: deleted_at, type: datetime, category: technical}   # soft-delete marker the purge job filters on
+
+stores:
+  - name: uploads
+    kind: object_storage
+    client: boto3
+    module: storage.py
+    fields:
+      - {name: avatar_key, category: identifier}
+      - {name: original_filename, category: free_text_may_contain}   # kept as object metadata by upload_avatar
+    writes_from: upload_avatar
+    write_called_by: set_avatar
+    delete_call: cleanup_user_files
+    delete_called_by: null
+    key_template: "avatars/{user_id}.jpg"
+    versioning_declared: false
+  - name: stripe
+    kind: third_party
+    client: stripe
+    module: billing.py
+    fields:
+      - {name: email, category: contact}
+      - {name: name, category: identifier}    # the keyword Customer.create actually passes
+    writes_from: create_customer
+    write_called_by: signup
+    delete_call: null
+    delete_called_by: null
+  - name: nightly_backup
+    kind: backup
+    client: file
+    module: jobs/backup.py
+    fields:
+      - {name: email, category: contact}
+      - {name: full_name, category: identifier}
+    writes_from: dump_database
+    write_called_by: module      # the dump script's own SCHEDULE constant is the evidence
+    delete_call: null
+    delete_called_by: null
+
+entry_points:
+  - name: close_account
+    kind: route
+    module: api/account.py
+    action: soft_delete
+    docstring: "Close the account and remove all user data, including uploaded files."
+
+jobs:
+  - name: purge_closed_accounts
+    module: jobs/purge.py
+    kind: purge
+    target: User
+    method: orm_loop
+    retention_days: 30
+    filter_field: deleted_at
+  - name: dump_database
+    module: jobs/backup.py
+    kind: backup
+    target: null
+    schedule: "0 3 * * *"
+    retention_days: 35
+
+routes:
+  - {name: signup, module: api/profile.py, reads: [User.email, User.full_name]}
+  - {name: set_avatar, module: api/profile.py, reads: [User.id]}
+
+extra_files:
+  - {path: utils/text.py, kind: helpers}
+
+retention:
+  - {store: users, category: contact, days: 30, anchor: "jobs/purge.py::RETENTION_DAYS"}
+  - {store: nightly_backup, category: contact, days: 35, anchor: "jobs/backup.py::BACKUP_RETENTION_DAYS"}
+
+expect:
+  entry_points: [close_account]
+  stores:
+    users:
+      verdict: erased_after_timer
+      timer_days: 30
+      evidence: "jobs/purge.py::purge_closed_accounts!delete"
+    uploads:
+      verdict: not_erased
+      evidence: null
+      note: "cleanup_user_files defined at {storage.py::cleanup_user_files}, never called"
+    stripe:
+      verdict: external_manual
+      evidence: null
+      note: "customer created at {billing.py::create_customer!create}; no deletion call exists in the repository"
+    nightly_backup:
+      verdict: governed_by_retention
+      timer_days: 35
+      evidence: "jobs/backup.py::BACKUP_RETENTION_DAYS"
