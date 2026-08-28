@@ -1,0 +1,57 @@
+# Dev/test membership for the evaluation (evals/CASES.md §Counts and budget).
+#
+# Dev is iterated on freely. Test is touched twice with live runs: once for the baseline,
+# once for the final system. That is enforced in four places, not promised
+# (docs/spec/05-eval-harness.md §5.4):
+#   1. evals/harness/run.py refuses any selection intersecting `test` without --unlock-test
+#      and a --reason, and appends the sweep to results/test-runs.log before the first call.
+#   2. Each ledger line ends with the sha256 of the previous line, and the runner verifies the
+#      chain before appending, so deleting two lines to reset the budget is detectable.
+#   3. A third live sweep needs --adr NNNN naming an ADR file that exists; otherwise exit 3.
+#   4. art30/cli.py refuses a direct `art30 scan` whose repo path resolves to a test case
+#      unless ART30_UNLOCK_TEST=1 is set. Without that, pointing the CLI at
+#      evals/fixtures/synthetic/S10/ iterates on test with no flag and no ledger entry.
+#
+# Replay sweeps over test do not consume the budget: they re-score recorded responses and
+# reveal nothing the recorded run did not already reveal.
+#
+# Dev iteration between sweeps runs on S02, S05 and S07 — the three dev cases with the most
+# non-reaching tuples, advanced arm only (docs/spec/05-eval-harness.md §11). A rule whose
+# failure shape exists only on a test case is developed against a tests/verify/ fixture.
+#
+# Case definitions: evals/CASES.md. Synthetic specs: evals/fixtures/specs/.
+
+dev:
+  - S01   # clean repository, no findings
+  - S02   # soft delete only
+  - S03   # soft delete + purge job + scheduled backup; unenforced ondelete -> unverified
+  - S04   # object storage, genuinely erased
+  - S05   # six stores, four non-relational misses, Sentry, dead cache-delete helper
+  - S06   # Django: cascade, DB_CASCADE, correctly wired post_delete
+  - S07   # hidden personal data, negative table, hashed-email pseudonymisation
+  - R01   # fastapi/full-stack-fastapi-template @ 486f054
+  - R02   # flaskbb/flaskbb @ fc64c74
+
+test:
+  - S08   # no deletion feature anywhere; six stores; unscheduled backup
+  - S09   # Django decoy receiver on the wrong sender
+  - S10   # the hard case: dead helper + contradicting docstring
+  - R03   # pinry/pinry @ 05476b1
+  - R04   # miguelgrinberg/microblog @ a975ef6
+
+reserve:
+  - R05   # HackSoftware/Django-Styleguide-Example @ a70ef43 — run only if the full eval stays under ~30 min wall clock
+
+policy:
+  live_test_sweeps_allowed: 2
+  test_run_log: results/test-runs.log
+  test_run_log_chained: true            # each line carries sha256 of the previous line
+  unlock_flag: "--unlock-test"
+  unlock_env: ART30_UNLOCK_TEST         # the same lock inside art30/cli.py
+  third_sweep_flag: "--adr"             # must name an existing .vault/adr/NNNN-*.md
+  replay_counts_against_budget: false
+  split_all: [dev, test]                # `--split all` is dev + test; reserve is never implied
+  reserve_flag: "--include-reserve"     # adds R05; requires --unlock-test, R05 being reserve (test)
+  runs_at_three_seeds_two_arms:
+    all: 84                             # 14 cases; this is identity_check.n in results/metrics.json
+    with_reserve: 90
