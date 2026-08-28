@@ -22,5 +22,5 @@ What we deliberately do not build, so scope stays fixed. Additions allowed; remo
 - No live web or GitHub API at eval time. Real repos are vendored at a pinned SHA under `evals/fixtures/real/` with their LICENSE files.
 - No more than 5 real repos, none over ~150 non-test Python files, none without an OSI licence (MIT/BSD/Apache). Labelling cap 2 h each.
 - No LLM-as-judge anywhere in the primary metric.
-- No output formats beyond Markdown (and the validated JSON it renders from). No DOCX, no PDF, no DPA portal integration.
+- No output formats beyond Markdown, the validated JSON it renders from, and one static single-template HTML page of the same record (ADR 0003 item 8). No DOCX, no PDF, no DPA portal integration.
 - No English-only apologies: the record is English only.
