@@ -1,4 +1,4 @@
-.git
+# .git stays in the build context: make eval-replay ends in git diff --exit-code
 .venv
 .env
 __pycache__
