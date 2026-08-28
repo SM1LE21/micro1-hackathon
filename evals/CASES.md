@@ -154,3 +154,5 @@ Test-set discipline: R03 and R04 manifests are labelled by Saturday morning and 
   5. The illustrative manifest's null-cited retention row is a shape example only; every submitted retention item carries `file` and `line`. S10's `(users, financial, criteria)` row is dropped — the same table is hard-deleted at 30 days.
   6. S05: the transactional mail service is a `third_party` store under the contract's vocabulary, not "a recipient, not a store".
   7. Failure traces live at `traces/failures/<arm>/<case>-s<seed>.jsonl`.
+- 2026-08-28 (ADR 0005): the test split is swept live once, both arms in one recording window (Sweep C, Sunday after the freeze); the second of the two ledger slots is held for a re-record. "Touched twice" reads: at most two live sweeps, the reported comparison from one window. The baseline arm is frozen from Saturday 18:15 UTC before any test case is run.
+- 2026-08-28: three rules (`no_entry_point`, `no_schedule_evidenced`, the admin-only entry point) are first exercised on the test split; their dev rehearsal is unit tests under `tests/verify/` (`docs/spec/fixture-generator.md` §9).
