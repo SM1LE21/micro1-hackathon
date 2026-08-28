@@ -1,0 +1,614 @@
+# Verifier rule sets — draft
+#
+# The data behind docs/spec/03-verifier.md. Ships under art30/verify/rules/ split
+# into stores.yaml, primitives.yaml, recipients.yaml, entrypoints.yaml and
+# patterns.yaml (the five top-level sections below, in that order). Kept as one
+# file here so the spec and its data can be read together.
+#
+# Every entry carries the rule it implements (R1-R28, docs/research/framework-behaviour.md
+# section 6) and the source ID the behaviour was read from (S1-S47, the tables at the
+# bottom of docs/research/framework-behaviour.md and docs/research/sources/frameworks/*.md).
+# Rules with no R-number are spec decisions and name the section of 03-verifier.md instead.
+#
+# Matching vocabulary used below:
+#   import   - a module name bound by an import statement in the file
+#   base     - a class base, compared on the last dotted segment
+#   call     - a callee, matched on "<receiver>.<attr>" or on the bare attribute
+#   kwarg    - a keyword argument of that call
+#   literal  - a string literal anywhere in the matched file set
+
+version: 1
+generated_for: art30 0.1
+python_target: "3.12"                     # ADR 0003 section 7
+
+# Delete modes carried by a path (03-verifier.md 4.1 and 4.2). A walk starts in `none`,
+# in which only ordinary call edges, SE10 and SE11 are admissible; every mode-bearing
+# synthetic edge waits for a primitive to set one.
+path_modes:
+  entry_start_mode: none
+  admissible_in_none: [call_edge, SE10, SE11, SE12]
+  all: [none, model_delete, queryset_delete, db_cascade, session_delete, bulk_dml, raw_sql]
+
+# ---------------------------------------------------------------------------
+# 1. Scan surface  (03-verifier.md section 1.1)
+# ---------------------------------------------------------------------------
+scan:
+  excluded_dirs:                          # not application code; the first four also
+    - .git                                # excluded from list_tree by 00-contract.md
+    - __pycache__
+    - node_modules
+    - static
+    - media
+    - .venv
+    - venv
+    - env
+    - site-packages
+    - .tox
+    - build
+    - dist
+    - .mypy_cache
+    - .ruff_cache
+    - htmlcov
+    - locale
+    - migrations                          # generated; models.py is the authority on fields
+    - tests
+    - test
+    - docs
+  excluded_files:
+    - "test_*.py"
+    - "*_test.py"
+    - conftest.py
+    - setup.py
+    - noxfile.py
+  always_scan:                            # the answer depends on these two
+    - "settings.py"                       # R10 INSTALLED_APPS [S13]
+    - "settings/*.py"
+    - "**/management/commands/*.py"       # entry points of kind cli (03-verifier.md 2.2)
+  max_file_bytes: 1048576                 # over this: unparsed -> unverified (R28) [S35]
+  non_python_globs:                       # read only by the R13 versioning search [S22][S23]
+    - "*.tf"
+    - "*.tfvars"
+    - "*.yaml"
+    - "*.yml"
+    - "*.json"
+    - "Dockerfile*"
+    - "docker-compose*"
+  non_python_max_depth: 4
+  r13_also_searches_python_as_text: true  # the research finds the declaration in "a bootstrap
+                                          # script or management command" [S22]; a non-Python-only
+                                          # search never sees it (03-verifier.md 1.1)
+
+# ---------------------------------------------------------------------------
+# 2. Store kinds, detection and deletion primitives
+#    Kinds are the closed set of 00-contract.md section "Record vocabulary".
+# ---------------------------------------------------------------------------
+store_kinds:
+
+  relational:
+    detect:
+      django_model:                       # R1 [S1]
+        base: [Model, models.Model, django.db.models.Model]
+        table_name_from: [Meta.db_table, class_name]
+        subject_root_bases: [AbstractUser, AbstractBaseUser]   # Bearer known-object split [S5]
+        subject_root_setting: AUTH_USER_MODEL
+      sqlalchemy_declarative:             # [S15][S20][S43]
+        base: [DeclarativeBase, Base, declarative_base, SQLModel]
+        requires_any: [__tablename__, "table=True"]            # 03-verifier.md 3.1: a Base is not a store
+      sqlalchemy_core_table:              # Table("name", metadata, Column(...)) [S15]
+        call: [Table]
+        name_from: arg0
+      association_table:                  # R7 [S18]: user<->tag rows are personal data
+        from_kwarg: secondary
+    deletion_primitives:                  # `mode` is what SE12 SETS on traversal; the edge itself
+                                          # is admissible in every mode including `none`
+      - call: [".delete"]                 # instance.delete() -> mode model_delete       R14 [S7]
+        mode: model_delete
+      - call: ["objects.filter.delete", "objects.all.delete", "objects.delete"]
+        mode: queryset_delete             # R15 [S3]: signals still fire, override does not run
+      - call: ["session.delete", "db.session.delete"]
+        mode: session_delete              # R7, R18 [S18][S19]
+      - call: ["session.execute"]         # with a delete() construct as arg0
+        arg0_call: [delete]
+        mode: bulk_dml                    # R17 [S15][S16]: no ORM cascade, no ORM events
+      - call: ["cursor.execute", "connection.execute", "session.execute"]
+        arg0_call: [text]
+        mode: raw_sql                     # R19 [S11][S16]: table named in the literal only
+      - call: ["_raw_delete"]
+        mode: raw_sql                     # R19: private API, opaque edge [S11]
+    child_delete_predicate:               # R3a / 03-verifier.md 4.8: the two-step PROTECT idiom
+      qualifying_only:                    # anything else -> child unverified, downstream unverified
+        - "filter(<fk to subject> = <subject var>)"
+        - "filter(<fk to subject>__in = <subject collection>)"
+        - "<subject var>.<related manager>.all()"
+        - "query(Child).filter(Child.<fk> == <subject var>.id)"
+      extra_predicate_note: >-
+        A filtered child delete (status="draft") leaves rows behind AND makes the parent
+        delete raise ProtectedError, so nothing is erased. Research section 4.4(c).
+
+  object_storage:
+    detect:
+      django_file_field:                  # R8 [S1][S2]: a second store, id <model>.<field>
+        field_call: [FileField, ImageField]
+        store_id: "{model}.{field}"
+      boto3_client:                       # [S23]
+        call: ["boto3.client", "boto3.resource"]
+        arg0_literal: [s3]
+      django_storages:                    # [S14]
+        import: [storages.backends.s3, storages.backends.s3boto3]
+        base: [S3Storage, S3Boto3Storage]
+        setting: [DEFAULT_FILE_STORAGE, STORAGES]
+      default_storage:
+        import: ["django.core.files.storage"]
+    deletion_primitives:                  # R13 [S12][S14][S22][S23]; sets no mode
+      - call: ["delete_object", "delete_objects"]        # boto3 client form
+      - call: ["Object.delete", "objects.filter.delete"] # boto3 resource form [S14]
+      - call: ["storage.delete", "default_storage.delete", "Storage.delete"]  # [S12]
+      - call: [".delete"]                 # FieldFile.delete(save=False) [S1]
+        receiver_is_file_field: true
+    store_identity_match: Bucket          # 03-verifier.md 3.10: the delete is attributed by its own
+                                          # literal, never by the client handle. One boto3 client
+                                          # serves several buckets; a mismatch adds no edge.
+    versioning_blocks_erasure: true       # R13 [S22]: a simple DELETE inserts a delete marker
+    version_id_kwarg: VersionId           # passing it permanently deletes [S23]
+
+  cache:
+    detect:
+      redis:                              # [S24][S25]
+        import: [redis, aioredis, django_redis]
+        call: ["redis.Redis", "redis.StrictRedis", "redis.from_url", "get_redis_connection"]
+      django_cache:
+        import: ["django.core.cache"]
+    key_namespace_from: literal_prefix    # "session:{}" -> session (03-verifier.md 3.3)
+    store_identity_match: key_prefix      # 03-verifier.md 3.10: r.delete("session:{id}") erases the
+                                          # session store only. One handle, several namespaces;
+                                          # a delete on one must not mark its siblings erased.
+    deletion_primitives:                  # R20 [S24]; sets no mode
+      - call: ["delete", "unlink", "delete_pattern", "flushdb"]
+    retention_only:                       # R20 [S25]: a TTL is a retention timer, not erasure
+      - call: ["expire", "pexpire", "setex", "psetex", "set"]
+        kwarg: [ex, px, timeout]
+        note: >-
+          A timeout is cleared by any command that overwrites the value and a repeated
+          EXPIRE extends it, so a refreshed session key never expires [S25].
+
+  search_index:
+    detect:                               # R21 [S26][S27]
+      import: [elasticsearch, opensearchpy, elasticsearch_dsl, haystack, meilisearch]
+      call: ["Elasticsearch", "OpenSearch", "Client"]
+    index_name_from_kwarg: index
+    store_identity_match: index           # 03-verifier.md 3.10: es.delete(index="posts") never
+                                          # erases the "users" index on the same client
+    deletion_primitives:
+      - call: ["delete", "delete_by_query", "indices.delete"]   # [S26][S27]
+
+  queue:
+    detect:                               # 03-verifier.md 3.5
+      celery:
+        import: [celery]
+        call: ["delay", "apply_async", "send_task"]
+      rq:
+        import: [rq]
+        call: ["enqueue", "enqueue_at"]
+      other:
+        import: [django_q, dramatiq, huey]
+        call: ["lpush", "rpush"]
+    is_store_only_if_payload_personal: true   # an id-only payload is not a store
+    store_identity_match: queue_or_task_name  # 03-verifier.md 3.10
+    deletion_primitives:
+      - call: ["purge", "revoke", "empty"]
+    retention_only:
+      - setting: [result_expires, CELERY_RESULT_EXPIRES]
+
+  third_party:
+    detect: see_recipients_section        # section 3 below
+    recipient_kind_default: unknown       # 00-contract.md: the human sets it at the gate
+
+  log:
+    detect:                               # 03-verifier.md 3.7
+      import: [logging, structlog, loguru]
+      call: ["logger.info", "logger.warning", "logger.error", "logger.exception",
+             "logger.debug", "log.info", "print"]
+      personal_data_in_args: true         # f-string or %-format naming a guard-list attribute
+    deletion_primitives: []               # a log line is not deleted by application code
+    note: >-
+      A rotation or retention setting is rendered in the retention column; it never
+      changes the verdict. governed_by_retention is reserved for kind backup
+      (00-contract.md, AMBIGUITIES 6).
+
+  backup:
+    detect:                               # AMBIGUITIES 6, gdpr-sources.md 3.1 [S10][S11]
+      name_matches: [backup, snapshot, dump, pg_dump, mysqldump, export_all]
+      call: ["create_db_snapshot", "create_snapshot", "create_db_cluster_snapshot"]
+    verdicts_allowed: [governed_by_retention, no_schedule_evidenced]
+    schedule_sources: [crontab, beat_schedule, RETENTION_DAYS, lifecycle_days]
+
+# ---------------------------------------------------------------------------
+# 3. Recipients (kind third_party). Import alone is not evidence; a call carrying
+#    personal data is (AMBIGUITIES 7 reading B).
+# ---------------------------------------------------------------------------
+recipients:
+
+  stripe:                                 # R22 [S28][S29]
+    import: [stripe]
+    transmitting_calls: ["Customer.create", "Customer.modify", "Customer.update",
+                         "PaymentIntent.create", "Charge.create", "Invoice.create"]
+    deletion_requests: ["Customer.delete"]
+    upgrades_to_erased: false             # R22: never erased, even with Customer.delete on the path
+    verdict: external_manual
+    note: >-
+      Deleted customers "can still be retrieved through the API" [S28]; transactions can only
+      be redacted after 90 days and invoices are excluded from redaction entirely [S29].
+
+  sentry:                                 # R23 [S30][S31][S42]
+    import: [sentry_sdk]
+    transmitting_calls: ["init"]          # init alone makes Sentry a recipient
+    fields_by_default:                    # sent with no flag set [S31][S42]
+      - {name: url, category: technical}
+      - {name: query_string, category: technical}
+      - {name: request_body, category: free_text_may_contain}   # max_request_body_size=medium
+      - {name: stack_locals, category: free_text_may_contain}   # include_local_variables=True
+      - {name: source_context, category: free_text_may_contain} # include_source_context=True
+    fields_when_pii_enabled:              # send_default_pii=True, set_user(), set_context() [S30][S31]
+      - {name: http_headers, category: technical}
+      - {name: cookies, category: technical}
+      - {name: user_identity, category: identifier}
+      - {name: email, category: contact}
+      - {name: ip_address, category: technical}
+    pii_flag_kwarg: send_default_pii
+    supersedes_flag: '_experiments.data_collection'   # collects most categories by default [S42]
+    deletion_requests: []
+    upgrades_to_erased: false
+    verdict: external_manual
+
+  mixpanel:                               # R24 [S32]
+    import: [mixpanel]
+    transmitting_calls: ["track", "people_set", "people_set_once", "alias"]
+    deletion_requests: ["data-deletions", "create_deletion"]     # POST /data-deletions/v3.0
+    upgrades_to_erased: false             # the endpoint "Creates a task that specifies a list of
+                                          # users in a project to delete" [S32] - a queued request,
+                                          # not a confirmation. Verdict stays external_manual.
+    verdict: external_manual
+
+  segment:                                # R24 [S33][S47]
+    import: [analytics, segment]
+    transmitting_calls: ["identify", "track", "page", "group"]
+    deletion_call: create_regulation
+    regulation_type_kwarg: regulation_type          # must be a STRING LITERAL at the call site
+    forwarding_types: [SUPPRESS_WITH_DELETE, DELETE_ONLY]   # the Segment & Destination types [S47]
+    upgrades_to_erased: forwarding_types_only
+    non_forwarding_types: [DELETE_INTERNAL]         # -> external_manual, with the note below
+    verdict: external_manual
+    note: >-
+      Only the Segment & Destination regulation types forward downstream; DELETE_INTERNAL
+      clears Segment and leaves connected destinations untouched [S47]. Matching
+      create_regulation by call name alone rendered `erased` for the one call this note
+      says does not erase - and this is the only row where a third_party store can reach
+      erasure at all, so R22's and R23's protection does not cover it.
+
+  sendgrid:                               # R24 [S34]
+    import: [sendgrid]
+    transmitting_calls: ["send", "contacts.put", "marketing.contacts"]
+    deletion_requests: ["contacts.delete"]
+    upgrades_to_erased: false             # the repository has no evidence the deletion completed;
+                                          # external_manual with the endpoint named in the note
+    verdict: external_manual
+
+  mail_generic:                           # AMBIGUITIES 7: a recipient, not a store we can erase
+    import: [django.core.mail, smtplib, mailgun, postmark, mandrill, ses]
+    transmitting_calls: ["send_mail", "EmailMessage.send", "send_messages", "sendmail",
+                         "send_email", "send_raw_email"]
+    deletion_requests: []
+    upgrades_to_erased: false
+    verdict: external_manual
+
+  gravatar:                               # R04's quiet recipient: an email hash in a URL
+    literal: ["gravatar.com/avatar"]
+    transmitting_calls: ["md5", "sha256"]
+    deletion_requests: []
+    upgrades_to_erased: false
+    verdict: external_manual
+
+  other_sdks:                             # discovery heuristic only; a call must carry data
+    import: [twilio, intercom, hubspot, amplitude, posthog, slack_sdk, customerio, braze]
+    verdict: external_manual
+
+# ---------------------------------------------------------------------------
+# 4. Entry points  (03-verifier.md section 2; AMBIGUITIES 3 and 15)
+# ---------------------------------------------------------------------------
+entry_points:
+
+  vocabulary:                             # normalised name contains one of these
+    - delete_user
+    - delete_account
+    - close_account
+    - deactivate_account
+    - remove_account
+    - delete_me
+    - delete_profile
+    - destroy_user
+    - terminate_account
+    - cancel_account
+    - purge
+    - purge_user
+    - erase
+    - forget
+    - forget_me
+    - anonymize
+    - anonymise
+    - gdpr
+    - dsr
+    - right_to_be_forgotten
+    - scrub
+    - wipe
+    - offboard
+    - account_deletion
+    - data_deletion
+
+  excluded_vocabulary:                    # 03-verifier.md 2.1, decision 6
+    - cleanup                             # S10's cleanup_user_files is a helper, not an entry point
+    - remove
+    - delete                              # bare: matches delete_comment
+    - destroy                             # bare: DRF destroy qualifies through the viewset instead
+    - deactivate                          # qualifies only on the user model or a user/account route
+
+  decorators:
+    route:                                # kind route. EVERY form carries the same qualifier:
+                                          # the method is not the question, whose deletion it is, is.
+      - {name: route,    kwarg_methods: [DELETE], requires: vocabulary_or_subject_root}   # Flask
+      - {name: delete,                            requires: vocabulary_or_subject_root}   # FastAPI
+      - {name: api_view, kwarg_methods: [DELETE], requires: vocabulary_or_subject_root}   # DRF fn
+      - {name: action,   kwarg_methods: [delete], requires: vocabulary_or_subject_root}   # DRF @action
+    task:                                 # kind task. The decorator makes a CANDIDATE; nothing here
+                                          # is evidence that anything runs it (see timers below).
+      - {name: task}                      # Celery @app.task / @shared_task
+      - {name: shared_task}
+      - {name: periodic_task}
+      - {name: job}                       # RQ
+    cli:                                  # kind cli
+      - {name: command}                   # click / typer
+      - {name: group}
+    signal:                               # never an entry point; reached through a row delete
+      - {name: receiver}                  # R8a, R9 [S5][S6]
+
+  vocabulary_or_subject_root:             # 03-verifier.md 2.2. One of these three must hold.
+    qualifies_if_any:
+      - function_name_matches_vocabulary    # delete_user, close_account, delete_user_me
+      - deleted_model_is_subject_root       # DRF queryset/get_queryset, or the variable->model
+                                            # binding at the delete call site
+      - terminal_path_segment_names_subject # /users/{id}, /me, /account, /profile
+    subject_path_segments: [users, user, me, account, accounts, profile]
+    counterexample: >-
+      @router.delete("/posts/{post_id}") def delete_post(...) is not an erasure entry point.
+      Without the qualifier every DELETE endpoint is one, rows:post reads erased on account
+      closure in a repository with no account-closure path, and S08 and R04 lose their
+      expected no_entry_point to one unrelated route. AMBIGUITIES row 2 reading A.
+
+  declared_only:                          # 03-verifier.md 2.5, AMBIGUITIES 3
+    registration_shapes:                  # what "externally invocable" means; vocabulary NOT consulted
+      - route_decorator
+      - urlpatterns_reference
+      - BaseCommand_subclass
+      - click_or_typer_command
+      - task_decorator_plus_schedule_registration
+      - admin_registration
+    unregistered_verdict_cap: unverified  # a store reachable only from a declared-but-unregistered
+                                          # entry point is never erased/erased_after_timer/anonymised.
+    why: >-
+      Adding a start node makes MORE stores read erased, which is the unsafe direction. Without
+      the cap a record declaring {name: cleanup_user_files, file: storage.py, line: 41} hands
+      S10 the entry point section 2.1 excludes `cleanup` from the vocabulary to refuse.
+
+  django:
+    urlconf_calls: [path, re_path, url]   # CG-17: a view reference, not a call edge
+    delete_view_bases: [DeleteView]
+    management_command_base: BaseCommand  # file name is the command name
+    admin:                                # R16 [S8][S9], AMBIGUITIES 15
+      register_calls: ["admin.register", "admin.site.register"]
+      entry_points:
+        - {name: admin_delete_model,    mode: model_delete,    flag: admin_only}  # [S9]
+        - {name: admin_delete_selected, mode: queryset_delete, flag: admin_only}  # [S8]
+      disabled_when: ["has_delete_permission returns False", "delete_selected removed from actions"]
+
+  drf:
+    viewset_bases: [ViewSet, ModelViewSet, GenericViewSet]
+    destroy_methods: [destroy, perform_destroy]
+
+  cli_frameworks:
+    click: {decorators: [command, group], name_from: arg0_or_function_name}
+    typer: {decorators: [command], name_from: function_name}
+    argparse: {calls: [add_parser], func_kwarg: func}
+
+  celery_task_names:                      # CG-16: string task names resolve through this table
+    default: "{module}.{function}"
+    override_kwarg: name
+    dispatch_calls: [delay, apply_async, send_task, enqueue]
+
+# ---------------------------------------------------------------------------
+# 5. Framework semantics: the tokens the rules read
+# ---------------------------------------------------------------------------
+django_on_delete:                         # R1-R4 [S1][S3][S4]
+  CASCADE:        {edge: true,  signals: true,  modes: [model_delete, queryset_delete]}   # R1
+  DB_CASCADE:     {edge: true,  signals: false, sets_mode: db_cascade}                    # R4 (Django 6.1)
+  PROTECT:        {edge: false, note: "children must be deleted first; else ProtectedError"} # R3a
+  RESTRICT:       {edge: false, verdict_when_cascade_sibling: unverified}                 # R3b
+  SET_NULL:       {edge: false}                                                           # R2
+  DB_SET_NULL:    {edge: false}                                                           # R2
+  SET_DEFAULT:    {edge: false}                                                           # R2
+  DB_SET_DEFAULT: {edge: false}                                                           # R2
+  SET:            {edge: false}                                                           # R2
+  DO_NOTHING:     {edge: false}                                                           # R2
+
+django_signals:                           # R8a, R9, R11, R12, R15 [S5][S6]
+  delete_signals: [pre_delete, post_delete]
+  connect_call: connect
+  sender_kwarg: sender                    # R9: wrong sender = no edge (the S09 decoy)
+  no_sender_covers_all_models: true       # R9 [S6]
+  no_sender_body_guards:                  # R9: a no-sender receiver that branches on the sender
+    - "sender"                            # asserts coverage the AST cannot check -> unverified
+    - "type(instance)"                    # for every model, no edge. The decorator is read; so
+    - "isinstance"                        # is the body.
+  weak_kwarg: weak                        # R11: nested def or lambda without weak=False -> unverified
+  connected_modules:                      # R12 [S6]
+    - "<installed_app>/models.py"         # Django imports it: connected with no import anywhere
+    - "<installed_app>/apps.py"
+    - "modules imported from AppConfig.ready()"
+    - "modules transitively imported from either"
+
+django_cleanup:                           # R10 [S13], verified by execution in both spellings
+  active_labels:
+    - django_cleanup                      # bare label resolves to CleanupConfig (default = True)
+    - django_cleanup.apps.CleanupConfig
+  select_mode_label: django_cleanup.apps.CleanupSelectedConfig   # inverts to opt-in
+  select_decorator: cleanup.select
+  ignore_decorator: cleanup.ignore
+  requires_row_delete: true               # R8 precondition: the row must be reached by the erasure
+                                          # path under ANY rule (not only R1/R3a/R4/R14)
+  split_settings:                         # 03-verifier.md 4.4: settings/base.py, dev.py, prod.py
+    reaching_verdict_uses: intersection   # dev-only django_cleanup must not bless the repository
+    conservative_verdict_uses: union
+    on_disagreement: unverified           # file store unverified, both settings lines cited
+
+sqlalchemy:
+  cascade_delete_tokens: [delete, all]    # R5 [S15]: exact tokens after splitting on ","
+  cascade_token_trap: delete-orphan       # contains "delete" and is not a delete cascade
+  passive_deletes_kwarg: passive_deletes  # R6 [S15]
+  secondary_kwarg: secondary              # R7 [S18]: Session.delete() only
+  fk_ondelete_kwarg: ondelete             # R6 [S19]: emits DDL and nothing else
+  enforcing_engine_evidence:              # R6 [S15][S46]
+    bound_engine_only: true               # 03-verifier.md 4.5: follow create_engine -> sessionmaker
+                                          # (bind=) / Session(engine) / flask_sqlalchemy db to the
+                                          # delete call site, by name. A repository-global URL match
+                                          # lets an unrelated analytics postgres engine bless SE7
+                                          # for a session actually bound to sqlite:///app.db.
+    unresolvable_binding_verdict: unverified
+    binding_calls: [create_engine, sessionmaker, Session, scoped_session]
+    non_sqlite_url_prefixes: [postgresql, postgres, mysql, mariadb, oracle, mssql]
+    django_engines: [django.db.backends.postgresql, django.db.backends.mysql,
+                     django.db.backends.oracle]
+    sqlite_pragma_literal: "PRAGMA foreign_keys=ON"     # connect listener on THAT engine [S46]
+    sqlite_pragma_alt: "PRAGMA foreign_keys = ON"
+  mapper_delete_events: [before_delete, after_delete]   # R18 [S17]: session flush only
+  session_imports: [sqlalchemy.orm, sqlmodel, flask_sqlalchemy]   # [S20][S21][S43]
+
+# ---------------------------------------------------------------------------
+# 6. Patterns
+# ---------------------------------------------------------------------------
+soft_delete_markers:                      # R25 [S10], AMBIGUITIES 4
+  fields: [is_active, is_deleted, deleted, deleted_at, deactivated_at, disabled_at,
+           archived_at, removed_at, status, state, is_archived, is_disabled]
+  values: [false, "False", "None", "null", "deleted", "inactive", "archived", "closed"]
+  timestamp_calls: [now, utcnow, timezone.now, datetime.now]
+  verdict: not_erased
+  upgrade_to: erased_after_timer          # only with a scheduled job reaching a hard delete
+  note: >-
+    Django recommends setting is_active to False instead of deleting accounts [S10],
+    which is why the pattern is everywhere and why the verifier refuses it.
+
+anonymisation:                            # 03-verifier.md 4.7, gdpr-sources.md 3.2 [S12]
+  anonymised_rhs:                         # reaches erasure: irreversible, no surviving key
+    - string_literal
+    - numeric_literal
+    - "None"
+    - empty_string
+    - module_constant
+    - redacted_literals: [REDACTED, deleted, removed, anonymous, "n/a"]
+  pseudonymised_rhs:                      # false side, and a false safe when claimed as reaching
+    calls: [hashlib.md5, hashlib.sha1, hashlib.sha256, hashlib.blake2b, hmac.new,
+            uuid.uuid4, uuid.uuid1, secrets.token_hex, secrets.token_urlsafe,
+            base64.b64encode, hashids.encode]
+    templates_retaining_key: ["{id}", "{pk}", "{user_id}", "%s", "user.id", "self.id"]
+    masks: ["x *", "[:2]", "***", "****"]
+  requires_all_fields_overwritten: true   # one untouched column -> pseudonymised
+  field_source: detected_columns_union_record_claims_minus_pk
+                                          # 03-verifier.md 4.7: the verifier's OWN detected columns
+                                          # (3.1 class-body fields, 3.3 written keys) union the
+                                          # record's claimed fields, minus the primary key. Never the
+                                          # record alone: the model would shrink the list to {email},
+                                          # set email = "" and leave full_name and phone standing.
+  surviving_subject_fk_downgrades: true
+  note: >-
+    WP29 05/2014: "the processing must be irreversible" [S12]; the EDPB found controllers
+    substituting "basic pseudonymisation or partial masking" for deletion [S11].
+
+timers:                                   # 03-verifier.md 6.3; the tool never invents a number
+  day_patterns:
+    - {call: timedelta, kwarg: days}
+    - {call: timedelta, kwarg: hours, convert: hours_to_days, min: 1}
+    - {kwarg: days}
+    - {constant_names: [RETENTION_DAYS, RETENTION_PERIOD_DAYS, PURGE_AFTER_DAYS,
+                        DATA_RETENTION_DAYS, GRACE_PERIOD_DAYS]}
+    - {s3_lifecycle_keys: [Days, NoncurrentDays]}       # [S22]
+  schedule_patterns:                      # ALSO the registration citation erased_after_timer needs
+    - {call: crontab}                                   # Celery beat
+    - {kwarg: run_every}
+    - {setting: [CELERYBEAT_SCHEDULE, beat_schedule]}
+    - {call: add_periodic_task}
+    - {call: [cron, schedule], framework: rq_scheduler}
+    - {literal_cron: "^([-*/,0-9]+\\s+){4}[-*/,0-9]+$"} # cron file, systemd timer, k8s CronJob
+  schedule_registration_required: true    # 03-verifier.md 6.2 requirement 3. @shared_task alone is
+                                          # not evidence that anything runs the job: a task never in
+                                          # beat_schedule, never .delay()ed and never imported read
+                                          # erased_after_timer while the rows survived for ever.
+  unregistered_job_verdict: not_erased    # note: "purge job defined at X, nothing schedules it"
+  unresolved_renders: no_timer_evidenced  # 00-contract.md: absence is rendered, never guessed
+
+versioning_declarations:                  # R13 [S22][S23]; fixed-string search, reported as one
+  literals:
+    - put_bucket_versioning
+    - BucketVersioning
+    - aws_s3_bucket_versioning
+    - VersioningConfiguration
+    - versioning_configuration
+  qualifier_regex: 'status["'']?\s*[:=]\s*["'']?enabled'   # case-insensitive; within qualifier_window
+                                          # lines of one of the five literals above. A fixed
+                                          # "Status: Enabled" in YAML spelling matched none of the
+                                          # three real ones: Terraform writes status = "Enabled",
+                                          # boto3 and CloudFormation write "Status": "Enabled".
+  qualifier_window: 5
+  surfaces: [non_python_globs, scanned_python_as_text]  # 03-verifier.md 1.1
+  assumption: >-
+    Where no declaration is found in the repository, an object-store delete on the erasure
+    path is scored as reaching erasure (framework-behaviour.md section 3, narrowed).
+    Where one is found and the delete passes no VersionId, the verdict is not_erased.
+  standing_note: >-
+    A versioned bucket retains prior versions unless versionId is supplied; a GET then
+    returns 404 "even though it has not been erased" [S22].
+
+personal_data_field_patterns:             # completeness guard ONLY (03-verifier.md 3.9)
+  strong:                                 # identifier or contact; carries the guard on its own
+    [email, e_mail, mail, first_name, last_name, full_name, username, phone,
+     phone_number, mobile, address, street, city, postcode, zip, country, dob,
+     date_of_birth, birth_date, ssn, national_id, passport, iban, vat, tax_id,
+     ip, ip_address, user_agent, latitude, longitude, avatar, photo, picture]
+  qualified:                              # counts only on a store linked to a subject root
+    [name, notes, comment, bio, message, content, body]
+  subject_link_names: [user, customer, member, patient, account, owner, profile, subscriber]
+  fires_when: "strong match, OR qualified match AND subject link"
+  never_used_for: [category_assignment, verdicts, the_record]
+  note: >-
+    `name` moved from strong to qualified on measurement, not taste: with it strong the guard
+    fires on FlaskBB's Group (name, description, admin, super_mod, mod, guest, banned) and
+    PluginRegistry (name, enabled), neither of which holds personal data, and missing_stores
+    blocks acceptance - so R02 either burns five attempts or adds two non-personal stores and
+    pays in precision. Zero unlinked fires across the four vendored repos as it now stands
+    (03-verifier.md 7.4 carries the run).
+
+# ---------------------------------------------------------------------------
+# 7. Verdict precedence  (03-verifier.md section 6.1) — first match decides
+# ---------------------------------------------------------------------------
+verdict_precedence:
+  - {when: "kind == backup",                 verdict: "governed_by_retention | no_schedule_evidenced"}
+  - {when: "kind == third_party",            verdict: "external_manual | erased (R24: a Segment
+      regulation with a SUPPRESS_WITH_DELETE or DELETE_ONLY type literal, and nothing else)"}
+  - {when: "no entry point exists",          verdict: no_entry_point}
+  - {when: "hard delete on a resolved path", verdict: erased}
+  - {when: "every detected column of the store, union every field the record claims for it,
+      minus the primary key, constant-overwritten, and no foreign key to a subject_root
+      surviving",                             verdict: anonymised}   # 03-verifier.md §4.7, Decision 22
+  - {when: "soft delete + REGISTERED scheduled hard delete + timer", verdict: erased_after_timer}
+  - {when: "fields hashed, tokenised or masked", verdict: pseudonymised}
+  - {when: "ambiguous edge, unmodelled decorator, weak receiver, opaque SQL, unparsed file",
+     verdict: unverified}                  # R3b, R11, R19, R26, R27, R28
+  - {when: "otherwise",                     verdict: not_erased}
+
+reaches_erasure_true: [erased, erased_after_timer, anonymised]   # evals/CASES.md primary metric
