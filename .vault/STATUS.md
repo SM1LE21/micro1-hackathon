@@ -1,7 +1,7 @@
 # STATUS
 
 status: active
-last_updated: 2026-08-28 22:15 UTC
+last_updated: 2026-08-29 01:02 UTC
 
 ## Where we are
 
@@ -10,17 +10,18 @@ last_updated: 2026-08-28 22:15 UTC
 - **v1 concept, research and spec are complete, committed and accepted by the author in full (2026-08-29).** The design of record from here on. Entry point: `docs/spec/README.md`. Research with verified sources under `docs/research/`; judge-facing mapping under `docs/judging/`; ten fixture specs under `evals/fixtures/specs/`; the target artefact at `docs/spec/example-record-S10.md`; the build plan at `docs/spec/08-plan.md`; the narrative drafts at `docs/spec/09-narrative.md`.
 - Produced by three verified agent workflows (research → verify → fix; spec → adversarial verify → fix → cross-doc reconcile; apply ADR 0004 → plan + narrative → verify → fix → completeness critic), 42 Opus subagents, plus the lead's own spot-reads. Every proposal the spec pass raised was decided (ADR 0004).
 - Tooling: `pyproject.toml` carries the runtime dependencies and the `art30` console script; `make smoke` passes; Dockerfile has make and git; Makefile has every contract target as a stub.
-- **Build started 2026-08-28 22:30 UTC.** R01–R04 vendored at pinned SHAs with LICENSE and SOURCE.md (`evals/fixtures/real/`). Phase 1 (fixture generator + fixtures, runtime core, scorer + trace validator, loop/CLI/render/baseline arm, runner/report) is being built by verified Opus subagents; the lead commits per file.
+- **Phase 1 built and committed (2026-08-29 ~01:30 UTC):** fixture generator + the ten generated repos and manifests (`make fixtures` → "fixtures clean"), `art30/` runtime (config, trace, tools, llm, loop, cli, render, prompts, schema), `baseline/arm.py`, harness (score, trace_check, run, report), 221 offline tests green (`make smoke`). R01–R04 vendored. **Baseline and shared runtime frozen at commit 7681cb6 (ADR 0006).**
+- **Phase 2 in progress:** verifier (`art30/verify/`), its tests, `advanced/arm.py`; a refactor agent splits the oversize phase-1 files (run.py 644, report.py 576, loop.py 414, trace_check.py 384 lines) without behaviour change.
+- Known drift to refresh from the first real run: `docs/spec/example-record-S10.md` line numbers vs the generated S10.
 - **Blocker for live runs: no API credentials on this machine** (no `.env`, no `ant` profile, no `ANTHROPIC_API_KEY`). Everything up to the first calibration run builds and tests offline; the calibration run and Sweep A wait for a key in `.env`.
 - AMBIGUITIES has 16 rows; NON-GOALS admits the HTML render; Q2–Q5 resolved with their defaults (QuickTime; anecdote as drafted; no LICENSE file; $300 ceiling). `.gitattributes` committed (plan item 0).
 
 ## Next action (in order; details in docs/spec/08-plan.md §7 "Saturday's first four hours")
 
-1. Vendor R01–R04 at pinned SHAs with LICENSE and SOURCE.md.
-2. `evals/fixtures/gen.py` from `docs/spec/fixture-generator.md`; `make fixtures` clean-diff; manifests committed.
-3. Author blind-labels S03 and S05 (timed), then R03/R04, then R01/R02 under the CASES.md protocol.
-4. `art30/` runtime (tools, config, trace, llm, loop, cli, prompts, schema), baseline arm, harness (run, score, report, trace_check), tests — then one live run, then Sweep A.
-5. Verifier + tests, advanced arm, iterations, Sweeps B and C after the freeze, evidence phase (08-plan.md §2).
+1. **Author: put an API key in `.env`** (`ANTHROPIC_API_KEY=`); then calibration run on S01 baseline, then Sweep A (`make baseline`), then CHANGELOG_EVAL row 1.
+2. Author blind-labels S03 and S05 (timed, before opening their manifests), then R03/R04, then R01/R02 under the CASES.md protocol → `evals/fixtures/manifests/R0x.yaml` + `.labelling.yaml` sidecars.
+3. Phase 2 lands (verifier, advanced arm); no advanced run before Sweep A (ADR 0006).
+4. Iterations on S02/S05/S07, Sweeps B and C after the freeze, evidence phase (08-plan.md §2).
 
 ## Plan checkpoints (from docs/spec/08-plan.md §9; UTC)
 
@@ -32,10 +33,10 @@ last_updated: 2026-08-28 22:15 UTC
 | ADR 0005; Q5 opened; CASES.md errata for the one-window test sweep | Fri 21:00 | — | done |
 | Packaging, Makefile recipes, Docker path, `.gitattributes` | Fri 21:15 | — | done |
 | Q2–Q5 resolved by the author | Sat 2026-08-29 | — | done (defaults accepted) |
-| R01–R04 vendored with LICENSE and SOURCE.md | Fri 21:45 | — | |
-| `make fixtures` clean; ten repos and manifests committed | Sat 08:30 | 4 (Sat 11:00) | |
+| R01–R04 vendored with LICENSE and SOURCE.md | Fri 21:45 | — | done Fri 22:45 |
+| `make fixtures` clean; ten repos and manifests committed | Sat 08:30 | 4 (Sat 11:00) | done Sat 01:20 |
 | S03 and S05 blind-labelled, timed | Sat 09:15 | — | |
-| Tools, schema, prompts, llm; golden tool test green | Sat 11:00 | — | |
+| Tools, schema, prompts, llm; golden tool test green | Sat 11:00 | — | done Sat 01:20 (loop, cli, render, baseline arm, harness too) |
 | R03 and R04 labelled and committed; not reopened until Sweep C | Sat 11:15 | — | |
 | R01 and R02 labelled | Sat 14:45 | — | |
 | One live run end to end; cost and prefix size measured | Sat 15:15 | 5 (Sat 15:15) | |
