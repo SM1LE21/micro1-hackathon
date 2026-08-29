@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-29 01:02 UTC — Phase 1 built: fixtures, runtime, baseline arm, harness
+
+- R01–R04 vendored at pinned SHAs (LICENSE kept, SOURCE.md each); fixture generator + ten generated repos and manifests, `make fixtures` clean; 90 tuples as the spec's table
+- art30 runtime (config, trace, tools, llm, loop, cli, render, prompts, schema), baseline/arm.py, harness (score, trace_check, run, report); 221 offline tests, `make smoke` green; Makefile recipes real
+- Four fixture specs amended before any run (CASES.md errata); ADR 0006 freezes the baseline and shared runtime at 7681cb6 so the verifier can be built before Sweep A while no API key is available
+- Verified Opus subagents throughout: builder → adversarial verifier → fixer per module; the lead commits per file
+
 ## 2026-08-29 22:15 UTC — v1 accepted
 
 - Author reviewed all 428 v1 decisions through the review ledger and accepted every one; Q2–Q5 closed with their defaults
