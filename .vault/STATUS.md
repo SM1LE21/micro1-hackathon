@@ -1,7 +1,7 @@
 # STATUS
 
 status: active
-last_updated: 2026-08-29 01:02 UTC
+last_updated: 2026-08-29 15:34 UTC
 
 ## Where we are
 
@@ -11,7 +11,8 @@ last_updated: 2026-08-29 01:02 UTC
 - Produced by three verified agent workflows (research → verify → fix; spec → adversarial verify → fix → cross-doc reconcile; apply ADR 0004 → plan + narrative → verify → fix → completeness critic), 42 Opus subagents, plus the lead's own spot-reads. Every proposal the spec pass raised was decided (ADR 0004).
 - Tooling: `pyproject.toml` carries the runtime dependencies and the `art30` console script; `make smoke` passes; Dockerfile has make and git; Makefile has every contract target as a stub.
 - **Phase 1 built and committed (2026-08-29 ~01:30 UTC):** fixture generator + the ten generated repos and manifests (`make fixtures` → "fixtures clean"), `art30/` runtime (config, trace, tools, llm, loop, cli, render, prompts, schema), `baseline/arm.py`, harness (score, trace_check, run, report), 221 offline tests green (`make smoke`). R01–R04 vendored. **Baseline and shared runtime frozen at commit 7681cb6 (ADR 0006).**
-- **Phase 2 in progress:** verifier (`art30/verify/`), its tests, `advanced/arm.py`; a refactor agent splits the oversize phase-1 files (run.py 644, report.py 576, loop.py 414, trace_check.py 384 lines) without behaviour change.
+- **Phase 2 built and committed (2026-08-29 ~14:00 UTC):** the verifier (`art30/verify/`, ~30 modules on stdlib `ast`), the advanced arm and gate, 590 offline tests green. Acceptance: all twelve synthetic fixtures (S01–S10, D01, D02) reproduce every manifest verdict; twelve adversarially constructed false safes closed with regression tests; two documented xfails (no-sender receivers, graph-layer gap). Harness split under the 300-line rule with byte-identical `--help`. `art30/loop.py` (414) and `evals/harness/score.py` (315) stay over the limit: loop.py is frozen (ADR 0006), score.py has a live importer.
+- **Phase 3 in progress (offline):** evidence tooling (`verify-docs`, failure index, Docker rehearsal), spec-vs-code audit (`docs/spec/DEVIATIONS.md`, example record regenerated from the real S10), adversarial hardening tests and a record→replay round-trip test.
 - Two demo repos for hand testing outside the scored set: `evals/fixtures/synthetic/D01` (Django membership site; avatar file survives deletion) and `D02` (SQLAlchemy shop; cache purged, tickets and search index survive). `evals/split.yaml` lists them under `demo:`; the harness never selects them. Remote `origin` = github.com/SM1LE21/micro1-hackathon, pushed after each phase.
 - Known drift to refresh from the first real run: `docs/spec/example-record-S10.md` line numbers vs the generated S10.
 - **Blocker for live runs: no API credentials on this machine** (no `.env`, no `ant` profile, no `ANTHROPIC_API_KEY`). Everything up to the first calibration run builds and tests offline; the calibration run and Sweep A wait for a key in `.env`.
@@ -21,7 +22,7 @@ last_updated: 2026-08-29 01:02 UTC
 
 1. **Author: put an API key in `.env`** (`ANTHROPIC_API_KEY=`); then calibration run on S01 baseline, then Sweep A (`make baseline`), then CHANGELOG_EVAL row 1.
 2. Author blind-labels S03 and S05 (timed, before opening their manifests), then R03/R04, then R01/R02 under the CASES.md protocol → `evals/fixtures/manifests/R0x.yaml` + `.labelling.yaml` sidecars.
-3. Phase 2 lands (verifier, advanced arm); no advanced run before Sweep A (ADR 0006).
+3. Phase 3 lands; then, with the key: calibration → Sweep A → CHANGELOG_EVAL row 1 → first advanced run (`docs/runbook-sweeps.md`).
 4. Iterations on S02/S05/S07, Sweeps B and C after the freeze, evidence phase (08-plan.md §2).
 
 ## Plan checkpoints (from docs/spec/08-plan.md §9; UTC)
@@ -43,8 +44,8 @@ last_updated: 2026-08-29 01:02 UTC
 | One live run end to end; cost and prefix size measured | Sat 15:15 | 5 (Sat 15:15) | |
 | **SWEEP A** — baseline dev number | Sat 18:15 | 2 (Sat 18:30, narrow to synthetic dev; ADR 0005) | |
 | CHANGELOG_EVAL row 1; Sweep A aggregate and traces copied aside | Sat 19:00 | — | |
-| `tests/verify/` core green; callgraph, rules, reach | Sat 23:00 | 1 (Sat 23:00) | |
-| `verify/check.py` and `advanced/arm.py`; first advanced run | Sun 10:30 | — | |
+| `tests/verify/` core green; callgraph, rules, reach | Sat 23:00 | 1 (Sat 23:00) | done Sat 14:00 (ahead; ADR 0006) |
+| `verify/check.py` and `advanced/arm.py`; first advanced run | Sun 10:30 | — | code done Sat 14:00; first run waits for the key |
 | Advanced probe on R01 and R02 recorded; unverified rate read | Sun 12:00 | 3 (Sun 12:00) | |
 | Iteration rows complete (three to five) | Sun 16:30 | 6 (Sun 17:30) | |
 | Qualification-gate targets; adversarial pass | Sun 18:30 | — | |
