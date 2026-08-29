@@ -77,10 +77,13 @@ def _object_storage(ctx) -> None:
             name = ctx.literal(module, site.keywords[bucket_kwarg])
             if not name:
                 continue
+            # 3.2: the bucket constant may live in another intra-repo module
+            # (`from config import BUCKET`); the citation is its declaring line (R28).
             const = ctx.constant(module, site.keywords[bucket_kwarg].value)
-            line = const[1] if const else handles[0][1]
+            file = const.file if const else ctx.file_of(module)
+            line = const.line if const else handles[0][1]
             store = Store(id=name, kind="object_storage", name=name,
-                          declared_at=Cite(ctx.file_of(module), line), identity=name,
+                          declared_at=Cite(file, line), identity=name,
                           client_vars=[h[0] for h in handles])
             store.fields += _key_fields(ctx, module)
             if store.fields:
@@ -160,7 +163,8 @@ def _search_index(ctx) -> None:
                 continue
             const = ctx.constant(module, site.keywords[kwarg].value)
             store = Store(id=name, kind="search_index", name=name,
-                          declared_at=Cite(site.file, const[1] if const else site.line),
+                          declared_at=Cite(const.file if const else site.file,
+                                           const.line if const else site.line),
                           subject_link=Cite(site.file, site.line),
                           identity=name, client_vars=[site.receiver.split(".")[0]])
             for found in _personal(ctx, site):
@@ -262,7 +266,7 @@ def _backup(ctx) -> None:
         for constant in detect["name_constants"]:
             found = ctx.constant(module, constant)
             if found:
-                name, declared = found[0], Cite(info.file, found[1])
+                name, declared = found.value, Cite(found.file, found.line)
                 break
         store = Store(id=name, kind="backup", name=name, declared_at=declared,
                       identity=name)
@@ -270,9 +274,9 @@ def _backup(ctx) -> None:
             found = ctx.constant(module, constant)
             if not found:
                 continue
-            store.subject_link = Cite(info.file, found[1])
-            for column in found[0].split("|"):
-                store.fields.append(StoreField(name=column, file=info.file, line=found[1]))
+            store.subject_link = Cite(found.file, found.line)
+            for column in found.value.split("|"):
+                store.fields.append(StoreField(name=column, file=found.file, line=found.line))
             break
         if snapshot and not store.fields:
             store.flags.append("opaque_dump")
