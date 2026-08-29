@@ -1,0 +1,16 @@
+"""HTTP routes for the account area.
+
+One function per route. The application object in app.py imports this module
+and registers each of them.
+"""
+
+from datetime import datetime, timezone
+
+from models import User
+
+
+def close_account(session, user_id):
+    """Close the account. Rows are removed by the nightly purge."""
+    user = session.get(User, user_id)
+    user.deleted_at = datetime.now(timezone.utc)
+    session.commit()

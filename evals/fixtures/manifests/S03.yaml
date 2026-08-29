@@ -1,0 +1,101 @@
+case: S03
+split: dev
+source: synthetic
+intent: 'soft delete plus a scheduled purge job: the erasure verdict depends on a two-hop path and a timer
+  the tool must cite'
+spec_sha256: 7b3e95b6c84288593189b25808c33b9387d03415f860ac71bec67086391f41ed
+gen_version: 1
+normalisation:
+  prefixes: []
+labelling_minutes: null
+entry_points:
+- name: close_account
+  file: api/account.py
+  line: 12
+  kind: route
+stores:
+- name: users
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 12
+  fields:
+  - name: email
+    category: contact
+    file: models.py
+    line: 15
+  - name: full_name
+    category: identifier
+    file: models.py
+    line: 16
+  - name: deleted_at
+    category: technical
+    file: models.py
+    line: 17
+  erasure:
+    verdict: erased_after_timer
+    timer_days: 30
+    evidence: jobs/purge.py:18
+- name: invoices
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 27
+  fields:
+  - name: billing_name
+    category: identifier
+    file: models.py
+    line: 24
+  - name: reference
+    category: financial
+    file: models.py
+    line: 25
+  - name: amount_cents
+    category: financial
+    file: models.py
+    line: 26
+  erasure:
+    verdict: unverified
+    evidence: models.py:27
+    note: the relationship at models.py:18 carries no delete token, so the ORM issues no child DELETE;
+      the foreign key at models.py:27 declares ondelete=CASCADE, which SQLite does not enforce without
+      a PRAGMA foreign_keys listener, and none exists
+- name: nightly_backup
+  kind: backup
+  subject_link:
+    file: jobs/backup.py
+    line: 9
+  fields:
+  - name: email
+    category: contact
+    file: jobs/backup.py
+    line: 9
+  - name: full_name
+    category: identifier
+    file: jobs/backup.py
+    line: 9
+  - name: reference
+    category: financial
+    file: jobs/backup.py
+    line: 9
+  erasure:
+    verdict: governed_by_retention
+    timer_days: 35
+    evidence: jobs/backup.py:12
+retention:
+- store: users
+  category: contact
+  days: 30
+  file: jobs/purge.py
+  line: 10
+- store: invoices
+  category: financial
+  criteria: kept for the statutory accounting period
+  file: models.py
+  line: 25
+- store: nightly_backup
+  category: contact
+  days: 35
+  file: jobs/backup.py
+  line: 12
+negatives: []
