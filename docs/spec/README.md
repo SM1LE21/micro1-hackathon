@@ -18,5 +18,6 @@ The system as designed before any solution code. Written 2026-08-28 by the lead 
 | — | `fixture-generator.md` | How `evals/fixtures/gen.py` turns a spec into a repo and its manifest |
 | — | `example-record-S10.md` | The target artefact: the rendered record for the hard case, written by hand |
 | — | `PROPOSED-CONTRACT-CHANGES.md` | Resolved pointer: every proposal from the spec pass was accepted by ADR 0004 |
+| — | `DEVIATIONS.md` | Spec versus code: one row per disagreement, the decision, and the contract edits an ADR still owes |
 
 Decision records live in `.vault/adr/`. Research the specs cite lives in `docs/research/`. Judge-facing requirement mapping and anticipated questions live in `docs/judging/`.
