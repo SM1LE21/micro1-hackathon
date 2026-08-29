@@ -1,0 +1,105 @@
+# D01 — demo — Django, a real-looking membership app for hand testing.
+# Not an evaluation case: never in dev or test, never scored, never in a sweep. It exists so
+# the author can run `art30 scan` against something outside the scored set and watch the gate.
+# Shape: rows cascade (one child by CASCADE, one by DB_CASCADE), the avatar ImageField has
+# no receiver and no django-cleanup, so the file survives account deletion (research §6 R8);
+# an audit log sink carries email and IP and is never touched by deletion.
+case: D01
+split: demo
+flavour: django
+package: harbourlight
+apps: [members, shop]
+intent: "a membership site done the usual way: rows go, the avatar file and the audit log stay"
+engine: "sqlite:///./harbourlight.sqlite3"
+
+models:
+  - name: Member
+    table: members_member
+    store: members_member
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: email, type: str, category: contact, nullable: false}
+      - {name: display_name, type: str, category: identifier}
+      - {name: phone, type: str, category: contact}
+      - {name: avatar, type: image, category: null, store: member.avatar}
+      - {name: last_login, type: datetime, category: technical}
+  - name: Note
+    table: members_note
+    store: members_note
+    parent: Member
+    on_delete: CASCADE
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: body, type: text, category: free_text_may_contain, comment: "support notes; may include phone numbers and addresses"}
+      - {name: written_at, type: datetime, category: technical}
+  - name: Order
+    table: members_order
+    store: members_order
+    parent: Member
+    on_delete: DB_CASCADE
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: total, type: decimal, category: financial}
+      - {name: placed_at, type: datetime, category: technical}
+  - name: Product
+    table: shop_product
+    negative: true
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: sku, type: str}
+      - {name: title, type: str}
+
+stores:
+  - name: member.avatar
+    kind: object_storage
+    client: file
+    module: members/models.py
+    fields:
+      - {name: avatar, category: identifier}
+    writes_from: null
+    write_called_by: null
+    delete_call: null
+    delete_called_by: null
+  - name: audit
+    kind: log
+    client: logging
+    module: members/audit.py
+    fields:
+      - {name: email, category: contact}
+      - {name: ip_address, category: technical}
+    writes_from: log_login
+    write_called_by: login
+    delete_call: null
+    delete_called_by: null
+
+entry_points:
+  - name: delete_account
+    kind: view
+    module: members/views.py
+    action: hard_delete
+    deletes_via: model_delete
+    docstring: "Remove the member and everything attached to it."
+
+routes:
+  - {name: profile, module: members/views.py, reads: [Member.email, Member.display_name]}
+  - {name: login, module: members/views.py, reads: [Member.email]}
+
+admin: [Member]
+
+extra_files:
+  - {path: members/utils.py, kind: helpers}
+
+expect:
+  entry_points: [delete_account, admin_delete_model, admin_delete_selected]
+  stores:
+    members_member: {verdict: erased, evidence: "members/views.py::delete_account!delete"}
+    members_note:   {verdict: erased, evidence: "members/models.py::Note.member"}
+    members_order:  {verdict: erased, evidence: "members/models.py::Order.member"}
+    member.avatar:
+      verdict: not_erased
+      evidence: null
+      note: "the ImageField at {members/models.py::Member.avatar} has no pre_delete or post_delete receiver and django_cleanup is not installed; Django does not remove files when the row is deleted"
+    audit:
+      verdict: not_erased
+      evidence: null
+      note: "the log line is written at {members/audit.py::log_login!info}; nothing on the deletion path touches the log sink"
