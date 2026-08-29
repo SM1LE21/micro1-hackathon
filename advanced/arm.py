@@ -117,4 +117,7 @@ class AdvancedArm:
         risk = risk_rating(record)
         cross = cross_check(record, self.graph(ctx.root), self.rules)
         summary = terminal.gate_summary(record, risk, cross)
-        return terminal.decide(record, risk, summary, ctx.cfg.approve)
+        # `out_dir` is the run's own directory: `--approve file` exchanges the
+        # request and the decision inside it, which is where the website looks.
+        return terminal.decide(record, risk, summary, ctx.cfg.approve,
+                               out_dir=ctx.cfg.out_dir)
