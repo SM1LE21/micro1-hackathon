@@ -1,44 +1,197 @@
-# [Project name — TO FILL]
+# art30 — the technical half of a GDPR record of processing, read out of the code
+
+`art30` reads a Python repository and writes two things. An inventory of the personal data it
+holds, store by store and field by field, with `file:line` on every cell. And an erasure table:
+for each store, whether closing an account actually reaches it, or whether the data stays. Every
+claim the model makes is re-checked against the call graph by deterministic code before the record
+renders, and a person approves before anything is written.
 
 Built solo for the micro1 Agentic Workflows Hackathon, 2026-08-28 to 2026-08-31.
-Everything in this repo was created during the competition window.
 
-**If you have 5 minutes:** `make smoke && make eval-replay` — no API key needed.
+**If you have five minutes:** `make setup && make smoke && make eval-replay`. No API key needed.
 
 ## Who has this problem?
 
-[TO FILL — the named user, one paragraph.]
+The technical founder of a small EU SaaS, on the day somebody asks for the record of processing: a
+co-founder running diligence, a customer's lawyer, a supervisory authority
+(`.vault/adr/0002-gdpr-inventory-erasure-check.md`). The document was written by hand months ago
+and the code has moved since. Nobody re-reads a spreadsheet against `models.py` every sprint.
+
+Art. 30(5)'s 250-employee derogation does not settle it for them. Its conditions are alternatives,
+any one of which triggers the obligation, and processing in the regular course of business is not
+"occasional" (`docs/research/gdpr-sources.md` §6.10 [S9][S6]). Whether a particular controller is
+exempt is a legal judgement, which is exactly the class of question this tool refuses to answer.
+
+I have been that person: in a product I run, the hand-written record had two statements reversed,
+and a soft delete never reached object storage for a month before anyone noticed. [Q3: confirm
+this sentence — .vault/QUESTIONS.md]
 
 ## What bottleneck makes it worth solving?
 
-[TO FILL — the bottleneck as it exists today, and why solving it matters in practice.]
+Writing the document is not the hard part. Knowing whether it is still true is.
+
+The EDPB's coordinated enforcement action on the right to erasure ran through 2025 across 32
+supervisory authorities and 764 controllers, and reported on 10 February 2026 that "some responding
+controllers do not even report relying on their record of processing activities ('ROPA')" when they
+handle erasure requests, tracing the difficulty to "the absence of a structured process to map the
+relevant personal data" (`docs/research/gdpr-sources.md` §3.1 and §6.10 [S11]). The same report found
+that "certain controllers had difficulties with differentiating between closing an online user
+account or profile and the right to erasure" (§6.9 [S11]).
+
+A regulator has already priced that confusion. CNIL's deliberation SAN-2021-008 of 14 June 2021
+fined Brico Privé EUR 500,000, of which EUR 300,000 covered breaches of Arts. 5-1-e), 13, 17 and 32;
+the Art. 17 finding was that "lorsqu'une personne demande l'effacement de son compte, la société ne
+supprime pas les données à caractère personnel mais procède uniquement à la désactivation du compte
+en question" (`docs/research/gdpr-sources.md` §4 [S18]). Eval case S02 is that sentence rebuilt as a
+repository. The Garante's EUR 2.6m Foodinho decision is the other half: the register omitted
+categories of personal data the inspection found in the systems, and keeping it "non costituisce un
+adempimento formale" (§4 [S16]).
+
+Drift between the document and the system is the failure. Reading the code by hand is the current
+fix, and it costs [human_time.manual_minutes.mean] minutes per repository under the written
+protocol in `evals/CASES.md`.
 
 ## Does the agent solve it well?
 
-[TO FILL — the design in three or four sentences: the agent loop, the deterministic verifier it closes over, the human checkpoint. Every design choice named here maps to a measured row in CHANGELOG_EVAL.md.]
+The agent reads the repository with three read-only tools — `list_tree`, `read_file`, `grep` — and
+submits through a fourth, `submit_record` (`00-contract.md` §Tools). It drafts the record, which is
+the part that needs judgement: whether a `notes` column, a `metadata` JSON blob or an IP in a log
+line is personal data is a semantic call, not a grep (Art. 4(1),
+`docs/research/gdpr-sources.md` §1 [S1]).
+Every claim it submits is re-checked by a deterministic verifier on stdlib `ast`, which answers one
+structural question per store — does a static call path run from the erasure entry point to a
+deletion primitive for that store — and hands back the struck claim, the reason and the line, as a
+tool result the model has to answer (`docs/spec/03-verifier.md`, `00-contract.md` §Feedback object).
+An unresolvable call renders `unverified` rather than a guess in either direction, and a human gate
+fires before the record renders (rows 14 and 8 of `.vault/AMBIGUITIES.md`; the gate itself is
+`00-contract.md` §Run phases 3, ground rule 04).
+
+The baseline is the same model, the same instruction bytes, the same four tools and the same five
+submission attempts, with the verifier and the gate removed. That is a good SKILL.md
+(ADR 0003 §4). The comparison below is therefore the closed loop and nothing else, and the harness
+refuses to write a report when the two arms' `prompt_sha` differ (`05-eval-harness.md` §7).
 
 ## Can another person reproduce the result?
 
-Yes — see [REPRODUCE.md](REPRODUCE.md). `make eval-replay` reproduces every number in `results/` from recorded responses with no API key. Live re-runs: `make eval`.
+`make setup && make smoke && make eval-replay` regenerates `results/metrics.json` from recorded API
+responses with no key, and ends in `git diff --exit-code` against the committed file. Commands, the
+Docker path and the live runs: [REPRODUCE.md](REPRODUCE.md).
 
 ## Results
 
+Test split, mean over three runs per case. `±` is `f1_std_seeds`, the mean over cases of the
+standard deviation across that case's three runs (`05-eval-harness.md` §7.3).
+
 | Metric | Simple baseline | Agent solution | Change |
 |---|---|---|---|
-| [Primary outcome — TO FILL] | | | |
-| Human time per task | | | |
-| Cost per task | | | |
+| Erasure-inventory F1 (test) | [arms.baseline.test.f1_mean] ± [arms.baseline.test.f1_std_seeds] | [arms.advanced.test.f1_mean] ± [arms.advanced.test.f1_std_seeds] | [comparison.test.f1_bootstrap.delta_mean] (95% CI [comparison.test.f1_bootstrap.ci95]) |
+| Human time per task | [human_time.manual_minutes.mean] min (hand-labelling) | [human_time.machine_minutes.advanced] machine min + [human_time.gate_minutes.mean] min at the gate | −[human_time.manual_minutes.mean − human_time.gate_minutes.mean] min of a person's time (the machine minutes are unattended and are not subtracted from it) |
+| Cost per task | $[arms.baseline.test.cost_usd_mean] | $[arms.advanced.test.cost_usd_mean] | $[arms.advanced.test.cost_usd_mean − arms.baseline.test.cost_usd_mean] |
 
-Full metrics (false safe, pass, pass^3, regressions, unverified, turns, tool calls): `results/metrics.json`. Statistics: exact McNemar on the binary pass row (majority of three seeds); paired bootstrap 95% interval on F1; details in REPRODUCE.md.
+False safe — the agent says a store is erased where the manifest says it is not — is the row that
+matters more than F1, because it is the error that costs a founder a month:
+[arms.baseline.test.false_safe_total] against [arms.advanced.test.false_safe_total] on test.
+
+Both arms are billed for every `submit_record` attempt they spend, rejected ones included — five per
+run in each arm (`00-contract.md` §Budgets, ADR 0003 §2) — because a user pays for retries. Cost per
+run is the sum over the trace's `step` lines at list prices, with nothing netted out
+(ADR 0003 §Consequences; `docs/judging/requirements-matrix.md` D2g).
+
+Dev, and the secondary rows (pass, pass^3, regressions, unverified, bad citations, turns, tool
+calls): `results/metrics.json` via `make report`. Runs: [identity_check.success] success +
+[identity_check.failure] failure = [identity_check.n]; failures ship in `traces/failures/`.
+
+Statistics: exact McNemar on the binary pass row, majority of three runs per case, dev
+p = [comparison.dev.mcnemar.p_exact] and test p = [comparison.test.mcnemar.p_exact]. With five test
+cases the smallest attainable two-sided p is 0.0625, so the test split cannot reach 0.05 and the
+number is reported for shape. F1 carries a paired bootstrap 95% interval over cases
+([comparison.test.f1_bootstrap.ci95]). This model exposes no temperature and no seed (ADR 0003 §2).
+
+The gate approves in every scored run (`--approve auto`, `by: "simulated"`), so none of the measured
+difference comes from a human intervening; it is the verifier's (`05-eval-harness.md` §7.1).
 
 ## Improvement changelog
 
-See [CHANGELOG_EVAL.md](CHANGELOG_EVAL.md) — every iteration with the evidence that drove the next decision, removed experiments included.
+[CHANGELOG_EVAL.md](CHANGELOG_EVAL.md): one row per experiment in the official four columns, with
+the evidence that drove the next decision, removed experiments included. End to end, test F1 went
+[arms.baseline.test.f1_mean] → [arms.advanced.test.f1_mean] and false safes
+[arms.baseline.test.false_safe_total] → [arms.advanced.test.false_safe_total]; the largest single
+contributor was [WRITE: the row named in CHANGELOG_EVAL.md's Final cell, copied from it].
 
-## Main failure mode and hot take
+## What existed before the competition
 
-See [HOT_TAKE.md](HOT_TAKE.md).
+This repository was created after kickoff on 2026-08-28 15:00 UTC. Nothing in it predates that except:
+
+- The tools: Claude Code (the coding agent that wrote most of the code; sessions rendered at
+  `traces/build-trajectory.html`), the `claude-opus-5` model both arms call, Python 3.12, uv, the
+  `anthropic` SDK, `pyyaml`, `jsonschema`, `pytest`, `claude-code-log` 1.5.0, `gitleaks`, Docker.
+- Four open-source repositories vendored as eval cases at pinned SHAs, each keeping its upstream
+  LICENSE and a `SOURCE.md` with url, sha, licence, date and what was stripped:
+  `fastapi/full-stack-fastapi-template` @ `486f054` (MIT), `flaskbb/flaskbb` @ `fc64c74` (BSD-3),
+  `pinry/pinry` @ `05476b1` (BSD-2), `miguelgrinberg/microblog` @ `a975ef6` (MIT); `evals/CASES.md`.
+- Third-party text quoted rather than written: verbatim article and recital text of Reg. (EU)
+  2016/679, 2024/1689 and 2026/1744 under `docs/research/sources/`, each file carrying its retrieval
+  URL and date; the competition's own problem statement at `docs/problem/problem-statement.pdf`.
+
+Cases S01–S10 are generated from the YAML specs in `evals/fixtures/specs/`. No pre-existing prompt
+library, agent framework or rule set was carried in.
+
+## Prior art
+
+Bearer classifies personal data across 122 data types and calls its own output "RoPA **input**";
+there is no deletion, erasure or retention concept in the 28 substantive pages of its documentation,
+whose rendered text was grepped in full, nor in the slugs of the remaining 846 recipe and rule URLs
+(`docs/research/prior-art.md` §0, §1 [S6][S1][S8][S8b]). Privado detects 110+ data elements and
+scores `s3.delete_object` as evidence that data *arrived* at S3, the inverse of an erasure check
+(§2 [S10][S13]). Fides executes real erasure, from a YAML declaration a human writes rather than
+from the code (§3 [S17][S18]). Nothing found produces
+an erasure-path table from application source: per store, reaches or does not, path cited (§7).
+
+Two qualifiers, because the strong version of that claim is false. Privado Cloud generates an
+Art. 30 record from code scans today, at no cost, using a fine-tuned LLM with no verification step
+described in its own material, which is exactly the open-loop design used here as the baseline arm
+(§2 [S10][S14]). Bearer's classifier, tuned on tens of thousands of open-source samples, should be
+expected to beat this tool on inventory recall (§Honest weaknesses [S5][S6]). The claim here is
+about the erasure half and about verification, not about finding a field called `email`.
+
+## The AI Act
+
+Not covered. Regulation (EU) 2026/1744 entered into force on 27 July 2026 and moved the Annex III
+high-risk obligations of Chapter III Sections 1–3 to **2 December 2027**, so they do not apply until
+then; Art. 50 transparency has applied since 2 August 2026 (`docs/research/ai-act-sources.md` §1
+[S2][S3][S4]). An extension using the same verifier is scoped in `.vault/NON-GOALS.md`, gated behind
+a locked GDPR number, and what it measured is a row in [CHANGELOG_EVAL.md](CHANGELOG_EVAL.md).
+
+## What this is not
+
+No legal basis, no purpose, no risk class: those cells render "requires human completion" and a
+person fills them (`.vault/AMBIGUITIES.md` row 8), and the words "compliant" and "compliance" appear
+nowhere in the output by rule (`00-contract.md` §Writing contract). It reads the target repository
+and runs none of it. Fixing the code, or opening a pull request against it, is a consequential
+action and out of scope by design. Python only, Django and SQLAlchemy/SQLModel idioms; anything else
+is reported "unscanned" rather than guessed (`.vault/NON-GOALS.md`).
+
+## Licence
+
+[Q4: no LICENSE file exists yet. micro1 owns the submission under the hackathon terms; whether this
+also ships under MIT or Apache-2.0 is the author's call — .vault/QUESTIONS.md]
 
 ## Agent trajectories
 
-`traces/` holds runtime traces for both arms (failures included, one-line diagnosis each). The full coding-agent build trajectory renders via `make traces`. Tools used to build: Claude Code (sessions disclosed in the trajectory bundle).
+`traces/` holds one JSONL trace per run, both arms, failures included. Four are worth opening:
+
+- `traces/advanced/S10-s1.jsonl` — the rejection and the revision on the hard case.
+- `traces/baseline/S10-s1.jsonl` — the same repository, no verifier: the false safe, unedited.
+- `traces/advanced/S05-s1.jsonl` — the completeness guard adding a store the model had not listed.
+- `traces/advanced/R04-s1.jsonl` — a real repository where the honest answer is that no deletion
+  feature exists.
+
+`traces/failures/` holds every failed run with a one-line diagnosis.
+`traces/build-trajectory.html` is the rendered transcript of the Claude Code sessions that built
+this repository (`make traces`, author-only; the HTML is committed).
+
+## Main failure mode and hot take
+
+[WRITE: the chosen candidate's one-sentence lesson, copied verbatim from HOT_TAKE.md §2 so the two
+cannot drift.] The failure this project actually hit, its trace under `traces/failures/`, the fix and
+the residual risk accepted: [HOT_TAKE.md](HOT_TAKE.md).
