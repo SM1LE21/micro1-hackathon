@@ -455,19 +455,113 @@ def test_r6_passive_deletes_on_sqlite_is_not_erased(graph_of):
     assert "r6_not_erased" in graph.stores["posts"].flags
 
 
+PRAGMA_LISTENER = """
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+
+
+@event.listens_for(Engine, "connect")
+def set_pragma(dbapi_connection, record):
+    dbapi_connection.execute("PRAGMA foreign_keys=ON")
+"""
+
+
 def test_r6_sqlite_with_pragma_listener_is_an_edge(graph_of):
-    files = sa_repo("sqlite:///app.db", ', ondelete="CASCADE"')
-    files["listeners.py"] = """
-    from sqlalchemy import event
-    from sqlalchemy.engine import Engine
+    """4.5 [S46]: the listener is evidence on the engine whose module loads it.
 
-
-    @event.listens_for(Engine, "connect")
-    def set_pragma(dbapi_connection, record):
-        dbapi_connection.execute("PRAGMA foreign_keys=ON")
+    The fixture imports `listeners` from the module that builds the engine, which is
+    what registers the listener at runtime; without that import nothing calls it and
+    the next test is the case.
     """
+    files = sa_repo("sqlite:///app.db", ', ondelete="CASCADE"')
+    files["db.py"] += "import listeners" + chr(10)      # what registers it
+    files["listeners.py"] = PRAGMA_LISTENER
     graph = graph_of(files)
     assert edge_between(graph, "store:users", "store:posts", "SE7") is not None
+
+
+def test_r6_pragma_in_a_module_the_engine_never_loads_is_not_evidence(graph_of):
+    """4.5, R6 [S46]: enforcement is a property of the connection, not of the tree.
+
+    A repository-wide string scan blessed SE7 for any `PRAGMA foreign_keys=ON` in any
+    file -- a listener nothing imports never runs, SQLite keeps foreign keys inert,
+    and the child row and its email survive the parent delete. Verdict `unverified`.
+    """
+    files = sa_repo("sqlite:///app.db", ', ondelete="CASCADE"')
+    files["listeners.py"] = PRAGMA_LISTENER
+    graph = graph_of(files)
+    assert edge_between(graph, "store:users", "store:posts", "SE7") is None
+    assert "r6_unverified" in graph.stores["posts"].flags
+
+
+def test_r6_a_bare_pragma_string_is_not_a_connect_listener(graph_of):
+    """4.5: the evidence is a `connect` listener, not the string on its own."""
+    files = sa_repo("sqlite:///app.db", ', ondelete="CASCADE"')
+    files["db.py"] += '\nNOTE = "PRAGMA foreign_keys=ON"\n'
+    graph = graph_of(files)
+    assert edge_between(graph, "store:users", "store:posts", "SE7") is None
+    assert "r6_unverified" in graph.stores["posts"].flags
+
+
+def test_r12_receiver_under_a_src_layout_is_connected(graph_of):
+    """R12 [S6]: the app label is resolved through the module tree, not concatenated.
+
+    `INSTALLED_APPS = ["blog"]` with the package at `src/blog/` gives the modules
+    `src.blog.models` and `src.blog.apps`; seeding the literal strings `blog.models`
+    and `blog.apps` matched neither, so every receiver in the repository read
+    "imported by nothing" and its file store lost the SE2 edge it has.
+    """
+    graph = graph_of({
+        "settings.py": "INSTALLED_APPS = ['blog']\n",
+        "src/__init__.py": "",
+        "src/blog/__init__.py": "",
+        "src/blog/models.py": """
+        from django.db import models
+        from django.db.models.signals import post_delete
+        from django.dispatch import receiver
+
+
+        class Photo(models.Model):
+            image = models.ImageField(upload_to="p/")
+
+            class Meta:
+                db_table = "photo"
+
+
+        @receiver(post_delete, sender=Photo)
+        def drop_image(sender, instance, **kwargs):
+            instance.image.delete(save=False)
+        """,
+    })
+    receivers = [r for r in graph.receivers if r.symbol.endswith("drop_image")]
+    assert receivers and receivers[0].connected is True and receivers[0].reason == ""
+    assert edge_between(graph, "store:photo", "src.blog.models.drop_image", "SE2") is not None
+
+
+def test_r12_an_app_config_label_names_its_package(graph_of):
+    """R12 [S6]: `"blog.apps.BlogConfig"` is the same app as `"blog"`."""
+    graph = graph_of({
+        "settings.py": "INSTALLED_APPS = ['blog.apps.BlogConfig']\n",
+        "blog/__init__.py": "",
+        "blog/models.py": """
+        from django.db import models
+        from django.db.models.signals import post_delete
+        from django.dispatch import receiver
+
+
+        class Photo(models.Model):
+            image = models.ImageField(upload_to="p/")
+
+            class Meta:
+                db_table = "photo"
+
+
+        @receiver(post_delete, sender=Photo)
+        def drop_image(sender, instance, **kwargs):
+            instance.image.delete(save=False)
+        """,
+    })
+    assert edge_between(graph, "store:photo", "blog.models.drop_image", "SE2") is not None
 
 
 def test_r6_second_unrelated_engine_leaves_it_unverified(graph_of):
@@ -688,3 +782,133 @@ def test_an_ambiguous_call_with_no_target_is_still_recorded(graph_of):
     site = call_named(graph, "self.drop")
     assert (site.outcome, site.rule, site.targets) == ("ambiguous", "CG-8", [])
     assert [c.dotted for c in graph.unresolved] == ["self.drop"]
+
+
+# --------------------------------------------------------------------------
+# 4.5 and R12: the two facts that must stay scoped to what names them
+# --------------------------------------------------------------------------
+def test_r6_engine_url_is_read_in_the_engines_own_module(graph_of):
+    """4.5, R6 [S15]: `create_engine(DATABASE_URL)` reads *this* module's name.
+
+    The name was resolved by a repository-wide scan, first module in alphabetical
+    order winning, so an unrelated analytics `config.DATABASE_URL` overrode `db.py`'s
+    own `sqlite:///app.db`, SE7 was added in every mode and the child rows read
+    `erased` on a database with foreign keys off -- 4.5's own worked example, and the
+    transcript the research calls the worst result in the document.
+    """
+    files = sa_repo("sqlite:///app.db", ', ondelete="CASCADE"')
+    files["db.py"] = """
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import declarative_base, sessionmaker
+
+    DATABASE_URL = "sqlite:///app.db"
+    engine = create_engine(DATABASE_URL)
+    SessionLocal = sessionmaker(bind=engine)
+    Base = declarative_base()
+    """
+    files["config.py"] = 'DATABASE_URL = "postgresql://host/metrics"' + chr(10)
+    graph = graph_of(files)
+    assert [e["url"] for e in graph.settings["engines"]] == ["sqlite:///app.db"]
+    assert edge_between(graph, "store:users", "store:posts", "SE7") is None
+    assert "r6_unverified" in graph.stores["posts"].flags
+
+
+def _vendored_receiver(models_path: str) -> dict[str, str]:
+    files = {
+        "settings.py": "INSTALLED_APPS = ['blog']\n",
+        "blog/__init__.py": "",
+        "blog/models.py": """
+        from django.db import models
+
+
+        class Photo(models.Model):
+            image = models.ImageField(upload_to="p/")
+
+            class Meta:
+                db_table = "photo"
+        """,
+        models_path: """
+        from django.db.models.signals import post_delete
+        from django.dispatch import receiver
+
+        from blog.models import Photo
+
+
+        @receiver(post_delete, sender=Photo)
+        def drop_image(sender, instance, **kwargs):
+            instance.image.delete(save=False)
+        """,
+    }
+    package = models_path.rsplit("/", 1)[0].split("/")
+    for depth in range(1, len(package) + 1):
+        files["/".join(package[:depth]) + "/__init__.py"] = ""
+    return files
+
+
+def test_r12_a_vendored_models_module_is_not_an_installed_app(graph_of):
+    """R12 [S6]: Django loads `<package>.models`, not every module named `models`.
+
+    Matching the app label by suffix beside an exact match seeded an uninstalled
+    `vendor/blog/models.py`, so a receiver Django never connects read `connected` and
+    its file store read `erased` on a signal that never fires.
+    """
+    graph = graph_of(_vendored_receiver("vendor/blog/models.py"))
+    found = [r for r in graph.receivers if r.symbol.endswith("drop_image")]
+    assert found and found[0].connected is False
+    assert edge_between(graph, "store:photo", "vendor.blog.models.drop_image", "SE2") is None
+
+
+def test_r12_a_models_module_nested_under_the_app_is_not_loaded(graph_of):
+    """R12 [S6]: one level. `blog/vendor/plugin/models.py` is not `blog.models`."""
+    graph = graph_of(_vendored_receiver("blog/vendor/plugin/models.py"))
+    found = [r for r in graph.receivers if r.symbol.endswith("drop_image")]
+    assert found and found[0].connected is False
+    assert edge_between(graph, "store:photo",
+                        "blog.vendor.plugin.models.drop_image", "SE2") is None
+
+
+def test_r14_a_name_bound_to_a_queryset_is_not_an_instance(graph_of):
+    """R14 [S3], 4.2: `qs = M.objects.filter(...)` then `qs.delete()` is a bulk delete.
+
+    `binding.var_models` binds a name to a model from any assignment that mentions the
+    class, with no record of whether the binding is an instance or a queryset, and the
+    delete receiver carries no dot -- so the rule entry's `model_delete` stood, SE8
+    became admissible, and 4.2's own worked example written over two lines credited
+    the `Model.delete()` override for bytes still on disk.
+    """
+    graph = graph_of({
+        "settings.py": DJ_SETTINGS,
+        "app/__init__.py": "",
+        "app/models.py": """
+        from django.db import models
+
+
+        class Avatar(models.Model):
+            image = models.ImageField(upload_to="a/")
+
+            class Meta:
+                db_table = "avatar"
+
+            def delete(self, *a, **k):
+                self.image.delete(save=False)
+                return super().delete(*a, **k)
+        """,
+        "app/views.py": """
+        from app.models import Avatar
+
+
+        def close_account(request):
+            qs = Avatar.objects.filter(user=request.user)
+            qs.delete()
+        """,
+    })
+    edge = edge_between(graph, "app.views.close_account", "store:avatar", "SE12")
+    assert edge is not None and (edge.rule, edge.sets_mode) == ("R15", "queryset_delete")
+    verdicts = _verdicts(graph)
+    assert verdicts["avatar.image"] != "erased"
+
+
+def _verdicts(graph) -> dict[str, str]:
+    from art30.verify.reach import verdicts as _decide
+
+    return {k: v.verdict for k, v in _decide(graph).items()}
