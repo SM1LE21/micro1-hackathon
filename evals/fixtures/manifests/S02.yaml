@@ -1,0 +1,69 @@
+case: S02
+split: dev
+source: synthetic
+intent: 'soft delete and nothing else: deleted_at is written, no code anywhere removes a row'
+spec_sha256: d5abff14992fd6770032442b58e294c55b796a7d606b68fcadecbff7ab1940bf
+gen_version: 1
+normalisation:
+  prefixes: []
+labelling_minutes: null
+entry_points:
+- name: close_account
+  file: api/account.py
+  line: 12
+  kind: route
+stores:
+- name: users
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 12
+  fields:
+  - name: email
+    category: contact
+    file: models.py
+    line: 15
+  - name: full_name
+    category: identifier
+    file: models.py
+    line: 16
+  - name: phone
+    category: contact
+    file: models.py
+    line: 17
+  - name: is_active
+    category: technical
+    file: models.py
+    line: 18
+  - name: deleted_at
+    category: technical
+    file: models.py
+    line: 19
+  erasure:
+    verdict: not_erased
+    evidence: null
+    note: 'soft delete only: deleted_at written at api/account.py:15; no hard delete exists in the repository'
+- name: tickets
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 29
+  fields:
+  - name: subject
+    category: free_text_may_contain
+    file: models.py
+    line: 26
+  - name: body
+    category: free_text_may_contain
+    file: models.py
+    line: 27
+  - name: opened_at
+    category: technical
+    file: models.py
+    line: 28
+  erasure:
+    verdict: not_erased
+    evidence: null
+    note: rows survive the soft delete and the relationship carries no delete cascade (models.py:20)
+retention: []
+negatives: []
