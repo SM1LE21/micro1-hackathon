@@ -1,0 +1,104 @@
+case: S09
+split: test
+source: synthetic
+intent: a connected post_delete receiver that deletes files, registered for the wrong sender; rows are
+  erased and the files survive
+spec_sha256: b46111195bd5ce2cbbefc64a20eb2ca45b0e8fc7068843399c49f7c29a0b0921
+gen_version: 1
+normalisation:
+  prefixes:
+  - gallery
+  - catalog
+labelling_minutes: null
+entry_points:
+- name: delete_account
+  file: gallery/views.py
+  line: 9
+  kind: view
+- name: admin_delete_model
+  file: gallery/admin.py
+  line: 7
+  kind: admin
+  admin_only: true
+- name: admin_delete_selected
+  file: gallery/admin.py
+  line: 7
+  kind: admin
+  admin_only: true
+stores:
+- name: gallery_account
+  kind: relational
+  subject_link:
+    file: gallery/models.py
+    line: 9
+  fields:
+  - name: email
+    category: contact
+    file: gallery/models.py
+    line: 11
+  - name: full_name
+    category: identifier
+    file: gallery/models.py
+    line: 12
+  - name: joined_at
+    category: technical
+    file: gallery/models.py
+    line: 13
+  erasure:
+    verdict: erased
+    evidence: gallery/views.py:12
+- name: gallery_photo
+  kind: relational
+  subject_link:
+    file: gallery/models.py
+    line: 24
+  fields:
+  - name: caption
+    category: free_text_may_contain
+    file: gallery/models.py
+    line: 22
+  - name: taken_at
+    category: technical
+    file: gallery/models.py
+    line: 23
+  erasure:
+    verdict: erased
+    evidence: gallery/models.py:24
+- name: gallery_comment
+  kind: relational
+  subject_link:
+    file: gallery/models.py
+    line: 34
+  fields:
+  - name: body
+    category: free_text_may_contain
+    file: gallery/models.py
+    line: 32
+  - name: posted_at
+    category: technical
+    file: gallery/models.py
+    line: 33
+  erasure:
+    verdict: erased
+    evidence: gallery/models.py:34
+- name: photo.image
+  kind: object_storage
+  declared_at:
+    file: gallery/models.py
+    line: 21
+  subject_link:
+    file: gallery/models.py
+    line: 21
+  fields:
+  - name: image
+    category: identifier
+    file: gallery/models.py
+    line: 21
+  erasure:
+    verdict: not_erased
+    evidence: null
+    note: the only file-deleting receiver is gallery/signals.py:10, registered for sender Comment; no
+      receiver, storage call or cleanup package covers Photo.image
+retention: []
+negatives:
+- catalog_product
