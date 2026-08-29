@@ -487,3 +487,285 @@ def test_raw_sql_without_a_text_wrapper_names_its_table(graph_of):
     edge = edge_between(graph, "api.delete_user", "store:users", "SE12")
     assert edge is not None and (edge.rule, edge.sets_mode) == ("R19", "raw_sql")
     assert edge_between(graph, "api.delete_user", "store:posts") is None
+
+
+# --------------------------------------------------------------------------
+# 4.2 SE12: what a chained delete is attributed to (R14, R15, 4.8)
+# --------------------------------------------------------------------------
+APP_SETTINGS = "INSTALLED_APPS = ['app']" + chr(10)
+
+QUERYSET_MODELS = """
+from django.db import models
+
+
+class Account(models.Model):
+    email = models.EmailField()
+
+    class Meta:
+        db_table = "account"
+
+
+class Post(models.Model):
+    body = models.TextField()
+    account = models.ForeignKey(Account, on_delete=models.PROTECT,
+                                related_name="posts")
+
+    class Meta:
+        db_table = "post"
+"""
+
+
+def test_queryset_delete_off_a_model_is_attributed_to_its_rows(graph_of):
+    """R15 [S3]: `Model.objects.filter(...).delete()` is a delete of those rows.
+
+    Refusing every receiver that carries a dot left the commonest deletion idiom in
+    Django with no SE12 edge at all, so the row store had no primitive on any path and
+    read `not_erased`. The mode stays `queryset_delete`, which is what keeps SE8 --
+    the `Model.delete()` override -- inadmissible on this path (R14 [S3]).
+    """
+    graph = graph_of({
+        "settings.py": APP_SETTINGS,
+        "app/__init__.py": "",
+        "app/models.py": QUERYSET_MODELS,
+        "app/views.py": """
+        from .models import Post
+
+
+        def close_account(request, pk):
+            Post.objects.filter(account_id=pk).delete()
+        """,
+    })
+    edge = edge_between(graph, "app.views.close_account", "store:post", "SE12")
+    assert edge is not None and (edge.rule, edge.sets_mode) == ("R15", "queryset_delete")
+
+
+def test_related_manager_delete_attributes_to_the_child_rows(graph_of):
+    """4.8: `<subject>.<relation>.all().delete()` deletes the children, not the subject.
+
+    The accessor resolves through `related_name` (or the default `<model>_set`); the
+    subject's own store is never credited, which would read `erased` for a row the
+    call does not touch.
+    """
+    graph = graph_of({
+        "settings.py": APP_SETTINGS,
+        "app/__init__.py": "",
+        "app/models.py": QUERYSET_MODELS,
+        "app/views.py": """
+        from .models import Account
+
+
+        def close_account(request, pk):
+            account = Account.objects.get(pk=pk)
+            account.posts.all().delete()
+        """,
+    })
+    edge = edge_between(graph, "app.views.close_account", "store:post", "SE12")
+    assert edge is not None and (edge.rule, edge.sets_mode) == ("R15", "queryset_delete")
+    assert edge_between(graph, "app.views.close_account", "store:account", "SE12") is None
+
+
+def test_an_unresolvable_related_manager_delete_gets_no_edge(graph_of):
+    """R26: an accessor that resolves to no relation is not attributed by guess."""
+    graph = graph_of({
+        "settings.py": APP_SETTINGS,
+        "app/__init__.py": "",
+        "app/models.py": QUERYSET_MODELS,
+        "app/views.py": """
+        from .models import Account
+
+
+        def close_account(request, pk):
+            account = Account.objects.get(pk=pk)
+            account.invoices.all().delete()
+        """,
+    })
+    assert [e for e in graph.edges
+            if e.src == "app.views.close_account" and e.kind == "SE12"] == []
+
+
+def test_a_delete_inside_a_model_method_binds_self_to_its_class(graph_of):
+    """11 finding 2: `self` and `cls` name the owning class, or nothing is attributed.
+
+    Without the binding a `Model.delete()` override deleting its own file (R14) and a
+    `self.delete()` inside a model method both landed on no store, so the two shapes
+    the delete modes exist to separate produced no evidence either way.
+    """
+    graph = graph_of({
+        "settings.py": APP_SETTINGS,
+        "app/__init__.py": "",
+        "app/models.py": """
+        from django.db import models
+
+
+        class Photo(models.Model):
+            image = models.ImageField(upload_to="p/")
+
+            class Meta:
+                db_table = "photo"
+
+            def delete(self, *args, **kwargs):
+                self.image.delete(save=False)
+                return super().delete(*args, **kwargs)
+
+            def purge(self):
+                self.delete()
+        """,
+    })
+    bytes_edge = edge_between(graph, "app.models.Photo.delete", "store:photo.image", "SE12")
+    assert bytes_edge is not None and bytes_edge.rule == "R8"
+    row = edge_between(graph, "app.models.Photo.purge", "store:photo", "SE12")
+    assert row is not None and row.sets_mode == "model_delete"
+
+
+# --------------------------------------------------------------------------
+# 3.2 and 3: the store table's own keys
+# --------------------------------------------------------------------------
+def test_bucket_constant_imported_from_another_module_is_a_store(graph_of):
+    """3.2: the bucket constant may live in another intra-repo module.
+
+    Reading only the calling module's assignments meant `from config import BUCKET`
+    resolved to no literal, so no object-storage store was created and the record's
+    claim about that bucket had nothing to corroborate it (7.3). The citation is the
+    constant's own file and line (R28).
+    """
+    graph = graph_of({
+        "config.py": 'BUCKET = "user-uploads"' + chr(10),
+        "storage.py": """
+        import boto3
+
+        from config import BUCKET
+
+        s3 = boto3.client("s3")
+
+
+        def upload(user_id, data):
+            s3.put_object(Bucket=BUCKET, Key=str(user_id), Body=data)
+        """,
+    })
+    store = graph.stores["user-uploads"]
+    assert (store.kind, store.identity) == ("object_storage", "user-uploads")
+    assert (store.declared_at.file, store.declared_at.line) == ("config.py", 1)
+
+
+def test_two_kinds_sharing_an_identifier_are_never_merged(graph_of):
+    """3, 3.10: `sessions` the table and `sessions` the cache namespace are two stores.
+
+    Keyed on the id alone they became one, so the relational delete edge marked the
+    cache erased and the emails cached under `sessions:<id>` survived -- the false
+    safe 3.10 forbids for a client handle, one level up. The conflict is recorded on
+    both stores rather than resolved by guess.
+    """
+    graph = graph_of({
+        "settings.py": APP_SETTINGS,
+        "app/__init__.py": "",
+        "app/models.py": """
+        from django.db import models
+
+
+        class Session(models.Model):
+            email = models.EmailField()
+
+            class Meta:
+                db_table = "sessions"
+        """,
+        "app/cache.py": """
+        import redis
+
+        r = redis.Redis()
+
+
+        def cache_session(u):
+            r.setex(f"sessions:{u.id}", 3600, u.email)
+        """,
+    })
+    rows, cache = graph.stores["sessions"], graph.stores["sessions#cache"]
+    assert (rows.kind, cache.kind) == ("relational", "cache")
+    assert "store_id_conflict" in rows.flags and "store_id_conflict" in cache.flags
+    assert rows.declared_at.file == "app/models.py"
+    assert cache.declared_at.file == "app/cache.py" and cache.identity == "sessions"
+
+
+def test_a_qualified_constant_is_read_in_the_module_it_names(graph_of):
+    """3.2, R28: `config.BUCKET` names `config`, not a local of the same tail.
+
+    Reading the calling module's own constants first let `storage.BUCKET` win over the
+    `config.BUCKET` actually written at the call, so the store was named after the
+    wrong bucket and cited a line that does not carry it. 7.3 then matches a record
+    naming `uploads` against no store at all, and the store the record does not name
+    is missed by the completeness guard -- both directions wrong for one reason.
+    """
+    graph = graph_of({
+        "config.py": 'BUCKET = "uploads"' + chr(10),
+        "storage.py": """
+        import boto3
+
+        import config
+
+        s3 = boto3.client("s3")
+        BUCKET = "local-tmp"
+
+
+        def upload(user_id, data):
+            s3.put_object(Bucket=config.BUCKET, Key=str(user_id), Body=data)
+
+
+        def close_account(user):
+            s3.delete_object(Bucket=config.BUCKET, Key=str(user.id))
+        """,
+    })
+    assert store_ids(graph) == ["uploads"]
+    declared = graph.stores["uploads"].declared_at
+    assert (declared.file, declared.line) == ("config.py", 1)
+
+
+def test_a_keyed_delete_resolves_its_literal_through_the_import_map(graph_of):
+    """3.10: `delete_object(Bucket=BUCKET)` names the bucket *this* module imports.
+
+    The keyed attribution had its own constant resolver that scanned every module by
+    tail name, first assignment winning, so a module importing `BUCKET` from one
+    config had its delete attributed to a sibling bucket named by another -- 3.10's
+    own named false safe (`delete_object(Bucket="thumbs")` against an `uploads`
+    bucket), one layer below the fix written for it.
+    """
+    graph = graph_of({
+        "a_conf.py": 'BUCKET = "uploads"' + chr(10),
+        "z_conf.py": 'BUCKET = "thumbs"' + chr(10),
+        "uploads_store.py": """
+        import boto3
+
+        from a_conf import BUCKET
+
+        s3 = boto3.client("s3")
+
+
+        def avatar_key(user_id):
+            return "avatars/%s.png" % user_id
+
+
+        def save(user, data):
+            s3.put_object(Bucket=BUCKET, Key=avatar_key(user.id), Body=data)
+        """,
+        "thumbs_store.py": """
+        import boto3
+
+        from z_conf import BUCKET
+
+        s3 = boto3.client("s3")
+
+
+        def thumb_key(user_id):
+            return "thumbs/%s.png" % user_id
+
+
+        def save(user, data):
+            s3.put_object(Bucket=BUCKET, Key=thumb_key(user.id), Body=data)
+
+
+        def close_account(user):
+            s3.delete_object(Bucket=BUCKET, Key=thumb_key(user.id))
+        """,
+    })
+    assert store_ids(graph) == ["thumbs", "uploads"]
+    assert edge_between(graph, "thumbs_store.close_account", "store:uploads", "SE12") is None
+    edge = edge_between(graph, "thumbs_store.close_account", "store:thumbs", "SE12")
+    assert edge is not None
