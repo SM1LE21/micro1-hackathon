@@ -27,3 +27,5 @@ The verifier (`art30/verify/`), its tests and `advanced/arm.py` are written befo
 - The plan's kill switch 1 (verifier not passing its rule tests) moves earlier and loses none of its meaning.
 
 Addendum 2026-08-29 (before any cache exists, so nothing is invalidated): two frozen files changed after the independent audit — `art30/config.py` now reads `ART30_TRACE_DIR` (the harness seam it was always meant to honour; without it `make gate-timing` overwrote committed traces), and `art30/loop.py` treats `stop_reason: model_context_window_exceeded` as an early stop. Neither changes a hashed byte of any request. The frozen-list check in this ADR now runs from the commit that lands this addendum.
+
+Addendum 2026-08-29 (still before any cache exists): ADR 0007 adds `"file"` to the `approve` literal in `art30/config.py` and the matching CLI choice, for the website's gate. No request byte changes; the frozen-list check runs from the commit that lands it.
