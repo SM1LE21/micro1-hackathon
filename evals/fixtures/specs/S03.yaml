@@ -61,6 +61,9 @@ jobs:
     target: User
     method: orm_loop
     retention_days: 30
+    # 03-verifier.md §6.2 requires a registration citation as well as a timer: without one
+    # nothing in the repository runs the job and the verdict is not_erased (test 37a).
+    schedule: "0 4 * * *"
     filter_field: deleted_at
   - name: dump_database
     module: jobs/backup.py
