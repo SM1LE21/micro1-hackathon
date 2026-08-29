@@ -1,0 +1,136 @@
+# D02 — demo — SQLAlchemy, a small shop for hand testing.
+# Not an evaluation case: never in dev or test, never scored, never in a sweep.
+# Shape: close_account deletes the row and purges the session cache (the helper IS called,
+# unlike S05), orders cascade with the delete token, tickets carry no delete token and survive
+# (research §6 R5), the search index is never touched, Mixpanel is a recipient, and a nightly
+# backup has a schedule and a retention constant.
+case: D02
+split: demo
+flavour: sqlalchemy
+package: tidepool
+intent: "a shop that closes accounts properly for the database and the cache, and forgets the search index and the tickets"
+engine: "sqlite:///./tidepool.db"
+
+models:
+  - name: User
+    table: users
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: email, type: str, category: contact, nullable: false}
+      - {name: full_name, type: str, category: identifier}
+      - {name: newsletter, type: bool, category: behavioural}
+      - {name: created_at, type: datetime, category: technical}
+  - name: Order
+    table: orders
+    parent: User
+    cascade: "all, delete"
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: total_cents, type: int, category: financial}
+      - {name: shipping_address, type: str, category: contact}
+  - name: Ticket
+    table: tickets
+    parent: User
+    cascade: "save-update, merge"
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: body, type: text, category: free_text_may_contain, comment: "customer messages; may contain phone numbers"}
+      - {name: opened_at, type: datetime, category: technical}
+  - name: Product
+    table: products
+    negative: true
+    fields:
+      - {name: id, type: int, pk: true}
+      - {name: sku, type: str}
+      - {name: title, type: str}
+
+stores:
+  - name: sessions
+    kind: cache
+    client: redis
+    module: cache.py
+    fields:
+      - {name: email, category: contact}
+    writes_from: store_session
+    write_called_by: login
+    delete_call: purge_session
+    delete_called_by: close_account
+    key_template: "sessions:{email}"
+    ttl_seconds: 86400
+  - name: user_search
+    kind: search_index
+    client: elasticsearch
+    module: search.py
+    fields:
+      - {name: email, category: contact}
+      - {name: full_name, category: identifier}
+    writes_from: index_user
+    write_called_by: signup
+    delete_call: null
+    delete_called_by: null
+  - name: mixpanel
+    kind: third_party
+    client: mixpanel
+    module: analytics.py
+    fields:
+      - {name: email, category: contact}
+    writes_from: track_signup
+    write_called_by: signup
+    delete_call: null
+    delete_called_by: null
+  - name: nightly_backup
+    kind: backup
+    client: file
+    module: jobs/backup.py
+    fields:
+      - {name: email, category: contact}
+      - {name: full_name, category: identifier}
+    writes_from: dump_database
+    write_called_by: module
+    delete_call: null
+    delete_called_by: null
+
+entry_points:
+  - name: close_account
+    kind: route
+    module: api/account.py
+    action: hard_delete
+    deletes_via: session_delete
+    calls: [purge_session]
+    docstring: "Close the account and delete everything we hold about the customer."
+
+jobs:
+  - name: dump_database
+    module: jobs/backup.py
+    kind: backup
+    target: null
+    schedule: "0 2 * * *"
+    retention_days: 14
+
+routes:
+  - {name: signup, module: api/profile.py, reads: [User.email, User.full_name]}
+  - {name: login, module: api/profile.py, reads: [User.email]}
+
+extra_files:
+  - {path: utils/text.py, kind: helpers}
+
+retention:
+  - {store: sessions, category: contact, days: 1, anchor: "cache.py::SESSION_TTL_SECONDS"}
+  - {store: nightly_backup, category: contact, days: 14, anchor: "jobs/backup.py::BACKUP_RETENTION_DAYS"}
+
+expect:
+  entry_points: [close_account]
+  stores:
+    users:    {verdict: erased, evidence: "api/account.py::close_account!delete"}
+    orders:   {verdict: erased, evidence: "models.py::User.orders"}
+    tickets:
+      verdict: not_erased
+      evidence: "models.py::Ticket.user_id"
+      note: "the relationship at {models.py::User.tickets} carries no delete token, so the ORM de-associates the rows and their columns survive"
+    sessions: {verdict: erased, evidence: "cache.py::purge_session!delete"}
+    user_search:
+      verdict: not_erased
+      evidence: null
+      note: "documents are indexed at {search.py::index_user!index}; no delete or delete_by_query on the index exists anywhere in the repository"
+    mixpanel: {verdict: external_manual, evidence: null}
+    nightly_backup: {verdict: governed_by_retention, timer_days: 14, evidence: "jobs/backup.py::BACKUP_RETENTION_DAYS"}
