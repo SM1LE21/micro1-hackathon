@@ -1,9 +1,11 @@
-"""Synthetic edges SE1-SE12 and the framework facts behind them (03-verifier.md 4).
+"""Synthetic edges SE0-SE12 and the framework facts behind them (03-verifier.md 4).
 
 Django `on_delete` tokens, SQLAlchemy cascade strings, receivers, django-cleanup,
 enforcing foreign keys and the deletion primitives of the rule data become edges
 here, each carrying the modes it is admissible in and the mode it sets, so that
-R4, R14, R15, R17 and R18 are mechanical in the search rather than prose.
+R4, R14, R15, R17 and R18 are mechanical in the search rather than prose. SE0 is
+the entry point's own edge into the function it names, without which the walk of
+5.2 starts on a node with no out-edge and reaches nothing.
 """
 
 from __future__ import annotations
@@ -12,7 +14,8 @@ import re
 
 from art30.verify import imports as importmap
 from art30.verify.entities import Edge
-from art30.verify.facts import _enforcing_engine, _module_of, _receivers, _symbol_named
+from art30.verify.engines import enforcing_engine
+from art30.verify.facts import _module_of, _receivers, _symbol_named
 from art30.verify.findings import Graph
 from art30.verify.rules import RuleSet, norm
 
@@ -29,7 +32,7 @@ def _store_node(graph: Graph, store_id: str) -> str | None:
 def _relation_edges(graph: Graph, rules: RuleSet) -> list[Edge]:
     """SE1, SE4, SE5, SE6, SE7 -- R1 to R7, each with the modes it is admissible in."""
     out: list[Edge] = []
-    enforcing = _enforcing_engine(graph, rules)
+    enforcing = enforcing_engine(graph, rules)
     for relation in graph.relations:
         parent, child = _store_node(graph, relation.parent), _store_node(graph, relation.child)
         if parent is None or child is None:
@@ -171,6 +174,26 @@ def _admin_edges(graph: Graph) -> list[Edge]:
     return out
 
 
+def _entry_edges(graph: Graph) -> list[Edge]:
+    """SE0: `entry:<name>` -> the symbol the entry point names (2.2, 5.2's start node).
+
+    Only the two admin entry points had an out-edge (SE10), so a walk from
+    `entry:close_account` left the start node with nowhere to go: `path_exists`
+    returned None for every store in every non-admin repository, and S01, S04 and S06
+    all read `not_erased` however plainly the body deletes. The edge is admissible in
+    every mode and sets none -- it carries the search into the body, and the mode is
+    still set by the primitive it finds there (4.2, decision 19).
+    """
+    out: list[Edge] = []
+    for entry in sorted(graph.entry_points, key=lambda e: e.key()):
+        if not entry.symbol or entry.symbol not in graph.symbols:
+            continue
+        out.append(Edge(src=entry.node, dst=entry.symbol, kind="entry", file=entry.file,
+                        line=entry.line, rule="SE0", modes=ALL,
+                        note=f"entry point {entry.name} ({entry.kind})"))
+    return out
+
+
 def _task_edges(graph: Graph, rules: RuleSet) -> list[Edge]:
     """SE11 / CG-16: `.delay`, `.apply_async` and `send_task` through the task table."""
     dispatch = set(rules.entry["celery_task_names"]["dispatch_calls"])
@@ -210,6 +233,7 @@ def add_edges(graph: Graph, rules: RuleSet, imap: importmap.ImportMap) -> None:
     edges += _signal_edges(graph, rules)
     edges += _override_edges(graph, rules)
     edges += _admin_edges(graph)
+    edges += _entry_edges(graph)
     edges += _task_edges(graph, rules)
     edges += primitives.primitive_edges(graph, rules, imap)
     graph.edges += edges
