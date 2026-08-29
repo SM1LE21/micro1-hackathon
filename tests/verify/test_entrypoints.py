@@ -14,7 +14,7 @@ import yaml
 
 from art30.verify import build_graph, reconcile
 from art30.verify.registration import ADMIN_NAMES
-from tests.verify.conftest import CASES, FIXTURES, entry_names
+from tests.verify.conftest import CASES, FIXTURES, edge_between, entry_names
 
 
 def _entry(graph, name):
@@ -511,3 +511,51 @@ def test_add_url_rule_on_an_unrelated_resource_is_not_an_entry_point(graph_of):
     app.add_url_rule("/posts/<pid>", "drop_post", drop_post, methods=["DELETE"])
     """})
     assert graph.entry_points == []
+
+
+# --------------------------------------------------------------------------
+# SE0: the entry point's own out-edge (4.2, 5.2)
+# --------------------------------------------------------------------------
+def test_se0_carries_the_search_from_the_entry_point_into_its_body(graph_of):
+    """SE0: `entry:<name>` -> the symbol it names, or the walk has nowhere to go.
+
+    Only the two admin entry points had an out-edge (SE10), so `path_exists` from
+    `entry:delete_user` returned None for every store in every other repository and
+    the tool would have reported `not_erased` for code that plainly deletes.
+    """
+    graph = graph_of({"app.py": """
+    import redis
+
+    r = redis.Redis()
+
+
+    def cache_session(u):
+        r.setex(f"session:{u.id}", 3600, u.email)
+
+
+    def delete_user(u):
+        r.delete(f"session:{u.id}")
+    """})
+    assert _entry(graph, "delete_user") is not None
+    edge = edge_between(graph, "entry:delete_user", "app.delete_user", "entry")
+    assert edge is not None and edge.rule == "SE0" and "none" in edge.modes
+    assert [e.dst for e in graph.out("entry:delete_user")] == ["app.delete_user"]
+
+
+def test_se0_reaches_the_store_the_entry_point_deletes(graph_of):
+    """The two hops SE0 exists for: entry -> body -> SE12 -> the store it names."""
+    graph = graph_of({"app.py": """
+    import redis
+
+    r = redis.Redis()
+
+
+    def cache_session(u):
+        r.setex(f"session:{u.id}", 3600, u.email)
+
+
+    def delete_user(u):
+        r.delete(f"session:{u.id}")
+    """})
+    first = graph.out("entry:delete_user")[0]
+    assert [e.dst for e in graph.out(first.dst)] == ["store:session"]
