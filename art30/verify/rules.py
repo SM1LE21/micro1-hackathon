@@ -36,27 +36,7 @@ SOURCE_ID = re.compile(r"^S\d{1,2}[a-z]?$")
 _ENTRY_LISTS = ("deletion_primitives", "retention_only")
 
 
-def _load_norm():
-    """`norm` has one implementation (05-eval-harness.md Decision 5): the scorer's.
-
-    Imported as a module where the repository is on the path, loaded from the file
-    beside `art30/` where it is not, so the metric and the tool can never drift.
-    """
-    try:
-        from evals.harness.score import norm as scorer_norm
-        return scorer_norm
-    except ModuleNotFoundError:
-        path = Path(__file__).resolve().parents[2] / "evals" / "harness" / "score.py"
-        spec = importlib.util.spec_from_file_location("art30._score", path)
-        if spec is None or spec.loader is None:  # pragma: no cover - packaging accident
-            raise ImportError(f"the scorer's norm() is not importable from {path}")
-        module = importlib.util.module_from_spec(spec)
-        sys.modules.setdefault("art30._score", module)
-        spec.loader.exec_module(module)
-        return module.norm
-
-
-norm = _load_norm()
+from art30.naming import norm  # one implementation (05-eval-harness.md Decision 5)
 
 
 class RuleError(ValueError):
