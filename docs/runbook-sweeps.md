@@ -4,7 +4,7 @@ The exact commands, in order, from the first live call to the final report. Ever
 
 ## 0. Before the first live call
 
-- `.env` holds `ANTHROPIC_API_KEY=` (the file is git-ignored; `.env.example` carries names only).
+- `.env` holds `ANTHROPIC_API_KEY=` and `ART30_MAX_USD=` (a per-run ceiling; 6 on synthetic cases, 9 on real — `08-plan.md` §3; the sweep targets refuse to start without it). The file is git-ignored; `.env.example` carries names only.
 - `make smoke` green; `make fixtures` prints `fixtures clean`.
 - The frozen files (ADR 0006) are unchanged since `7681cb6`: `git log --oneline 7681cb6.. -- baseline/arm.py art30/prompts art30/schema art30/tools.py art30/loop.py art30/llm.py art30/config.py` is empty.
 
@@ -20,8 +20,9 @@ Read off the trace: `usage` per step, `cost_usd` on `run_end`, and the step-1 `c
 
 ```
 ART30_RECORD=1 make baseline
-uv run python -m evals.harness.report --runs results/runs --out results/metrics.json --markdown
 ```
+
+`make baseline` runs the seven synthetic dev cases until `evals/fixtures/manifests/R01.yaml` exists, then the whole dev split; it ends with `report` scoped to the same cases and arm (an unscoped `report` books every unrun cell as `crashed`). Sweep A over synthetic only is ADR 0005's kill-switch-2 narrowing applied up front; R01/R02 join Sweep B once labelled.
 
 Then `CHANGELOG_EVAL.md` row 1 (Baseline) from `results/metrics.json`; copy `results/metrics.json` → `results/metrics.sweepA.json` and `traces/baseline/` → `traces/baseline.sweepA/` (08-plan Decision 3). Commit `results/`, `traces/`, `evals/cache/`. Kill switch 2 (ADR 0005): no number by Sat 18:30 UTC → narrow to S01–S07.
 
