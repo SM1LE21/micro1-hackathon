@@ -164,4 +164,4 @@ def _fields_by_store(spec: dict) -> dict[str, list[str]]:
 
 def load_split(path) -> dict:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return {case: split for split in ("dev", "test", "reserve") for case in data.get(split, [])}
+    return {case: split for split in ("dev", "test", "reserve", "demo") for case in data.get(split, [])}
