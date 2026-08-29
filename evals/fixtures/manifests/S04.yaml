@@ -1,0 +1,53 @@
+case: S04
+split: dev
+source: synthetic
+intent: 'an object store that is genuinely erased: the delete route calls the storage helper as well as
+  the ORM'
+spec_sha256: f4e69b399a5dec4a99cf3fd3d17a66cc5dfcb47799b6f67fad99036433be7a08
+gen_version: 1
+normalisation:
+  prefixes: []
+labelling_minutes: null
+entry_points:
+- name: delete_account
+  file: api/account.py
+  line: 11
+  kind: route
+stores:
+- name: users
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 11
+  fields:
+  - name: email
+    category: contact
+    file: models.py
+    line: 14
+  - name: full_name
+    category: identifier
+    file: models.py
+    line: 15
+  - name: created_at
+    category: technical
+    file: models.py
+    line: 16
+  erasure:
+    verdict: erased
+    evidence: api/account.py:15
+- name: uploads
+  kind: object_storage
+  subject_link:
+    file: storage.py
+    line: 11
+  fields:
+  - name: avatar_key
+    category: identifier
+    file: storage.py
+    line: 11
+  erasure:
+    verdict: erased
+    evidence: storage.py:27
+retention: []
+negatives:
+- products
