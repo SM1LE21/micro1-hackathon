@@ -1,7 +1,7 @@
 # STATUS
 
 status: active
-last_updated: 2026-08-29 15:34 UTC
+last_updated: 2026-08-29 20:00 UTC
 
 ## Where we are
 
@@ -12,7 +12,8 @@ last_updated: 2026-08-29 15:34 UTC
 - Tooling: `pyproject.toml` carries the runtime dependencies and the `art30` console script; `make smoke` passes; Dockerfile has make and git; Makefile has every contract target as a stub.
 - **Phase 1 built and committed (2026-08-29 ~01:30 UTC):** fixture generator + the ten generated repos and manifests (`make fixtures` → "fixtures clean"), `art30/` runtime (config, trace, tools, llm, loop, cli, render, prompts, schema), `baseline/arm.py`, harness (score, trace_check, run, report), 221 offline tests green (`make smoke`). R01–R04 vendored. **Baseline and shared runtime frozen at commit 7681cb6 (ADR 0006).**
 - **Phase 2 built and committed (2026-08-29 ~14:00 UTC):** the verifier (`art30/verify/`, ~30 modules on stdlib `ast`), the advanced arm and gate, 590 offline tests green. Acceptance: all twelve synthetic fixtures (S01–S10, D01, D02) reproduce every manifest verdict; twelve adversarially constructed false safes closed with regression tests; two documented xfails (no-sender receivers, graph-layer gap). Harness split under the 300-line rule with byte-identical `--help`. `art30/loop.py` (414) and `evals/harness/score.py` (315) stay over the limit: loop.py is frozen (ADR 0006), score.py has a live importer.
-- **Phase 3 in progress (offline):** evidence tooling (`verify-docs`, failure index, Docker rehearsal), spec-vs-code audit (`docs/spec/DEVIATIONS.md`, example record regenerated from the real S10), adversarial hardening tests and a record→replay round-trip test.
+- **Phase 3 built and committed (2026-08-29 ~22:00 UTC):** `verify-docs` and the failure index wired into the Makefile; `docs/spec/DEVIATIONS.md` (21 rows; every spec amended to the code, one debt paid, two safe-side xfails owed); example record regenerated from the generated S10 (70 citations resolve); hardening tests and a record→replay round-trip through the real cache; README/REPRODUCE materialised from the accepted drafts; build trajectory rendered (main session, gzipped). 655 offline tests green. Docker: no runtime on this machine — rehearsal is a checklist (`docs/evidence/docker-rehearsal.md`); Dockerfile fixed to install the dev group.
+- **Independent end-to-end audit running** (clean clone → smoke → fixtures; verifier on D01/D02/S10/R04 by hand; SDK call introspection; deliverables state).
 - Two demo repos for hand testing outside the scored set: `evals/fixtures/synthetic/D01` (Django membership site; avatar file survives deletion) and `D02` (SQLAlchemy shop; cache purged, tickets and search index survive). `evals/split.yaml` lists them under `demo:`; the harness never selects them. Remote `origin` = github.com/SM1LE21/micro1-hackathon, pushed after each phase.
 - Known drift to refresh from the first real run: `docs/spec/example-record-S10.md` line numbers vs the generated S10.
 - **Blocker for live runs: no API credentials on this machine** (no `.env`, no `ant` profile, no `ANTHROPIC_API_KEY`). Everything up to the first calibration run builds and tests offline; the calibration run and Sweep A wait for a key in `.env`.
