@@ -1,4 +1,4 @@
-.PHONY: setup smoke test fixtures run baseline advanced eval eval-replay report traces gate-timing check-secrets check-traces verify-docs check-clean
+.PHONY: setup smoke test fixtures run baseline advanced eval eval-replay report traces gate-timing check-secrets check-traces verify-docs check-clean skill serve
 
 CLAUDE_PROJECT_DIR ?= $(HOME)/.claude/projects/-Users-tun-Documents-micro1-hackathon
 CLAUDE_SESSION_ID ?= 607542c8-6252-4232-8b55-d688feb5e054
@@ -90,3 +90,12 @@ check-clean:
 	@! git grep -niE "\btk ?media\b|\bfounta\b" -- ':!docs/problem/*' ':!AGENTS.md' ':!Makefile' >/dev/null || { echo "forbidden name in tree"; exit 1; }
 	@! git log -p --all -- . ':!AGENTS.md' ':!Makefile' | grep -qiE "\btk ?media\b|\bfounta\b" || { echo "forbidden name in history"; exit 1; }
 	@echo "check-clean OK"
+
+# the three surfaces (ADR 0007): the skill is generated from the prompt files; the website drives the cli
+skill:
+	uv run python skill/build.py
+	uv run python skill/build.py --check
+	@echo "skill clean"
+
+serve:
+	uv run art30 serve --open
