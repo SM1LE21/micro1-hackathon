@@ -7,10 +7,38 @@ of them owns.
 
 from __future__ import annotations
 
+from typing import NamedTuple
+
 from art30.verify import imports as importmap
 from art30.verify.findings import Graph, Store
 from art30.verify.imports import ImportMap
 from art30.verify.rules import RuleSet
+
+
+class Const(NamedTuple):
+    """A module-level constant, with the file that declares it (R28: no guessed line)."""
+
+    value: str
+    line: int
+    file: str
+
+
+def owner_module(graph: Graph, imap: importmap.ImportMap, module: str,
+                 name: str) -> str | None:
+    """The intra-repo module a written name belongs to, or None (03-verifier.md 1.3).
+
+    `from config import BUCKET` and `import config` + `config.BUCKET` alike. The one
+    module-scoped resolver the detectors share: R6's engine URL and 3.2's bucket
+    constant both used to scan the whole tree by tail name, first alphabetical match
+    winning, which attributed a literal to a sibling module.
+    """
+    head = name.split(".")[0]
+    target = imap.lookup(module, None, head)
+    if target is None:
+        return None
+    kind, dotted = target
+    owner = dotted if kind == importmap.MODULE else dotted.rsplit(".", 1)[0]
+    return owner if owner in graph.modules else None
 
 
 def _declarative_bases(graph: Graph, imap: importmap.ImportMap) -> set[str]:
@@ -37,24 +65,53 @@ class Ctx:
         for site in graph.calls:
             module = file_to_module.get(site.file, "")
             self.calls_by_module.setdefault(module, []).append(site)
-        self.consts: dict[str, dict[str, tuple[str, int]]] = {}
+        self.consts: dict[str, dict[str, Const]] = {}
         for module in graph.modules.values():
-            found: dict[str, tuple[str, int]] = {}
+            found: dict[str, Const] = {}
             for assign in module.assigns:
                 if assign.value_kind in {"literal", "fstring"} and "." not in assign.target:
-                    found[assign.target] = (assign.value_repr, assign.line)
+                    found[assign.target] = Const(assign.value_repr, assign.line, module.file)
                 elif assign.value_kind == "sequence" and assign.keys:
-                    found[assign.target] = ("|".join(assign.keys), assign.line)
+                    found[assign.target] = Const("|".join(assign.keys), assign.line, module.file)
             self.consts[module.module] = found
         self.declarative = _declarative_bases(graph, imap)
         self.core_tables: dict[str, str] = {}
+        self.by_kind: dict[tuple[str, str], Store] = {}
 
     def file_of(self, module: str) -> str:
         info = self.graph.modules.get(module)
         return info.file if info else ""
 
-    def constant(self, module: str, name: str) -> tuple[str, int] | None:
-        return self.consts.get(module, {}).get(name.split(".")[-1])
+    def constant(self, module: str, name: str) -> Const | None:
+        """A module-level constant: this module's, or the intra-repo one it imports.
+
+        3.2 names the store after "bucket names from `Bucket=` kwargs and from module
+        constants they resolve to". Reading only the calling module's own assignments
+        lost every `from config import BUCKET` layout -- no literal, no store, and a
+        bucket the record names then has no verifier store to corroborate it (7.3).
+        The constant keeps its own file, so the citation is the declaring line (R28).
+
+        R28: the lookup is ordered by what the name itself says. A *qualified* name
+        (`config.BUCKET`) names its own module and is read there and nowhere else;
+        reading the calling module first let an unrelated local `BUCKET` of the same
+        tail win, which named the store after the wrong bucket and cited a line that
+        does not carry it -- and 7.3 then matches the record's correct name against
+        nothing. A bare name is this module's first, then the module it is imported
+        from.
+        """
+        tail = name.split(".")[-1]
+        if "." in name:
+            owner = owner_module(self.graph, self.imap, module, name)
+            if owner is not None:
+                return self.consts.get(owner, {}).get(tail)
+            return self.consts.get(module, {}).get(tail)
+        found = self.consts.get(module, {}).get(tail)
+        if found is not None:
+            return found
+        owner = owner_module(self.graph, self.imap, module, name)
+        if owner is None:
+            return None
+        return self.consts.get(owner, {}).get(tail)
 
     def literal(self, module: str, arg) -> str:
         """A literal argument, or the module constant a name resolves to."""
@@ -66,7 +123,7 @@ class Ctx:
             return arg.prefix
         if arg.kind in {"name", "attribute"}:
             found = self.constant(module, arg.value)
-            return found[0] if found else ""
+            return found.value if found else ""
         return ""
 
     def imports_any(self, module: str, names: list[str]) -> bool:
@@ -87,8 +144,29 @@ class Ctx:
         return any(target[1] == n or target[1].startswith(f"{n}.") for n in names)
 
     def add(self, store: Store) -> Store:
-        existing = self.graph.stores.get(store.id)
+        """One store per (kind, id). Two kinds sharing an identifier are never merged.
+
+        Keyed on the id alone, a `sessions` table and a `session`-prefixed cache
+        namespace became one store, so the relational SE12 edge marked the cache
+        erased and the emails in it survived -- a false safe of exactly the shape 3.10
+        forbids for a client handle. The second kind is kept as its own store under
+        `<id>#<kind>`, with the conflict recorded on both (6.1 row 8 reads the flag).
+        """
+        existing = self.by_kind.get((store.kind, store.id))
         if existing is None:
+            other = self.graph.stores.get(store.id)
+            if other is not None:
+                key = (store.kind, store.id)
+                store.flags.append("store_id_conflict")
+                store.note = (f"{store.note} " if store.note else "") + (
+                    f"identifier shared with the {other.kind} store {other.id}; "
+                    "kept separate, never merged (3.10)")
+                other.flags.append("store_id_conflict")
+                store.id = f"{store.id}#{store.kind}"
+                self.by_kind[key] = store
+                self.graph.stores[store.id] = store
+                return store
+            self.by_kind[(store.kind, store.id)] = store
             self.graph.stores[store.id] = store
             return store
         for extra in store.fields:                      # merge, never duplicate
