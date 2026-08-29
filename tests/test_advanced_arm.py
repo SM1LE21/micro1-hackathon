@@ -27,6 +27,7 @@ from art30.trace import Trace
 from art30.verify import build_graph
 from art30.verify.reach import verdicts
 from evals.harness.trace_checks import _risk
+from test_gate_file import write_after     # the website's side of the file exchange
 from tests.verify.test_check import (  # the record builder, one implementation
     ENTRY, USER_STORE, child, cite, erasure, field, record, repo, store)
 
@@ -184,6 +185,26 @@ def test_the_gate_in_auto_mode_is_a_simulated_approval(ctx_of, capsys):
     assert "Approved without a human. Recorded as by: simulated." in printed
 
 
+def test_the_file_gate_is_routed_to_the_run_s_own_directory(ctx_of, capsys, monkeypatch):
+    """ADR 0007: `--approve file` exchanges its two files under the run's own `--out`.
+
+    Routed anywhere else -- the module default is `results/web/unrouted`, resolved
+    against the child's working directory -- `art30/web/runs.py` never sees the
+    request, nobody can answer, and the run ends `gate_rejected` on the timeout.
+    """
+    monkeypatch.setenv(terminal.TIMEOUT_VAR, "10")
+    ctx = ctx_of(repo(), approve="file")
+    folder = Path(ctx.cfg.out_dir) / terminal.GATE_DIR
+    thread = write_after(folder / terminal.DECISION_NAME, 0.25, ['{"approved": true}'])
+    decision = AdvancedArm().gate(record([USER_STORE]), ctx)
+    thread.join(timeout=5)
+    capsys.readouterr()
+
+    assert (folder / terminal.REQUEST_NAME).is_file(), "the gate wrote its request elsewhere"
+    assert json.loads((folder / terminal.REQUEST_NAME).read_text())["risk"] == "low"
+    assert (decision.approved, decision.by) == (True, "human")
+
+
 def test_the_gate_block_names_the_stores_that_do_not_reach_erasure(ctx_of, capsys):
     """10-instructions.md section 5: the block, filled in from the record."""
     ctx = ctx_of(repo(child("SET_NULL")), approve="auto")
@@ -302,6 +323,27 @@ def test_the_ask_path_reads_the_recipient_kind_and_then_one_keystroke(monkeypatc
     assert decision.edits == {"stores.stripe.recipient_kind": "processor"}
     assert decision.human_completions() == {"recipient_kind": {"stripe": "processor"}}
     capsys.readouterr()
+
+
+def test_the_ask_path_cannot_address_a_store_whose_name_carries_a_dot(monkeypatch, capsys):
+    """One key shape, both modes: the file gate drops the same edit with the same note.
+
+    `apply_edits` and `Decision.human_completions` split the key and take the middle,
+    so a kind recorded for `sentry.io` would name a store `sentry`, which the record
+    does not have and `trace_check` check 17 rejects. The gate never offers the cell.
+    """
+    monkeypatch.setattr("builtins.input", lambda prompt="": "y")
+    vendor = store("sentry.io", "third_party", cite("app/models.py", 4, "User"),
+                   {"file": "app/models.py", "line": 4},
+                   [field("email", "contact", "app/models.py", 5)],
+                   erasure("external_manual"))
+    submitted = record([USER_STORE, vendor])
+    decision = terminal.decide(submitted, "high", terminal.gate_summary(submitted, "high"),
+                               "ask")
+
+    assert decision.edits == {} and decision.human_completions() is None
+    assert ("  sentry.io: a store name with a dot cannot be addressed at the gate"
+            in capsys.readouterr().out)
 
 
 def test_silence_at_the_prompt_is_not_approval(monkeypatch, capsys):
