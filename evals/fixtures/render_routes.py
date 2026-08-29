@@ -121,7 +121,10 @@ def _entry(spec: dict, r: Rendered, doc: Doc, entry: dict) -> None:
     for symbol in entry["calls"]:
         store = next((s for s in spec["stores"] if s["delete_call"] == symbol), None)
         if store is not None:
-            keys = [f"{var}.id" if p == f"{var}_id" else p for p in placeholders(store["key_template"])]
+            keys = [f"{var}.{p[len(var) + 1:]}" if p.startswith(f"{var}_") else f"{var}.{p}"
+                    for p in placeholders(store["key_template"])]
+            # a helper keyed on a subject attribute receives that attribute off the loaded row,
+            # never a bare name the route does not define (audit B-1: D02 raised NameError)
             doc.add(f"    {symbol}({', '.join(keys)})")
         else:
             doc.add(f"    {symbol}({var})")
