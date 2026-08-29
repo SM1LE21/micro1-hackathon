@@ -4,6 +4,8 @@ Thirty-five questions a judge could ask about this project, with the answer we w
 
 Written 2026-08-28, hour ~3. Placeholders get replaced from `results/metrics.json` and `CHANGELOG_EVAL.md` after the runs, not before.
 
+Revised 2026-08-29 for the code that now exists: answers 9, 19, 26 and 28 quoted paths or a build state that has changed. Everything in brackets is still a number no run has produced.
+
 ---
 
 ## Problem and value
@@ -46,7 +48,7 @@ That is precisely the baseline, on purpose (ADR 0002). Same model, same read-onl
 
 **9. What does the verifier actually check?**
 
-`path_exists(graph, entry, target, must_pass_through=None)` over a name-based, intra-repo call graph built with stdlib `ast`, with store kinds, deletion primitives, and recipient SDKs as data rather than code. An erasure claim survives only if a static path runs from the erasure entry point to a deletion primitive for that store. Django `on_delete=CASCADE` counts for relational rows; `FileField` and `ImageField` need an explicit storage delete on the path (AMBIGUITIES 13), because Django's own documentation says "when a model is deleted, related files are not deleted" [S7]. It is four files under `art30/verify/` — `callgraph.py`, `rules.py`, `reach.py`, `check.py` — plus the rule sets as YAML, each file under ~300 lines (`docs/spec/00-contract.md` §Repository layout).
+`path_exists(graph, entry, target, must_pass_through=None)` over a name-based, intra-repo call graph built with stdlib `ast`, with store kinds, deletion primitives, and recipient SDKs as data rather than code. An erasure claim survives only if a static path runs from the erasure entry point to a deletion primitive for that store. Django `on_delete=CASCADE` counts for relational rows; `FileField` and `ImageField` need an explicit storage delete on the path (AMBIGUITIES 13), because Django's own documentation says "when a model is deleted, related files are not deleted" [S7]. It is thirty-three modules under `art30/verify/` — 6,583 lines of stdlib `ast`, no dependency beyond PyYAML — plus five YAML rule sets. `art30/verify/__init__.py` is the map: one row per module naming the section of `docs/spec/03-verifier.md` it implements. The contract's §Repository layout still names four files, which is what the spec expected before the code was written; `docs/spec/DEVIATIONS.md` D-09 carries the reconciliation and the contract edit it needs. The four responsibilities are unchanged and the data still flows one way, `callgraph → reach → check`, with `rules` read by both. 339 tests pin it, including a twelve-fixture acceptance test that reproduces every manifest verdict for S01–S10, D01 and D02 without the verifier reading a manifest.
 
 **10. Can the model just retry until the verifier passes?**
 
@@ -63,7 +65,7 @@ The verifier wins, and the disagreement stays visible. The rejection appears in 
 ```
   REJECT   uploads · erasure.verdict=erased
            no path from entry point close_account (api/account.py:12) to any
-           object-storage deletion primitive; cleanup_user_files (storage.py:41)
+           object-storage deletion primitive; cleanup_user_files (storage.py:29)
            is defined but has no callers
            expected: verdict not_erased, or cite the path
 ```
@@ -100,7 +102,7 @@ Partly, which is why they are not the whole set. The generator emits repository 
 
 **19. How was the test set protected?**
 
-Split by repository, and the test split is capped at two live sweeps (AGENTS.md §Eval rules, CASES.md). ADR 0005 spends the first on one sweep carrying both arms in a single recording window and holds the second for a re-record: `report.py` refuses to write `metrics.json` when the two arms' recording windows do not overlap, so a baseline-only sweep on Saturday against a final sweep on Sunday would be unreportable. The baseline arm is frozen before any test case runs, so its cases are uncontaminated by running in the same window. The ledger `results/test-runs.log` is hash-chained and committed, the harness exits 2 on the test split without `--unlock-test` and 3 on a third live sweep unless an ADR names it. R03 and R04 manifests are labelled Saturday morning and those repositories are not opened again until that sweep. The dev/test gap will be real, and the README states the test number is expected to be lower before a judge has to notice.
+Split by repository, and the test split is capped at two live sweeps (AGENTS.md §Eval rules, CASES.md). ADR 0005 spends the first on one sweep carrying both arms in a single recording window and holds the second for a re-record: `report.py` refuses to write `metrics.json` when the two arms' recording windows do not overlap, so a baseline-only sweep on Saturday against a final sweep on Sunday would be unreportable. The baseline arm is frozen before any test case runs, so its cases are uncontaminated by running in the same window. The ledger `results/test-runs.log` is hash-chained and committed, the harness exits 2 on the test split without `--unlock-test` and 3 on a third live sweep unless an ADR names it (`evals/harness/ledger.py` and `plan.py`, built and tested; no line in the ledger yet, because no sweep has run). R03 and R04 manifests are labelled Saturday morning and those repositories are not opened again until that sweep. The dev/test gap will be real, and the README states the test number is expected to be lower before a judge has to notice.
 
 **20. Who says your hand labels are right?**
 
@@ -128,7 +130,7 @@ It has the same model, the same read-only tools, the same instruction text, and 
 
 **26. What is a good result, and did you define it before running?**
 
-The PDF requires that, and the target line goes into `evals/CASES.md` before the first baseline run: [target dev F1], [target test F1], false safe zero on test for the advanced arm, and a statement of what makes the artifact unsignable regardless of F1 (a fabricated `file:line`, or a legal cell filled by the agent). It is not committed yet — tracked as gap G-03 in `docs/judging/requirements-matrix.md` — and the commit has to be timestamped before the first run file under `traces/baseline/`.
+The PDF requires that, and the target line goes into `evals/CASES.md` before the first baseline run: [target dev F1], [target test F1], false safe zero on test for the advanced arm, and a statement of what makes the artifact unsignable regardless of F1 (a fabricated `file:line`, or a legal cell filled by the agent). It is committed, at `evals/CASES.md` §"Definition of a good result (written before any run)": advanced arm dev mean F1 ≥ 0.85, test ≥ 0.75, false safe 0 on both, and the two things that make the artefact unsignable whatever F1 says. `traces/baseline/` is still empty, so the ordering the PDF asks for holds by inspection rather than by promise.
 
 **27. What did the challenging case reveal?**
 
@@ -140,7 +142,7 @@ S10 plants a soft delete on `close_account`, a purge job that hard-deletes rows 
 
 **28. Can a judge reproduce the numbers without an API key?**
 
-`make setup && make smoke && make eval-replay`. The replay path regenerates `results/metrics.json` from recorded model responses, so no account with any provider is needed; `docker run --rm hackathon make eval-replay` is the second path for a machine without uv. Live re-runs need a key and take [runtime]. The recording layer is specified in ADR 0003 §6 — every request hashed on its canonical JSON, the response committed to a cache under `evals/cache/`, replay running cache-only and failing loudly on a miss — and is unbuilt as of Friday night.
+`make setup && make smoke && make eval-replay`. The replay path regenerates `results/metrics.json` from recorded model responses, so no account with any provider is needed; `docker run --rm hackathon make eval-replay` is the second path for a machine without uv. Live re-runs need a key and take [runtime]. The recording layer is built (`art30/llm.py`): every request hashed on its canonical JSON — model, `max_tokens`, system, tools, messages, `output_config`, `thinking` — the response written to `evals/cache/<case>/<arm>/s<seed>/<NN>.json`, and replay reading cache-only, verifying the stored hash and raising a `ReplayMiss` that names the slot, both hashes and the values that most often moved one. In replay mode the SDK is never imported and no socket opens. `evals/cache/` does not exist yet — the first live sweep creates it — so the honest present-tense answer is: the path exists and is tested (22 tests), and it has nothing to replay yet.
 
 **29. The real repositories move. What happens to your eval?**
 
