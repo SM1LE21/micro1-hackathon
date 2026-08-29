@@ -1,5 +1,49 @@
 [
   {
+    "case": "D01",
+    "spec_sha256": "be6db05a0d20e6415c7b0096863ac47dcb235a9c1a6ec3cf25885fb40b04ff58",
+    "gen_version": 1,
+    "files": {
+      "README.md": "6fa15821cad0a7af3a87671880a9a12cd17ed2ebfca2e5d25591de8088b34fef",
+      "harbourlight/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "harbourlight/settings.py": "06424f8fa26cfcad75968e8a0fa64884834d100da3b01e8ccf37864a54180f8f",
+      "harbourlight/urls.py": "389cd4cda2e6054a37edc9b40988c59ff6f00cc9408fb7ea7284a6d6426caca3",
+      "manage.py": "19456f3faa5153bbbf302239e1f4313d005a2fb4150ee5013b5a51f4bf01d4ce",
+      "members/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "members/admin.py": "fe685ec0cdc92afab69027f1605cc966902f6fe99e4a64e140b69ece9e7e01d7",
+      "members/apps.py": "ef7432226b9a29ef9fd946ed9e31f6c5fedcfc78747fe6307314a416819d1382",
+      "members/models.py": "5447ee6e0af817e2646206f33bb1a53267a35312c90e9927e9067bf3e9f19d22",
+      "members/utils.py": "b2e4e36f9838c2ef7d3c9320100271b4ab2054559ce82ae2f53c8a9bf300840e",
+      "members/views.py": "9214782dd810ea012a23006597d46b9940fcbe46b1c29d2e15adf44da2978449",
+      "requirements.txt": "3869908e43c7e57d3b3a3ff828b84923634062ef63adc07ce7640fa62244e042",
+      "shop/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "shop/models.py": "890530d57a8f0029c6612e1b08eff86333a0041350b43b59949fb95702607d28"
+    }
+  },
+  {
+    "case": "D02",
+    "spec_sha256": "26f30e1273b058b8178331ba0ec68be9b6c99938ae6e23bec3836e773fd106a3",
+    "gen_version": 1,
+    "files": {
+      "README.md": "44547d2a008052a5f54039ee92b3fa7e2969dd6bb0117f9d0d72325487a36780",
+      "analytics.py": "a2fd79354c7c53004d73d8a8939a282350172ae1b9e6bb6c103ec0a9e843aed7",
+      "api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "api/account.py": "cd9363570d707f3833dec5baa17f04c3bfb24347cd845ebf5627dbd58db61a43",
+      "api/profile.py": "87a5ba697089e12116f71ffb800be687c4fe5737b944a23eb423816d379c7e41",
+      "app.py": "bbaab87d40a012e9aea6b72a689710e488b284381cc56de8c56a72c5d875e5b7",
+      "cache.py": "0c51dcca7196f280070796dea44801e4ee6f2c23e65a4a5c9a1838e65c9e38a8",
+      "catalog.py": "960e95423e2bbde4c9c6956563cf5f7e1e3370128fcaf83b659dce7a4562f7d9",
+      "config.py": "cbd2ea96378080fd677ec60409ae4ef3db5f43fb094755a2171bf2916a1bec8e",
+      "db.py": "2f8b99b6b35b490cd73ad4586134d8257971b787bfc9976a5a79bfb7e9a42f0d",
+      "jobs/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "jobs/backup.py": "fe59de0d498c23478586cf6b284e2a83dcbdecdae6cd629ecc1b9c14fb833171",
+      "models.py": "a9fce89c17978099358375b650a58500e764bb35cd40131707e2ff33dbddecb1",
+      "requirements.txt": "d2928b48f06b60c5ee8620f8380ab52e5895bdb552d5088310acc6fe9866d9e3",
+      "search.py": "23d16ba31619ed68f36cdfc3afb5331094b03d4b7835a137a15c797f82c50b59",
+      "utils/text.py": "b2e4e36f9838c2ef7d3c9320100271b4ab2054559ce82ae2f53c8a9bf300840e"
+    }
+  },
+  {
     "case": "S01",
     "spec_sha256": "704a3aedd18b4925b6df08cf19a0e8d0401a16abbe67fe0afd837e6ccff6a7a6",
     "gen_version": 1,
