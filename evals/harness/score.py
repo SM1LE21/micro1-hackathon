@@ -15,6 +15,11 @@ from art30.naming import (  # noqa: F401 - re-exported: one implementation, impo
     E_STEM, SUFFIX_KEEP, _base, _singular, _strip_prefix, norm, stems,
 )
 
+REACHES = frozenset({"erased", "erased_after_timer", "anonymised"})
+BACKUP_VERDICTS = frozenset({"governed_by_retention", "no_schedule_evidenced"})
+
+Tuples = dict[tuple[str, str], dict[str, Any]]
+
 
 def _citation(value: Any) -> tuple[str, int] | None:
     """A declared_at as either {file, line} or the manifest's "file:line" string."""

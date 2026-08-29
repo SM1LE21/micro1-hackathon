@@ -12,9 +12,6 @@ from typing import Iterable
 SUFFIX_KEEP = ("ss", "us", "is")  # address, status, analysis: not plurals
 E_STEM = ("ss", "x", "z", "ch", "sh")  # stems that take -es: address, box, batch
 
-REACHES = frozenset({"erased", "erased_after_timer", "anonymised"})
-BACKUP_VERDICTS = frozenset({"governed_by_retention", "no_schedule_evidenced"})
-
 
 def _base(name: str) -> str:
     s = re.sub(r"[^a-z0-9]+", "_", name.strip().lower())
