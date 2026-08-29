@@ -116,7 +116,8 @@ class Relation:
     passive_deletes: bool = False
     file: str = ""
     line: int = 0
-    field_name: str = ""
+    field_name: str = ""           # the attribute as written on the declaring class
+    related_name: str = ""         # Django `related_name=`: the accessor from the parent
 
 
 @dataclass
