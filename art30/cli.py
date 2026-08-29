@@ -8,8 +8,11 @@ printed by the loop as it happens.
 from __future__ import annotations
 
 import argparse
+import os
+import re
 import sys
 from dataclasses import replace
+from functools import lru_cache
 from pathlib import Path
 
 import yaml
@@ -19,6 +22,25 @@ from art30.loop import CaseRef, RunResult, out_dir, run
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SPLIT = REPO_ROOT / "evals" / "split.yaml"
+FIXTURES = REPO_ROOT / "evals" / "fixtures"
+AD_HOC_OUT = Path("art30-out")   # a repository of the user's own, not an evaluation case
+REAL_REPO_FILES = 40             # above this an off-eval repository gets the real budget
+# The real fixtures keep their upstream directory names, so the path does not carry the
+# case id the way evals/fixtures/synthetic/S10 does. Duplicated from
+# evals/harness/plan.py REAL_DIRS, inverted: art30/ never imports the harness.
+REAL_DIRS = {
+    "full-stack-fastapi-template": "R01", "flaskbb": "R02", "pinry": "R03",
+    "microblog": "R04", "Django-Styleguide-Example": "R05",
+}
+NO_ARM = (
+    "no {arm} arm: {arm}/arm.py could not be imported. Inside this repository run"
+    " `uv run art30 scan ...`; an installed copy needs a wheel that packages"
+    " baseline/ and advanced/ alongside art30/."
+)
+NO_KEY = (
+    "no ANTHROPIC_API_KEY: put it in .env (see .env.example) or export it;"
+    " --mode replay needs no key"
+)
 EXIT = {"accepted": 0, "gate_rejected": 3, "replay_miss": 4}
 USAGE_EXIT = 2
 
@@ -58,40 +80,74 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--case", default=None, help="case id for the trace and the results path")
     scan.add_argument("--seed", type=int, default=1, help="harness label; the model takes no seed")
     scan.add_argument("--mode", default=None, choices=("live", "replay"))
-    scan.add_argument("--approve", default=None, choices=("ask", "auto"))
+    scan.add_argument("--approve", default=None, choices=("ask", "auto", "file"))
     scan.add_argument("--out", default=None, help="where record.json, record.md and record.html go")
     return parser
 
 
 def load_arm(name: str):
-    """The advanced arm is imported lazily: it does not exist yet."""
-    if name == "baseline":
-        from baseline.arm import BaselineArm
-
-        return BaselineArm()
+    """Both arms live outside the `art30` package, so a wheel that ships only that
+    package has neither. An import failure comes back as None and is printed as a
+    sentence by `main`; it used to be a traceback out of an installed console script."""
     try:
+        if name == "baseline":
+            from baseline.arm import BaselineArm
+
+            return BaselineArm()
         from advanced.arm import AdvancedArm
     except ImportError:
         return None
     return AdvancedArm()
 
 
+@lru_cache(maxsize=1)
+def _split() -> dict:
+    return (yaml.safe_load(SPLIT.read_text(encoding="utf-8")) or {}) if SPLIT.is_file() else {}
+
+
 def test_cases() -> set[str]:
-    if not SPLIT.is_file():
-        return set()
-    data = yaml.safe_load(SPLIT.read_text(encoding="utf-8")) or {}
-    return {str(case) for case in data.get("test") or []}
+    return {str(case) for case in _split().get("test") or []}
 
 
-def case_kind(case_id: str) -> str:
-    return "real" if case_id.upper().startswith("R") else "synthetic"
+def eval_cases() -> set[str]:
+    """Every case id evals/split.yaml names, on whichever of its lists."""
+    data = _split()
+    return {str(c) for key in ("dev", "test", "demo", "reserve") for c in data.get(key) or []}
+
+
+def slug(name: str) -> str:
+    """A directory name as one path segment. Case is kept: `D02` is already a slug,
+    and lowering it would miss both its cache slot and its line in split.yaml."""
+    return re.sub(r"[^A-Za-z0-9]+", "_", name).strip("_") or "repo"
+
+
+def case_kind(case_id: str, files: int | None = None) -> str:
+    """An evaluation id keeps its kind; any other repository is sized by file count,
+    because the budget is what the kind buys and a big repository needs the big one."""
+    if files is None or case_id in eval_cases():
+        return "real" if case_id.upper().startswith("R") else "synthetic"
+    return "real" if files > REAL_REPO_FILES else "synthetic"
+
+
+def fixture_case(root: Path) -> str | None:
+    """The case id an evaluation fixture path carries, or None off the fixture tree.
+    A synthetic fixture is named after its case; a real one keeps its upstream name,
+    which is what `REAL_DIRS` translates. The test-split lock reads this, so pointing
+    the CLI at evals/fixtures/real/pinry is R03 whatever `--case` says."""
+    if not root.is_relative_to(FIXTURES):
+        return None
+    return REAL_DIRS.get(root.name, slug(root.name))
 
 
 def _files(root: Path) -> int:
+    """Files under `root`, minus the directories the tools never walk. The parts are
+    taken relative to the repository — the same idiom as art30/tools.py — so a
+    checkout under a directory called `media` still counts its own files."""
     return sum(
         1
         for path in root.rglob("*")
-        if path.is_file() and not any(part in tools.EXCLUDED_DIRS for part in path.parts)
+        if path.is_file()
+        and not any(part in tools.EXCLUDED_DIRS for part in path.relative_to(root).parts)
     )
 
 
@@ -104,40 +160,65 @@ def main(argv: list[str] | None = None) -> int:
     if not repo.is_dir():
         print(f"not a directory: {args.repo}", file=sys.stderr)
         return USAGE_EXIT
-    case_id = args.case or repo.resolve().name
+    root = repo.resolve()
+    files = _files(root)
+    fixture = fixture_case(root)
+    case_id = args.case or fixture or slug(root.name)
     overrides: dict[str, object] = {}
     if args.mode:
         overrides["mode"] = args.mode
     if args.approve:
         overrides["approve"] = args.approve
-    cfg = config.load(overrides).for_case_kind(case_kind(case_id))
+    kind = case_kind(case_id, files)
+    cfg = config.load(overrides).for_case_kind(kind)
 
-    if case_id in test_cases() and cfg.mode != "replay" and not cfg.unlock_test:
+    # The path decides as well as `--case`: a fixture that resolves to a test case is
+    # locked even when `--case` names something else (evals/split.yaml, comment 4).
+    locked = {case_id, fixture} & test_cases()
+    if locked and cfg.mode != "replay" and not cfg.unlock_test:
         print(
-            f"{case_id} is in the test split (evals/split.yaml). Set ART30_UNLOCK_TEST=1 to run it,"
-            " and record the sweep in results/test-runs.log.",
+            f"{', '.join(sorted(locked))} is in the test split (evals/split.yaml)."
+            " Set ART30_UNLOCK_TEST=1 to run it, and record the sweep in"
+            " results/test-runs.log.",
             file=sys.stderr,
         )
         return USAGE_EXIT
+    # `config.load` has read `.env` by now, so this is the last word on the key
+    # and it is spoken before `llm` imports the SDK or builds a client.
+    if cfg.mode == "live" and not os.environ.get("ANTHROPIC_API_KEY"):
+        print(NO_KEY, file=sys.stderr)
+        return USAGE_EXIT
     arm = load_arm(args.arm)
     if arm is None:
-        print(
-            "the advanced arm is not built yet (advanced/arm.py); run --arm baseline",
-            file=sys.stderr,
-        )
+        print(NO_ARM.format(arm=args.arm), file=sys.stderr)
         return USAGE_EXIT
     if args.arm == "advanced" and cfg.approve == "ask" and not sys.stdout.isatty():
         print("--approve ask needs a terminal; use --approve auto", file=sys.stderr)
         return USAGE_EXIT
 
-    case = CaseRef(id=case_id, name=repo.resolve().name, root=repo.resolve(), kind=case_kind(case_id))
-    # The loop writes to cfg.out_dir verbatim, so the expansion happens here,
-    # once, and only where the default layout is wanted (07-ui.md section 1).
-    cfg = replace(cfg, out_dir=Path(args.out) if args.out else out_dir(cfg, arm, case, args.seed))
-    _header(cfg, args, case, repo)
+    case = CaseRef(id=case_id, name=root.name, root=root, kind=kind)
+    cfg = replace(cfg, **_paths(cfg, args, arm, case, root))
+    _header(cfg, args, case, files)
     result = run(case, arm, args.seed, cfg, report)
     _tail(cfg, args, result)
     return EXIT.get(result.stop_condition, 1)
+
+
+def _paths(cfg: config.Config, args: argparse.Namespace, arm, case: CaseRef, root: Path) -> dict:
+    """Where this run writes. The loop uses `cfg.out_dir` verbatim, so the default
+    layout is expanded here, once (07-ui.md section 1). A repository that is not an
+    evaluation fixture keeps its record and its trace together under one directory
+    of its own, instead of writing into the eval's results/ and traces/ trees."""
+    own = not root.is_relative_to(FIXTURES)
+    if args.out:
+        target = Path(args.out)
+    elif own:
+        target = AD_HOC_OUT / slug(root.name) / arm.name / f"s{args.seed}"
+    else:
+        target = out_dir(cfg, arm, case, args.seed)
+    if own and not os.environ.get("ART30_TRACE_DIR"):   # the harness seam still wins
+        return {"out_dir": target, "trace_dir": target}
+    return {"out_dir": target}
 
 
 def report(kind: str, data: dict) -> None:
@@ -225,7 +306,7 @@ def _reject_summary(feedback) -> str:
     return " \u00b7 ".join(counts) or "rejected"
 
 
-def _header(cfg: config.Config, args: argparse.Namespace, case: CaseRef, repo: Path) -> None:
+def _header(cfg: config.Config, args: argparse.Namespace, case: CaseRef, files: int) -> None:
     print(
         f"art30 {__version__} · case {case.id} · arm {args.arm} · seed {args.seed}"
         f" · mode {cfg.mode}"
@@ -234,7 +315,7 @@ def _header(cfg: config.Config, args: argparse.Namespace, case: CaseRef, repo: P
     ceiling = f" · ceiling ${cfg.max_usd}" if cfg.max_usd else ""
     print(
         f"budget {cfg.tool_budget} tool calls · {cfg.max_submits} submit attempts"
-        f" · repo {args.repo} ({_files(repo)} files){ceiling}"
+        f" · repo {args.repo} ({files} files){ceiling}"
     )
     if cfg.overridden:
         print("overridden: " + ", ".join(cfg.overridden))
@@ -261,8 +342,12 @@ def _tail(cfg: config.Config, args: argparse.Namespace, result: RunResult) -> No
         f" · {result.submits} {submits} · {result.verify_rounds} verify {rounds}"
         f" · {_gate_words(args, result)}"
     )
-    trace = Path(cfg.trace_dir) / args.arm / f"{args.case or Path(args.repo).resolve().name}-s{args.seed}.jsonl"
-    print(f"${result.cost_usd:.2f} · {result.wall_s}s · {trace}")
+    case_id = args.case or slug(Path(args.repo).resolve().name)
+    trace = Path(cfg.trace_dir) / args.arm / f"{case_id}-s{args.seed}.jsonl"
+    written = ""
+    if result.stop_condition == "accepted":
+        written = f"{Path(cfg.out_dir) / 'record.json'} · record.md · record.html · "
+    print(f"${result.cost_usd:.2f} · {result.wall_s}s · {written}{trace}")
 
 
 def _cost_ceiling(result: RunResult) -> bool:
