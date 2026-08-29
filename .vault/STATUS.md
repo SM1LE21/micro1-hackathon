@@ -1,7 +1,7 @@
 # STATUS
 
 status: active
-last_updated: 2026-08-29 20:00 UTC
+last_updated: 2026-08-29 20:13 UTC
 
 ## Where we are
 
@@ -13,7 +13,8 @@ last_updated: 2026-08-29 20:00 UTC
 - **Phase 1 built and committed (2026-08-29 ~01:30 UTC):** fixture generator + the ten generated repos and manifests (`make fixtures` → "fixtures clean"), `art30/` runtime (config, trace, tools, llm, loop, cli, render, prompts, schema), `baseline/arm.py`, harness (score, trace_check, run, report), 221 offline tests green (`make smoke`). R01–R04 vendored. **Baseline and shared runtime frozen at commit 7681cb6 (ADR 0006).**
 - **Phase 2 built and committed (2026-08-29 ~14:00 UTC):** the verifier (`art30/verify/`, ~30 modules on stdlib `ast`), the advanced arm and gate, 590 offline tests green. Acceptance: all twelve synthetic fixtures (S01–S10, D01, D02) reproduce every manifest verdict; twelve adversarially constructed false safes closed with regression tests; two documented xfails (no-sender receivers, graph-layer gap). Harness split under the 300-line rule with byte-identical `--help`. `art30/loop.py` (414) and `evals/harness/score.py` (315) stay over the limit: loop.py is frozen (ADR 0006), score.py has a live importer.
 - **Phase 3 built and committed (2026-08-29 ~22:00 UTC):** `verify-docs` and the failure index wired into the Makefile; `docs/spec/DEVIATIONS.md` (21 rows; every spec amended to the code, one debt paid, two safe-side xfails owed); example record regenerated from the generated S10 (70 citations resolve); hardening tests and a record→replay round-trip through the real cache; README/REPRODUCE materialised from the accepted drafts; build trajectory rendered (main session, gzipped). 655 offline tests green. Docker: no runtime on this machine — rehearsal is a checklist (`docs/evidence/docker-rehearsal.md`); Dockerfile fixed to install the dev group.
-- **Independent end-to-end audit running** (clean clone → smoke → fixtures; verifier on D01/D02/S10/R04 by hand; SDK call introspection; deliverables state).
+- **Independent audit done (2026-08-29 ~23:30 UTC):** clean clone → `make setup && make smoke` in ~10 s; `make fixtures` clean; no SDK mismatch (anthropic 1.2.0 introspected: stream/get_final_message, usage fields, strict tools, adaptive thinking, cache_control); verifier hand-run on D01, D02, S10, R04 — every verdict matches the manifest or a human reading, no false safe; the guard rejects a planted false claim. Five defects found and fixed before any recording: `ART30_TRACE_DIR` ignored (would have overwritten committed traces during gate timing), `make baseline` aborting on the unlabelled R01, unscoped `report` booking unrun cells as crashed, no cost ceiling enforced, D02's route calling an undefined name. ADR 0006 addendum covers the two frozen-file edits.
+- **v1 is built for review.** Everything runs offline; the live path (calibration, Sweep A, iterations, Sweeps B/C) waits on `ANTHROPIC_API_KEY` and `ART30_MAX_USD` in `.env` and on the hand-labelled R01–R04 manifests (`docs/runbook-sweeps.md`).
 - Two demo repos for hand testing outside the scored set: `evals/fixtures/synthetic/D01` (Django membership site; avatar file survives deletion) and `D02` (SQLAlchemy shop; cache purged, tickets and search index survive). `evals/split.yaml` lists them under `demo:`; the harness never selects them. Remote `origin` = github.com/SM1LE21/micro1-hackathon, pushed after each phase.
 - Known drift to refresh from the first real run: `docs/spec/example-record-S10.md` line numbers vs the generated S10.
 - **Blocker for live runs: no API credentials on this machine** (no `.env`, no `ant` profile, no `ANTHROPIC_API_KEY`). Everything up to the first calibration run builds and tests offline; the calibration run and Sweep A wait for a key in `.env`.
@@ -21,7 +22,7 @@ last_updated: 2026-08-29 20:00 UTC
 
 ## Next action (in order; details in docs/spec/08-plan.md §7 "Saturday's first four hours")
 
-1. **Author: put an API key in `.env`** (`ANTHROPIC_API_KEY=`); then calibration run on S01 baseline, then Sweep A (`make baseline`), then CHANGELOG_EVAL row 1.
+1. **Author: `.env` with `ANTHROPIC_API_KEY=` and `ART30_MAX_USD=6`**; then calibration (`docs/runbook-sweeps.md` §1), `ART30_RECORD=1 make baseline` (seven synthetic dev cases until R01/R02 are labelled), CHANGELOG_EVAL row 1.
 2. Author blind-labels S03 and S05 (timed, before opening their manifests), then R03/R04, then R01/R02 under the CASES.md protocol → `evals/fixtures/manifests/R0x.yaml` + `.labelling.yaml` sidecars.
 3. Phase 3 lands; then, with the key: calibration → Sweep A → CHANGELOG_EVAL row 1 → first advanced run (`docs/runbook-sweeps.md`).
 4. Iterations on S02/S05/S07, Sweeps B and C after the freeze, evidence phase (08-plan.md §2).
