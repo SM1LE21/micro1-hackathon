@@ -4,7 +4,7 @@ What we deliberately do not build, so scope stays fixed. Additions allowed; remo
 
 ## Standing
 
-- No product polish beyond what the demo path and eval need.
+- No product polish beyond what the demo path and eval need — amended by ADR 0007: the local website (`art30 serve`) is the demo surface and may be polished; the arms, the harness and the CLI's measured behaviour stay as they are.
 - No multi-agent orchestration unless a measured iteration shows the single-threaded loop failing for a reason orchestration fixes.
 - No live external side effects: consequential actions are sandboxed or simulated, human approval before anything irreversible.
 - No private or client data. Public or synthetic only.
@@ -22,5 +22,5 @@ What we deliberately do not build, so scope stays fixed. Additions allowed; remo
 - No live web or GitHub API at eval time. Real repos are vendored at a pinned SHA under `evals/fixtures/real/` with their LICENSE files.
 - No more than 5 real repos, none over ~150 non-test Python files, none without an OSI licence (MIT/BSD/Apache). Labelling cap 2 h each.
 - No LLM-as-judge anywhere in the primary metric.
-- No output formats beyond Markdown, the validated JSON it renders from, and one static single-template HTML page of the same record (ADR 0003 item 8). No DOCX, no PDF, no DPA portal integration.
+- No output formats beyond Markdown, the validated JSON it renders from, one static single-template HTML page of the same record (ADR 0003 item 8), and the served page that shows a run and the same record (ADR 0007). No DOCX, no PDF, no DPA portal integration.
 - No English-only apologies: the record is English only.
