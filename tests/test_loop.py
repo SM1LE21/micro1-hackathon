@@ -349,3 +349,13 @@ def test_no_baseline_tool_result_carries_verifier_vocabulary(
             for result in line.get("tool_results") or []:
                 for key in VERIFIER_KEYS:
                     assert key not in result["output"], f"{path.name} names {key}"
+
+
+def test_first_turn_template_carries_no_absolute_path() -> None:
+    """02-agent-loop.md section 2 (deviation D-04): the first user turn is rendered from the case
+    name and the two budgets only, so nothing machine-specific can enter the hashed request."""
+    rendered = loop.FIRST_TURN.format(repo_name="S01", tool_call_budget=60, submit_budget=5)
+    assert not re.search(r"(^|\s)/[A-Za-z]", rendered), rendered
+    assert "S01" in rendered and "60 tool calls" in rendered and "5 submit_record" in rendered
+    placeholders = set(re.findall(r"{(\w+)}", loop.FIRST_TURN))
+    assert placeholders == {"repo_name", "tool_call_budget", "submit_budget"}
