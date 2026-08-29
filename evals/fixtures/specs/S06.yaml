@@ -63,7 +63,6 @@ stores:
     write_called_by: null
     delete_call: null
     delete_called_by: null
-    key_template: "avatars/{user_id}.jpg"
 
 receivers:
   - name: delete_avatar_file
