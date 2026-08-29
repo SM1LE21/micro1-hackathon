@@ -1,0 +1,102 @@
+case: S06
+split: dev
+source: synthetic
+intent: 'Django done right: rows cascade, and the avatar file is removed by a post_delete receiver wired
+  to the correct sender'
+spec_sha256: 739aae5e486288a12a91ae1c911f9219f6e5562e46fa00f267f02524effcb5f9
+gen_version: 1
+normalisation:
+  prefixes:
+  - accounts
+  - catalog
+labelling_minutes: null
+entry_points:
+- name: delete_account
+  file: accounts/views.py
+  line: 9
+  kind: view
+- name: admin_delete_model
+  file: accounts/admin.py
+  line: 7
+  kind: admin
+  admin_only: true
+- name: admin_delete_selected
+  file: accounts/admin.py
+  line: 7
+  kind: admin
+  admin_only: true
+stores:
+- name: accounts_account
+  kind: relational
+  subject_link:
+    file: accounts/models.py
+    line: 9
+  fields:
+  - name: email
+    category: contact
+    file: accounts/models.py
+    line: 11
+  - name: full_name
+    category: identifier
+    file: accounts/models.py
+    line: 12
+  - name: joined_at
+    category: technical
+    file: accounts/models.py
+    line: 14
+  erasure:
+    verdict: erased
+    evidence: accounts/views.py:12
+- name: accounts_comment
+  kind: relational
+  subject_link:
+    file: accounts/models.py
+    line: 24
+  fields:
+  - name: body
+    category: free_text_may_contain
+    file: accounts/models.py
+    line: 22
+  - name: posted_at
+    category: technical
+    file: accounts/models.py
+    line: 23
+  erasure:
+    verdict: erased
+    evidence: accounts/models.py:24
+- name: accounts_address
+  kind: relational
+  subject_link:
+    file: accounts/models.py
+    line: 34
+  fields:
+  - name: street
+    category: contact
+    file: accounts/models.py
+    line: 32
+  - name: postcode
+    category: contact
+    file: accounts/models.py
+    line: 33
+  erasure:
+    verdict: erased
+    evidence: accounts/models.py:34
+- name: account.avatar
+  kind: object_storage
+  declared_at:
+    file: accounts/models.py
+    line: 13
+  subject_link:
+    file: accounts/models.py
+    line: 13
+  fields:
+  - name: avatar
+    category: identifier
+    file: accounts/models.py
+    line: 13
+  erasure:
+    verdict: erased
+    evidence: accounts/signals.py:11
+retention: []
+negatives:
+- catalog_product
