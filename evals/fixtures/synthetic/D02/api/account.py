@@ -11,6 +11,6 @@ from models import User
 def close_account(session, user_id):
     """Close the account and delete everything we hold about the customer."""
     user = session.get(User, user_id)
-    purge_session(email)
+    purge_session(user.email)
     session.delete(user)
     session.commit()
