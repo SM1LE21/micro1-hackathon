@@ -30,11 +30,17 @@ fixtures:
 run:
 	uv run art30 scan evals/fixtures/synthetic/$(CASE) --arm advanced --case $(CASE) --approve ask --mode $(MODE) --out $(OUT)
 
+SWEEP_CASES ?= $(shell test -f evals/fixtures/manifests/R01.yaml && echo dev)
+
 baseline:
-	uv run python -m evals.harness.run --split dev --arms baseline --seeds 1,2,3 --mode live --approve auto --jobs 4
+	@test -n "$$ART30_MAX_USD" || grep -q '^ART30_MAX_USD=.' .env 2>/dev/null || { echo "set ART30_MAX_USD in .env before a live sweep (ADR 0005 item 4)"; exit 1; }
+	uv run python -m evals.harness.run $(if $(SWEEP_CASES),--split dev,--cases S01,S02,S03,S04,S05,S06,S07) --arms baseline --seeds 1,2,3 --mode live --approve auto --jobs 4
+	uv run python -m evals.harness.report --runs results/runs --out results/metrics.json --markdown $(if $(SWEEP_CASES),--split dev,--cases S01,S02,S03,S04,S05,S06,S07) --arms baseline
 
 advanced:
-	uv run python -m evals.harness.run --split dev --arms advanced --seeds 1,2,3 --mode live --approve auto --jobs 4
+	@test -n "$$ART30_MAX_USD" || grep -q '^ART30_MAX_USD=.' .env 2>/dev/null || { echo "set ART30_MAX_USD in .env before a live sweep (ADR 0005 item 4)"; exit 1; }
+	uv run python -m evals.harness.run $(if $(SWEEP_CASES),--split dev,--cases S01,S02,S03,S04,S05,S06,S07) --arms advanced --seeds 1,2,3 --mode live --approve auto --jobs 4
+	uv run python -m evals.harness.report --runs results/runs --out results/metrics.json --markdown $(if $(SWEEP_CASES),--split dev,--cases S01,S02,S03,S04,S05,S06,S07)
 
 eval:
 	uv run python -m evals.harness.run --split dev --arms baseline,advanced --seeds 1,2,3 --mode live --approve auto --jobs 4
