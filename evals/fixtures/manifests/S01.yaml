@@ -1,0 +1,61 @@
+case: S01
+split: dev
+source: synthetic
+intent: 'a clean repository: hard delete with an ORM delete cascade, nothing planted; measures precision
+  on a repo with no findings'
+spec_sha256: 704a3aedd18b4925b6df08cf19a0e8d0401a16abbe67fe0afd837e6ccff6a7a6
+gen_version: 1
+normalisation:
+  prefixes: []
+labelling_minutes: null
+entry_points:
+- name: delete_account
+  file: api/account.py
+  line: 10
+  kind: route
+stores:
+- name: users
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 12
+  fields:
+  - name: email
+    category: contact
+    file: models.py
+    line: 15
+  - name: full_name
+    category: identifier
+    file: models.py
+    line: 16
+  - name: created_at
+    category: technical
+    file: models.py
+    line: 17
+  erasure:
+    verdict: erased
+    evidence: api/account.py:13
+- name: orders
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 27
+  fields:
+  - name: shipping_address
+    category: contact
+    file: models.py
+    line: 24
+  - name: amount_cents
+    category: financial
+    file: models.py
+    line: 25
+  - name: placed_at
+    category: technical
+    file: models.py
+    line: 26
+  erasure:
+    verdict: erased
+    evidence: models.py:18
+retention: []
+negatives:
+- products
