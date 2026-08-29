@@ -10,6 +10,8 @@ One YAML spec per case produces both the synthetic repository the agent reads an
 
 `gen.py` is a template renderer with a consistency check bolted on. It is not a code synthesiser: every line it emits comes from a fixed template with slots. There is no randomness, no LLM, no formatting library, and no import of anything outside the standard library plus `pyyaml`.
 
+Amended 2026-08-29: the renderer is thirteen modules under `evals/fixtures/`, not one file. `gen.py` is the CLI and the pass order; `spec_model.py` parses and validates a spec, `anchors.py` turns a symbol into a line, `render_common.py`, `render_django.py`, `render_sqlalchemy.py`, `render_routes.py`, `render_jobs.py` and `render_stores.py` emit the templates, `emit.py` writes bytes, `manifest.py` derives the manifest, `checks.py` runs §8's consistency assertions and `naming.py` holds the §7 naming rules (importing the scorer's `norm`, so injectivity is asserted against the function the metric uses). Every property this document fixes is unchanged: one pass, one spec, no randomness, stdlib plus `pyyaml`, and `make fixtures` still ends in `git diff --exit-code`. (DEVIATIONS.md D-08)
+
 Two outputs per case:
 
 | Output | Path | Committed |
@@ -163,7 +165,7 @@ expect:
     users.full_name: {verdict: anonymised, evidence: "privacy.py::anonymize_user!full_name"}
 ```
 
-`note` strings may embed `{<anchor>}`; the generator resolves each to `path:line` after rendering. That is how the manifest carries "defined at `storage.py:41`, never called" without a human ever typing `41`.
+`note` strings may embed `{<anchor>}`; the generator resolves each to `path:line` after rendering. That is how the manifest carries "defined at `storage.py:29`, never called" without a human ever typing `29`.
 
 ---
 
