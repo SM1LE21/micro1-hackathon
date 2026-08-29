@@ -23,6 +23,8 @@ Data flows one way: `callgraph → reach → check`. `rules` is read by `reach` 
 
 The whole run is pure: same repo bytes plus same rule bytes give the same feedback object, byte for byte. Every collection that leaves a module is a sorted list.
 
+Amended 2026-08-29: four modules became thirty-three, 6,583 lines, under AGENTS.md's ~300-line rule. The four responsibilities and the one-way flow are unchanged; each of the four outgrew a file and split. `art30/verify/__init__.py` carries the module map, one line per module naming the section of this document it implements, and is the place to start reading. The public surface is unchanged: `build_graph(root)`, `reach.path_exists`, `reach.verdicts`, `check.check`. (DEVIATIONS.md D-09)
+
 ---
 
 ## 1. Call-graph construction (`verify/callgraph.py`)
@@ -175,6 +177,10 @@ The vocabulary lives in `verify/rules/entrypoints.yaml`, not in code.
 
 Kinds are exactly the contract's set: `route | view | cli | admin | task | signal | unknown`.
 
+Amended 2026-08-29: the `unknown` row does most of the work on this eval set. Every route in `S01`–`S10` is an undecorated module-level function — `api/account.py::close_account` has no decorator at all — so no `route` row fires and `_unclaimed` records the function as kind `unknown` (`tests/verify/test_entrypoints.py::test_module_level_function_is_kind_unknown`). The manifests call the same function kind `route`. Both are right about different questions and neither is scored: the metric's tuple is `(store, field, reaches_erasure)`, and this table's own last row already makes `unknown` "still a valid start node". A record and the verifier may therefore disagree about an entry point's kind without either being wrong. (DEVIATIONS.md D-10)
+
+Amended 2026-08-29: the `admin` row yields two entry points **per repository**, not per registration. `registration.admin_entry_points` collects every model whose admin still deletes, then emits `admin_delete_model` and `admin_delete_selected` once, both citing the first qualifying registration line and both carrying the full model list. Two per model would multiply start nodes that set the same two modes and reach the same stores. `tests/verify/test_entrypoints.py::test_admin_gives_exactly_two_entry_points` pins the pair, the shared citation and the two `sets_mode` values. (DEVIATIONS.md D-11)
+
 **The subject qualification, which binds every route form and not only the last one.** The HTTP method is not the question; *whose* deletion it is, is. A DELETE route qualifies as an erasure entry point only when at least one of these holds:
 
 1. the normalised function name matches the §2.1 vocabulary (`delete_user`, `close_account`, `delete_user_me`);
@@ -259,6 +265,8 @@ A class with neither `__tablename__` nor a resolvable declarative base is not a 
 
 Bucket-or-prefix is the store identity where a bucket name is visible; otherwise the field or the client variable names it. A deletion call is attributed by §3.10, not by the client variable.
 
+Amended 2026-08-29: a Django `FileField`/`ImageField` store is identified as `<normalised model>.<field>` — `avatar.image` — not by the field name alone, and it sits beside the relational store `avatar` rather than inside it (`art30/verify/stores.py::_file_store`: "the row and the bytes have different fates, so two stores"). That id is the key `reach.verdicts()` returns it under and the string every R8 test asserts on. `avatar.image` and a bucket named `uploads` never normalise equal, so the scorer and the acceptance test reconcile a file store by the `FileField` declaration line it cites rather than by its name (`tests/verify/test_fixtures_reproduce.py::_key`). (DEVIATIONS.md D-13)
+
 ### 3.3 Cache
 
 `redis.Redis(...)`, `redis.from_url(...)`, `StrictRedis`, `django_redis`, `aioredis`, and Django's `cache` API (`from django.core.cache import cache`). Store identity is the key namespace: the literal prefix of the first argument of `set`/`setex`/`hset`/`get` up to the first format placeholder (`session:{}` → `session`). Where the key is fully dynamic the store is named after the client variable and flagged.
@@ -341,6 +349,8 @@ So SE12 (§4.2) adds an edge from a primitive to one of these stores only when t
 
 Where the argument is fully dynamic the store is `unverified` under the §1.5 narrowing (the opaque call plausibly touches a store the module holds a client for). Where the literal names a *different* namespace, no edge is added and the store keeps whatever verdict its own evidence gives it — `not_erased` where nothing else reaches it. Neither branch produces `erased`. Test 52 pins the two-namespace case.
 
+Amended 2026-08-29: the same rule binds one level up, in the store table itself. `context.Ctx.add` keys the detectors' table on `(kind, id)`, never on the id alone. Keyed on the id, a `sessions` table and a `session:`-prefixed cache namespace merged into one store and the relational SE12 edge marked the cache erased while the emails in it survived — this section's own false safe, arrived at through the store table instead of through a client handle. A second kind arriving under a taken id keeps its own entry as `<id>#<kind>`; both stores are flagged `store_id_conflict`, the flag is on the record the feedback carries, and neither is merged. (DEVIATIONS.md D-15)
+
 ---
 
 ## 4. Synthetic edges and the rules R1–R28
@@ -393,6 +403,8 @@ def close_account(request):
 ```
 
 `files:avatar.image` would read `erased` and the bytes would stay. Test 27 already expects `not_erased` there; `mode_of(entry) = none` plus `sets_mode` on SE12 is what makes the table agree with its own test.
+
+Amended 2026-08-29: the table needs a thirteenth row, **SE0**, and the search does not work without it. `entry:<name> → the symbol the entry point names`, admissible in every mode, setting none. Without it only the two admin entry points had an out-edge (SE10), so a walk from `entry:close_account` sat on a start node with nowhere to go, `path_exists` returned `None` for every store in every non-admin repository, and S01, S04 and S06 all read `not_erased` however plainly the body deletes. The edge carries the search into the body; the mode is still set by the primitive it finds there. Implemented in `art30/verify/synthetic.py::_entry_edges`. (DEVIATIONS.md D-12)
 
 ### 4.3 The rules, operationalised
 
@@ -473,6 +485,8 @@ Session = sessionmaker(bind=engine)
 Any `postgresql://` anywhere would bless SE7 for every `ondelete="CASCADE"` in the tree, and the runtime is the configuration the research calls the worst result in the document: parent gone, child row and its email present, `PRAGMA foreign_keys = 0`.
 
 Where several engines exist and the binding cannot be resolved by name: `unverified`. Absent evidence on the bound engine: `unverified`, and `not_erased` when `passive_deletes=True` is also set, because the ORM has then been told not to emit the child `DELETE` and nothing else will.
+
+Amended 2026-08-29: "a migration or startup module that names it" is narrowed to the engine's own import closure, and the PRAGMA must be a call argument rather than a string in the file. `engines.pragma_listener` accepts the evidence only when (1) the listener's module is the module that builds the engine or one it transitively imports (`_engine_modules`), (2) the listener is registered on `Engine` or on that engine's own variable, and (3) the literal appears at a call site inside the body. A `PRAGMA foreign_keys=ON` in a module nobody loads is a string in a file and SQLite's foreign keys stay off; a text scan over the source span accepted `# TODO: emit PRAGMA foreign_keys=ON here one day` above a body of `pass`. Both readings produced the exact false safe this section exists to stop. (DEVIATIONS.md D-14)
 
 ### 4.6 Cascade-token parsing (R5)
 
@@ -807,6 +821,8 @@ Memory: bounded by the call-site records, roughly one small dict per `ast.Call`.
 
 Written before the first advanced run (matrix G-05). Fixtures are inline strings written to a `tmp_path` repo by a `mkrepo(files: dict)` helper, so each test is readable in one screen; the shared helpers live in `tests/verify/conftest.py`. Every test names the rule it pins.
 
+Amended 2026-08-29: the plan's sixty-five tests became 339 under `tests/verify/`, plus a twelve-case acceptance test (`test_fixtures_reproduce.py`) that reproduces every store verdict and every field-level override in the manifests of S01–S10, D01 and D02 without the verifier reading a manifest at run time. **Two of the sixty-five do not pass and ship as `xfail(strict=True)`:** test 19 (`test_r09_receiver_without_sender`) and test 62 (`test_r09_no_sender_receiver_with_guard`). Both are R9 receivers with no `sender=`: `synthetic.add_edges` leaves `instance` unbound, so the body's `instance.image.delete()` is attributed to no store, no SE12 edge exists, and the verdict falls to `not_erased` where `erased` and `unverified` were asked for. Both failures land on the conservative side, which is the direction this project pays for; the strict marker means they turn red the day the graph layer learns to bind `instance`. The fix belongs in `art30/verify/synthetic.py`. The code spells both tests `test_r09_...`; row 62 of the table below spells its one `test_r9_no_sender_receiver_with_guard`, and the name in `tests/verify/test_verdicts.py` is the one that runs. (DEVIATIONS.md D-16)
+
 | # | Test | Rule | Minimal fixture | Expected |
 |---|---|---|---|---|
 | 1 | `test_r01_cascade_is_an_edge` | R1 | `class Post(Model): user = FK(User, on_delete=models.CASCADE)` + a view calling `user.delete()` | `rows:post` → `erased`, evidence cites the FK line |
@@ -862,7 +878,7 @@ Written before the first advanced run (matrix G-05). Fixtures are inline strings
 | 50 | `test_feedback_is_sorted_and_stable` | §7.5 | two runs over the same repo and record | byte-identical feedback objects, every list sorted |
 | 51 | `test_unrelated_delete_route_is_not_an_entry_point` | §2.2 | the repository's only DELETE route is `@router.delete("/posts/{post_id}") def delete_post` | `no_entry_point` for every store; `rows:post` is not `erased` |
 | 52 | `test_two_namespaces_one_client` | §3.10 | `r.setex("profile:…")` and `r.setex("session:…")` on one handle; `close_account` deletes the session key only | `cache:session` `erased`, `cache:profile` `not_erased` |
-| 53 | `test_declared_entry_point_without_registration` | §2.5 | the S10 repository, record declares `cleanup_user_files` (`storage.py:41`, kind `unknown`) as an entry point | `uploads` is `unverified`, never `erased`; the entry point is flagged `declared_unregistered` |
+| 53 | `test_declared_entry_point_without_registration` | §2.5 | the S10 repository, record declares `cleanup_user_files` (`storage.py:29`, kind `unknown`) as an entry point | `uploads` is `unverified`, never `erased`; the entry point is flagged `declared_unregistered` |
 | 54 | `test_r18_listener_not_evidence_on_bulk_dml` | R18 | `before_delete` mapper listener deleting an S3 object; the path is `session.execute(delete(User))` | file store `not_erased`; the same fixture with `session.delete(user)` gives `erased` |
 | 55 | `test_r24_deletion_endpoint_upgrade` | R24 | `create_regulation(regulation_type="SUPPRESS_WITH_DELETE", …)` on the path | Segment store `erased` |
 | 56 | `test_r24_delete_internal_is_not_erasure` | R24 | same with `regulation_type="DELETE_INTERNAL"`, and a third variant passing a variable | `external_manual` in both, note names the untouched destinations |
