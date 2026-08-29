@@ -142,6 +142,7 @@ def load(overrides: Mapping[str, object] | None = None) -> Config:
         max_usd=_float(env, "ART30_MAX_USD"),
         concurrency=_int(env, "ART30_CONCURRENCY", 4),
         cache_dir=Path(env.get("ART30_CACHE_DIR") or "evals/cache"),
+        trace_dir=Path(env.get("ART30_TRACE_DIR") or "traces"),   # the harness sets it per cell (01-architecture.md section 9)
         unlock_test=env.get("ART30_UNLOCK_TEST") == "1",
         reproducible=env.get("ART30_REPRODUCIBLE") == "1",
         overridden=tuple(name for name in REQUEST_VARS if env.get(name)),
