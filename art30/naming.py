@@ -15,8 +15,6 @@ E_STEM = ("ss", "x", "z", "ch", "sh")  # stems that take -es: address, box, batc
 REACHES = frozenset({"erased", "erased_after_timer", "anonymised"})
 BACKUP_VERDICTS = frozenset({"governed_by_retention", "no_schedule_evidenced"})
 
-Tuples = dict[tuple[str, str], dict[str, Any]]
-
 
 def _base(name: str) -> str:
     s = re.sub(r"[^a-z0-9]+", "_", name.strip().lower())
