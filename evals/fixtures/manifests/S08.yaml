@@ -1,0 +1,123 @@
+case: S08
+split: test
+source: synthetic
+intent: no deletion feature exists anywhere; six stores of five kinds, and a nightly dump with no schedule
+  behind it
+spec_sha256: 35e361379d0dc0105da0d1c8da8d52f2fe22bd957f1e761980c0ad2baf79ab56
+gen_version: 1
+normalisation:
+  prefixes: []
+labelling_minutes: null
+entry_points: []
+stores:
+- name: users
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 12
+  fields:
+  - name: email
+    category: contact
+    file: models.py
+    line: 15
+  - name: full_name
+    category: identifier
+    file: models.py
+    line: 16
+  - name: phone
+    category: contact
+    file: models.py
+    line: 17
+  - name: created_at
+    category: technical
+    file: models.py
+    line: 18
+  erasure:
+    verdict: no_entry_point
+    evidence: null
+- name: documents
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 27
+  fields:
+  - name: title
+    category: free_text_may_contain
+    file: models.py
+    line: 25
+  - name: body
+    category: free_text_may_contain
+    file: models.py
+    line: 26
+  erasure:
+    verdict: no_entry_point
+    evidence: null
+- name: uploads
+  kind: object_storage
+  subject_link:
+    file: storage.py
+    line: 11
+  fields:
+  - name: document_key
+    category: free_text_may_contain
+    file: storage.py
+    line: 11
+  erasure:
+    verdict: no_entry_point
+    evidence: null
+- name: doc_search
+  kind: search_index
+  subject_link:
+    file: search.py
+    line: 12
+  fields:
+  - name: owner_email
+    category: contact
+    file: search.py
+    line: 15
+  - name: title
+    category: free_text_may_contain
+    file: search.py
+    line: 16
+  erasure:
+    verdict: no_entry_point
+    evidence: null
+- name: events
+  kind: queue
+  subject_link:
+    file: queue.py
+    line: 14
+  fields:
+  - name: email
+    category: contact
+    file: queue.py
+    line: 19
+  erasure:
+    verdict: no_entry_point
+    evidence: null
+- name: nightly_dump
+  kind: backup
+  subject_link:
+    file: jobs/dump.py
+    line: 9
+  fields:
+  - name: email
+    category: contact
+    file: jobs/dump.py
+    line: 9
+  - name: full_name
+    category: identifier
+    file: jobs/dump.py
+    line: 9
+  - name: phone
+    category: contact
+    file: jobs/dump.py
+    line: 9
+  erasure:
+    verdict: no_schedule_evidenced
+    evidence: null
+    note: the dump is written at jobs/dump.py:19; no schedule, cron expression or retention constant exists
+      anywhere in the repository
+retention: []
+negatives:
+- plans
