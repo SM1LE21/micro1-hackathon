@@ -211,7 +211,7 @@ The line under each store's table is `Linked to the data subject at <file:line>`
 
 | Store | Verdict | Evidence | Note |
 |---|---|---|---|
-| uploads | NOT ERASED | — | cleanup_user_files is defined at storage.py:41 and has no caller |
+| uploads | NOT ERASED | — | cleanup_user_files is defined at storage.py:29 and has no caller |
 
 Rules for this table:
 - Verdicts in capitals with underscores as spaces: `ERASED AFTER TIMER`, `NO SCHEDULE EVIDENCED`.
@@ -238,7 +238,7 @@ Rules for this table:
 1. No emoji, anywhere, including the verification tables.
 2. Verdicts in capitals. Nothing else in the document is capitalised for emphasis.
 3. The words `compliant` and `compliance` do not appear. No legal basis, no risk class, no statement about whether anything is lawful. Invariant I10 enforces this over every string the model writes, in both arms, before anything renders; the rule is not left to the instruction text.
-4. No adjectives of quality — not `robust`, not `thorough`, not `critical`, not `clean`. A row is `NOT ERASED` at `storage.py:41`; that is the whole sentence.
+4. No adjectives of quality — not `robust`, not `thorough`, not `critical`, not `clean`. A row is `NOT ERASED` at `storage.py:29`; that is the whole sentence.
 5. Every cell that came from code carries `file:line`. A cell with no citation is either a human cell or an em dash, never prose.
 
 Renderer behaviour that follows: no sentence in the output is generated from a template with adjectives in it, the only free text is the model's `note` strings and the verifier's `reason` strings, and both are printed as written. The renderer never paraphrases the model, and the model never gets to write a paragraph.
@@ -250,7 +250,7 @@ Renderer behaviour that follows: no sentence in the output is generated from a t
 1. Human-only cells are `{"type": "null"}` with the key required, and `activities` is `const: []`. Filling one is a validation error in both arms, not a scoring penalty after the fact.
 2. Every property is in `required`; optionality is an `anyOf` pair with `{"type": "null"}`, in all twelve places, rather than a `["string", "null"]` type array. The strict-tool-use page lists `anyOf` as supported and never shows a type array ([tool-use-concepts.md](file:///private/tmp/claude-501/bundled-skills/2.1.250/6281369acc559d2ec0eafa4756deb604/claude-api/shared/tool-use-concepts.md) §JSON Schema Limitations), and the file already used the `anyOf` form for `declared_at` and the two `erasure` refs, so one form for one idea.
 3. `recipient_kind` is `null` for every store kind in the submitted record, not just `third_party`. Conditional schemas are outside the strict subset and the agent may never set the cell anyway.
-4. The schema file stays inside the strict-tool-use keyword subset so it can be sent verbatim as `input_schema`. Ten invariants that need `minimum`, `minItems`, a citation dependency or cross-field logic (I1–I10) live in the `submit_record` handler and report through `schema_errors` in both arms. I3, I4, I5, I9 and I10 run over every `erasure` block, field-level overrides included, because that is the block the scorer reads.
+4. The schema file stays inside the strict-tool-use keyword subset so it can be sent verbatim as `input_schema`. Ten invariants that need `minimum`, `minItems`, a citation dependency or cross-field logic (I1–I10) live in the `submit_record` handler and report through `schema_errors` in both arms. I3, I4, I5, I9 and I10 run over every `erasure` block, field-level overrides included, because that is the block the scorer reads. *Amended 2026-08-29:* "verbatim" is one edit short of true. `art30/tools.py::_submit_input_schema` sends the schema as `properties.record` with `$schema` and `$id` removed and `$defs` hoisted to the tool `input_schema` root, because `$ref` targets resolve against the document root and the tool's root is its `input_schema`, not the nested record object. No keyword left the strict subset; the file itself is unchanged and `tests/test_schema.py` still asserts the spec copy hash-equal. (DEVIATIONS.md D-05)
 5. Erasure evidence items carry `symbol` as well as `file` and `line`, so the verifier's citation check has something to look for on the line. Field and entry-point citations use their own `name` as the symbol.
 6. No `confidence`, no `risk`, no model-written summary anywhere in the record.
 7. `record.json` = submitted record + `verification` + `provenance`, validated against the same schema with two named relaxations. `verification.rejected_history` keeps every rejected claim with what replaced it; it is never pruned.
