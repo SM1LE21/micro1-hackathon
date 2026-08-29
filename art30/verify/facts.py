@@ -11,11 +11,12 @@ from __future__ import annotations
 import re
 
 from art30.verify import imports as importmap
+from art30.verify.context import owner_module
 from art30.verify.findings import Graph, Receiver
 from art30.verify.rules import RuleSet, norm
 
 
-def settings_facts(graph: Graph, rules: RuleSet) -> None:
+def settings_facts(graph: Graph, rules: RuleSet, imap: importmap.ImportMap) -> None:
     """R10 [S13] and R6: INSTALLED_APPS, AUTH_USER_MODEL, engines and schedules."""
     apps: dict[str, list[str]] = {}
     facts: dict[str, object] = {}
@@ -45,7 +46,7 @@ def settings_facts(graph: Graph, rules: RuleSet) -> None:
     for site in sorted(graph.calls, key=lambda c: (c.file, c.line)):
         if site.name in {"create_engine"}:
             engines.append({"file": site.file, "line": site.line,
-                            "url": _engine_url(graph, site), "var": ""})
+                            "url": _engine_url(graph, imap, site), "var": ""})
         if site.name in {"crontab", "add_periodic_task"}:
             schedules.append({"file": site.file, "line": site.line, "names": [],
                               "how": site.name})
@@ -56,15 +57,44 @@ def settings_facts(graph: Graph, rules: RuleSet) -> None:
     graph.settings.update(facts)
 
 
-def _engine_url(graph: Graph, site) -> str:
-    if site.args and site.args[0].kind == "literal":
-        return str(site.args[0].value)
-    if site.args and site.args[0].kind in {"name", "attribute"}:
-        name = str(site.args[0].value).split(".")[-1]
-        for module in graph.modules.values():
-            for assign in module.assigns:
-                if assign.target == name and assign.value_kind == "literal":
-                    return assign.value_repr
+def _engine_url(graph: Graph, imap: importmap.ImportMap, site) -> str:
+    """R6 [S15] [S46], 4.5: the URL of *this* engine, read in this call site's scope.
+
+    A repository-wide scan by tail name, first module in alphabetical order winning,
+    is the defect 4.5 spells out one level down: an unrelated `config.DATABASE_URL =
+    "postgresql://host/metrics"` overrode `db.py`'s own `"sqlite:///app.db"`, SE7 was
+    added in every mode, and the child rows read `erased` on a database with foreign
+    keys off -- the transcript the research calls the worst result in the document.
+    The name is scoped the way `Ctx.constant` scopes a bucket constant: a qualified
+    name names its own module, a bare name is this module's first and then the module
+    it is imported from, and nothing else in the tree is consulted.
+    """
+    arg = site.args[0] if site.args else None
+    if arg is None:
+        return ""
+    if arg.kind == "literal":
+        return str(arg.value)
+    if arg.kind not in {"name", "attribute"}:
+        return ""
+    name = str(arg.value)
+    module = _module_of(graph, site.file)
+    owner = owner_module(graph, imap, module, name)
+    order = [owner, module] if "." in name else [module, owner]
+    for candidate in order:
+        if candidate is None:
+            continue
+        found = _module_literal(graph, candidate, name.split(".")[-1])
+        if found:
+            return found
+    return ""
+
+
+def _module_literal(graph: Graph, module: str, name: str) -> str:
+    """One module's own literal assignment to `name`, and no other module's."""
+    info = graph.modules.get(module)
+    for assign in (info.assigns if info else ()):
+        if assign.target == name and assign.value_kind == "literal":
+            return assign.value_repr
     return ""
 
 
@@ -86,11 +116,62 @@ def _cleanup_mode(rules: RuleSet, apps: dict[str, list[str]]) -> str:
     return modes.pop()
 
 
+def _app_packages(apps: dict[str, list[str]]) -> set[str]:
+    """R12 [S6]: what an `INSTALLED_APPS` entry names, in every spelling it is written.
+
+    `"blog"`, `"apps.blog"`, `"src.blog.apps.BlogConfig"` all name the same package;
+    an `AppConfig` path names its package two segments up [S6].
+    """
+    found: set[str] = set()
+    for labels in apps.values():
+        for label in labels:
+            parts = [p for p in str(label).split(".") if p]
+            if not parts:
+                continue
+            found.add(".".join(parts))
+            if parts[-1][:1].isupper():          # ...apps.BlogConfig, ...BlogConfig
+                found.add(".".join(parts[:-1]))
+                if len(parts) >= 3 and parts[-2] == "apps":
+                    found.add(".".join(parts[:-2]))
+    return {p for p in found if p}
+
+
+def _seed_modules(graph: Graph, packages: set[str]) -> set[str]:
+    """R12 [S6]: `<package>.models` and `<package>.apps`, one level and no deeper.
+
+    Django imports exactly those two modules of an installed app package. Seeding the
+    exact strings `"{label}.models"` and `"{label}.apps"` assumed the package is a
+    top-level directory: under a `src/` or `backend/` layout the modules are
+    `src.blog.models` and `backend.blog.apps`, none of the seeds existed, no receiver
+    was ever `connected`, and every file store whose only evidence is a `post_delete`
+    receiver read `not_erased` (R12's false alarm, not its finding).
+
+    So the suffix form is a *fallback*, taken only for a package no module matches
+    exactly, which is the src-layout case it exists for. Matching by suffix beside an
+    exact match seeded an uninstalled `vendor/blog/models.py`, and matching by prefix
+    seeded `blog/vendor/plugin/models.py`; Django loads neither, and a receiver in
+    either read `connected` and made a file store read `erased` on a signal that
+    never fires -- a false safe, in the direction 4.4(a) names.
+    """
+    candidates = [m for m in sorted(graph.modules)
+                  if m.rpartition(".")[2] in {"models", "apps"}]
+    seeds = {m for m in candidates if m.rpartition(".")[0] in packages}
+    covered = {m.rpartition(".")[0] for m in seeds}
+    for module in candidates:
+        head = module.rpartition(".")[0]
+        for package in sorted(packages):
+            if package in covered:            # an exact `<package>.models` exists
+                continue
+            if head.endswith(f".{package}"):
+                seeds.add(module)
+                break
+    return seeds
+
+
 def _loaded_modules(graph: Graph) -> set[str]:
     """R12 [S6]: the modules Django loads on its own, plus what they import."""
     apps = graph.settings.get("installed_apps") or {}
-    labels = {label.split(".")[0] for labels in apps.values() for label in labels}
-    seeds = {f"{label}.models" for label in labels} | {f"{label}.apps" for label in labels}
+    seeds = _seed_modules(graph, _app_packages(apps))
     if not apps:                       # not a Django settings tree: anything imported
         seeds = {m for m in graph.modules}
     loaded = {m for m in seeds if m in graph.modules}
@@ -181,29 +262,3 @@ def _symbol_named(graph: Graph, imap: importmap.ImportMap, module: str, written:
             return graph.symbols[candidate]
     matches = [s for s in graph.symbols.values() if s.short == written.split(".")[-1]]
     return matches[0] if len(matches) == 1 else None
-
-
-def _enforcing_engine(graph: Graph, rules: RuleSet) -> bool | None:
-    """4.5: True where the bound engine is shown to enforce foreign keys, else None.
-
-    `ondelete` is DDL and nothing more [S19]; a repository-wide URL match would let an
-    unrelated analytics engine bless SE7 for a session bound to sqlite:///app.db.
-    """
-    data = rules.primitives["sqlalchemy"]["enforcing_engine_evidence"]
-    engines = list(graph.settings.get("engines") or [])
-    if not engines:
-        return None
-    urls = [str(e["url"]) for e in engines]
-    non_sqlite = [u for u in urls if any(u.startswith(p) or f"backends.{p}" in u
-                                         for p in data["non_sqlite_url_prefixes"])]
-    django = [u for u in urls if u in set(data["django_engines"])]
-    if len(engines) > 1 and (non_sqlite or django) and len(non_sqlite + django) != len(engines):
-        return None                     # several engines, binding not resolved by name
-    if non_sqlite or django:
-        return True
-    pragma = any(
-        data["sqlite_pragma_literal"].replace(" ", "") in line.replace(" ", "")
-        for module in graph.modules.values()
-        for line in module.source.splitlines()
-    )
-    return True if pragma else None
