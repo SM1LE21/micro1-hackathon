@@ -76,6 +76,8 @@ Solid arrows are calls inside one process; the unlabelled dotted arrows are the 
 
 Runtime total is roughly 1,300 lines outside the verifier, which keeps every file under the ~300-line rule in AGENTS.md with room to spare.
 
+Amended 2026-08-29: the `Lines` column in both tables is an estimate and every entry is low. Measured at the end of Phase 2: `loop.py` 414, `render/markdown.py` 340, `llm.py` 311, `tools.py` 306, `cli.py` 278, `arm.py` 300 (a file this table never named), `score.py` 315, and `art30/verify/` 6,583 across thirty-three modules rather than 4 x ~200. Two files stay over the ~300-line rule and are a recorded exception rather than a miss: `art30/loop.py` is frozen at 414 by ADR 0006, and `evals/harness/score.py` is loaded at run time by `art30/verify/rules.py` (`_load_norm`) so that the scorer's `norm` has exactly one implementation, which splitting the file would move. Everything else split; the split modules are named in DEVIATIONS.md §3. (DEVIATIONS.md D-08, D-09)
+
 ### 1.3 Signatures
 
 ```python
@@ -489,6 +491,10 @@ Effort and thinking are pinned per run and never varied mid-run: changing either
 
 **Limits as guards.** `read_file` 400 lines, `grep` 100 matches, `list_tree` depth 4 with `.git`, `__pycache__`, `node_modules`, `static`, `media` excluded (contract §Budgets). Files over 2 MB and files that fail UTF-8 decoding return a one-line `is_error` result rather than filling the context with binary.
 
+Amended 2026-08-29: `grep` applies the same five-directory exclusion. `EXCLUDED_DIRS` is module-level in `art30/tools.py` and `_greppable` rejects any candidate with one of those names in its relative path, so a search cannot return hits inside `__pycache__` for files `list_tree` said were not there and spend the run's 60 calls on compiled copies. The tool description the model reads (`10-instructions.md` §1b) still names the exclusion for `list_tree` alone; those bytes are frozen by ADR 0006 and correcting them before Sweep A would invalidate the cache, so the sentence lives here. (DEVIATIONS.md D-06)
+
+Amended 2026-08-29: an empty result is a placeholder, not an empty string. `list_tree` returns `(empty)`, `read_file` returns `(empty file)`, `grep` returns `no matches`. A `tool_result` block with empty `content` is rejected by the API, and an empty `__init__.py` is a normal answer rather than a tool failure — so neither is an `is_error` result. (DEVIATIONS.md D-07)
+
 ---
 
 ## 8. Harness concurrency
@@ -524,6 +530,10 @@ Effort and thinking are pinned per run and never varied mid-run: changing either
 | `crashed` | Planned run with no `run_end` line in its trace | `report.py`, against the run plan | `no run_end line at <trace path>; the process died before the loop could report` |
 
 `stop_reason` is checked before `response.content` is read; on Claude Opus 5 a refusal returns HTTP 200 with an empty-shaped content list and code that indexes `content[0]` breaks (shared/model-migration.md §Migrating to Claude Opus 5). No refusal fallback is configured: re-routing mid-run would contaminate the measurement (ADR 0003 item 5).
+
+Amended 2026-08-29: the `Enforced in` cell for `max_tokens` and for the `pause_turn` half of `api_error` reads `loop.run`, not `llm.call`. `llm.call` raises `LlmError` for SDK transport failures only; the three `stop_reason` exits are read in `loop._run` and turned into a condition by `_early_stop` (`art30/loop.py:301`), because the loop traces the step and its usage before it stops and a raise inside `llm.call` would lose both. `02` §1 always had it this way; this table was the document that drifted. (DEVIATIONS.md D-01)
+
+Amended 2026-08-29: the `max_tokens` diagnosis line reads `output cut off at max_tokens=<n> on step <k>`. The word "truncated" is reserved for the harness's own partial-line repair, which trace check 16 reads out of `run_end.note` as a byte count. (DEVIATIONS.md D-02)
 
 `max_tokens`, `replay_miss` and `crashed` are each their own value in the contract's twelve-value enum (ADR 0004 P-08), so the writer records what happened rather than folding three diagnosable classes into `api_error`. A truncated record is a prompt-shape problem, a replay miss is a stale cache, and a crash is a dead process; the README's failure table would have shown all three as flaky infrastructure.
 
@@ -590,6 +600,8 @@ CASES.md estimates $20–40 for a full evaluation "with a mid-tier model". At Op
 
 That is the budget line the lead has to see before Saturday: **the design assumes one recorded live evaluation per changelog row, not per experiment**, with every re-run going through replay.
 
+Amended 2026-08-29: every figure in this section is still an estimate. No live run exists — the build machine has no API credential (`.vault/STATUS.md`, Blocker) — so `usage.output_tokens` has never been read, the 4,000-token static prefix has never been through `count_tokens`, and the per-step wall clock has never been timed. The one pinned number is the spliced prompt's byte length, 16,341, asserted in `tests/test_llm.py`. The instruction two paragraphs above stands unchanged: the fix is one live S01 run, not a better guess. (DEVIATIONS.md D-17)
+
 Wall clock, at 12–25 s per step (adaptive thinking at effort `high`; the widest unknown here):
 
 | | Per run | 60 or 24 runs | At concurrency 4 | At concurrency 8 |
@@ -648,4 +660,4 @@ CASES.md's "~10–20 min wall-clock with cases in parallel" holds only for repla
 
 ## Proposed contract changes
 
-All accepted by ADR 0004 on 2026-08-28; the contract now carries them.
+All ADR 0004 proposals are in the contract. Two new disagreements were raised on 2026-08-29 (§7): the proposed wording is in `docs/spec/DEVIATIONS.md` §3, rows D-06 and D-07.
