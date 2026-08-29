@@ -55,6 +55,8 @@ That last difference is easy to over-read, so it is stated here in the same plac
 
 `evals/harness/trace_check.py`, run by `make smoke` over every committed trace and by `run.py` after each run before the file is considered written. Pure stdlib, no model, exit 1 on the first failure with the file, the line number and what was expected.
 
+Amended 2026-08-29: the eighteen checks live in two files. `trace_check.py` owns check 1 (the parse) and check 2 (the line order) — they decide whether the rest can run — plus the CLI; checks 3 to 18 are `evals/harness/trace_checks.py`, along with the vocabulary they read against (`STOP_CONDITIONS`, `ART30_VARS`, `RECIPIENT_KINDS`, `HIGH_VERDICTS`, `HIGH_CATEGORIES`, `REACHES`, `USAGE_KEYS`). The numbering is unchanged and every violation string still names its check, so a reader still sees which check a line came from. Neither file passes ~300 lines. (DEVIATIONS.md D-08)
+
 | # | Check | Why it exists |
 |---|---|---|
 | 1 | Every line parses as JSON; file is UTF-8 with LF and no trailing blank line | A half-flushed trace is the qualification risk in the matrix, not a cosmetic issue |
