@@ -1,0 +1,107 @@
+case: D01
+split: demo
+source: synthetic
+intent: 'a membership site done the usual way: rows go, the avatar file and the audit log stay'
+spec_sha256: be6db05a0d20e6415c7b0096863ac47dcb235a9c1a6ec3cf25885fb40b04ff58
+gen_version: 1
+normalisation:
+  prefixes:
+  - members
+  - shop
+labelling_minutes: null
+entry_points:
+- name: delete_account
+  file: members/views.py
+  line: 9
+  kind: view
+- name: admin_delete_model
+  file: members/admin.py
+  line: 7
+  kind: admin
+  admin_only: true
+- name: admin_delete_selected
+  file: members/admin.py
+  line: 7
+  kind: admin
+  admin_only: true
+stores:
+- name: members_member
+  kind: relational
+  subject_link:
+    file: members/models.py
+    line: 9
+  fields:
+  - name: email
+    category: contact
+    file: members/models.py
+    line: 11
+  - name: display_name
+    category: identifier
+    file: members/models.py
+    line: 12
+  - name: phone
+    category: contact
+    file: members/models.py
+    line: 13
+  - name: last_login
+    category: technical
+    file: members/models.py
+    line: 15
+  erasure:
+    verdict: erased
+    evidence: members/views.py:12
+- name: members_note
+  kind: relational
+  subject_link:
+    file: members/models.py
+    line: 25
+  fields:
+  - name: body
+    category: free_text_may_contain
+    file: members/models.py
+    line: 23
+  - name: written_at
+    category: technical
+    file: members/models.py
+    line: 24
+  erasure:
+    verdict: erased
+    evidence: members/models.py:25
+- name: members_order
+  kind: relational
+  subject_link:
+    file: members/models.py
+    line: 35
+  fields:
+  - name: total
+    category: financial
+    file: members/models.py
+    line: 33
+  - name: placed_at
+    category: technical
+    file: members/models.py
+    line: 34
+  erasure:
+    verdict: erased
+    evidence: members/models.py:35
+- name: member.avatar
+  kind: object_storage
+  declared_at:
+    file: members/models.py
+    line: 14
+  subject_link:
+    file: members/models.py
+    line: 14
+  fields:
+  - name: avatar
+    category: identifier
+    file: members/models.py
+    line: 14
+  erasure:
+    verdict: not_erased
+    evidence: null
+    note: the ImageField at members/models.py:14 has no pre_delete or post_delete receiver and django_cleanup
+      is not installed; Django does not remove files when the row is deleted
+retention: []
+negatives:
+- shop_product
