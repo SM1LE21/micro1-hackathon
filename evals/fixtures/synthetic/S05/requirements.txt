@@ -1,0 +1,6 @@
+SQLAlchemy==2.0.52
+redis==5.2.1
+stripe==11.4.1
+mixpanel==4.10.1
+sendgrid==6.11.0
+sentry-sdk==2.68.1
