@@ -2,7 +2,7 @@
 
 `traces/<arm>/<case>-s<seed>.jsonl` — one runtime trace per run, one JSON object per line.
 `traces/failures/` — the same files for runs that failed, each with a `.diagnosis.txt` beside it.
-`traces/build-trajectory.html` — the coding-agent sessions that built this repository, rendered
+`traces/build-trajectory.html.gz` — the coding-agent sessions that built this repository, rendered
 by `make traces` (author-only target; the HTML is committed so no judge needs to run it).
 
 ## Line types
