@@ -259,7 +259,7 @@ def build_graph(root: Path, rules: RuleSet | None = None) -> Graph:
     graph.references = binding.references(extraction, imap, resolver._short)
     graph.versioning = versioning_search(root, rules, {p.file: p.source for p in parsed})
     graph.task_table = task_table(graph, rules)
-    settings_facts(graph, rules)
+    settings_facts(graph, rules, imap)
     detect_stores(graph, rules, imap)
     graph.entry_points = discover_entry_points(graph, rules, imap)
     synthetic.add_edges(graph, rules, imap)
