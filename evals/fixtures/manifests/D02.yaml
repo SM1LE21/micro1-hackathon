@@ -1,0 +1,154 @@
+case: D02
+split: demo
+source: synthetic
+intent: a shop that closes accounts properly for the database and the cache, and forgets the search index
+  and the tickets
+spec_sha256: 26f30e1273b058b8178331ba0ec68be9b6c99938ae6e23bec3836e773fd106a3
+gen_version: 1
+normalisation:
+  prefixes: []
+labelling_minutes: null
+entry_points:
+- name: close_account
+  file: api/account.py
+  line: 11
+  kind: route
+stores:
+- name: users
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 12
+  fields:
+  - name: email
+    category: contact
+    file: models.py
+    line: 15
+  - name: full_name
+    category: identifier
+    file: models.py
+    line: 16
+  - name: newsletter
+    category: behavioural
+    file: models.py
+    line: 17
+  - name: created_at
+    category: technical
+    file: models.py
+    line: 18
+  erasure:
+    verdict: erased
+    evidence: api/account.py:15
+- name: orders
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 28
+  fields:
+  - name: total_cents
+    category: financial
+    file: models.py
+    line: 26
+  - name: shipping_address
+    category: contact
+    file: models.py
+    line: 27
+  erasure:
+    verdict: erased
+    evidence: models.py:19
+- name: tickets
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 36
+  fields:
+  - name: body
+    category: free_text_may_contain
+    file: models.py
+    line: 34
+  - name: opened_at
+    category: technical
+    file: models.py
+    line: 35
+  erasure:
+    verdict: not_erased
+    evidence: models.py:36
+    note: the relationship at models.py:20 carries no delete token, so the ORM de-associates the rows
+      and their columns survive
+- name: sessions
+  kind: cache
+  subject_link:
+    file: cache.py
+    line: 12
+  fields:
+  - name: email
+    category: contact
+    file: cache.py
+    line: 12
+  erasure:
+    verdict: erased
+    evidence: cache.py:16
+- name: user_search
+  kind: search_index
+  subject_link:
+    file: search.py
+    line: 12
+  fields:
+  - name: email
+    category: contact
+    file: search.py
+    line: 15
+  - name: full_name
+    category: identifier
+    file: search.py
+    line: 16
+  erasure:
+    verdict: not_erased
+    evidence: null
+    note: documents are indexed at search.py:12; no delete or delete_by_query on the index exists anywhere
+      in the repository
+- name: mixpanel
+  kind: third_party
+  recipient_kind: unknown
+  subject_link:
+    file: analytics.py
+    line: 11
+  fields:
+  - name: email
+    category: contact
+    file: analytics.py
+    line: 11
+  erasure:
+    verdict: external_manual
+    evidence: null
+- name: nightly_backup
+  kind: backup
+  subject_link:
+    file: jobs/backup.py
+    line: 9
+  fields:
+  - name: email
+    category: contact
+    file: jobs/backup.py
+    line: 9
+  - name: full_name
+    category: identifier
+    file: jobs/backup.py
+    line: 9
+  erasure:
+    verdict: governed_by_retention
+    timer_days: 14
+    evidence: jobs/backup.py:12
+retention:
+- store: sessions
+  category: contact
+  days: 1
+  file: cache.py
+  line: 7
+- store: nightly_backup
+  category: contact
+  days: 14
+  file: jobs/backup.py
+  line: 12
+negatives:
+- products

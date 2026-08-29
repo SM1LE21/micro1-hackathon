@@ -1,0 +1,4 @@
+SQLAlchemy==2.0.52
+redis==5.2.1
+elasticsearch==8.17.0
+mixpanel==4.10.1
