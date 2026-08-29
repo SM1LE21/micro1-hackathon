@@ -109,14 +109,17 @@ def _stamp(value: object) -> str:
 def _title(record: dict) -> list[str]:
     prov, ver = record.get("provenance") or {}, record.get("verification") or {}
     fixture = prov.get("fixture") or {}
-    kind = "real" if "real" in str(fixture.get("path", "")).split("/") else "synthetic"
+    parts = str(fixture.get("path", "")).split("/")
+    # a run over a fixture reads its kind off the path; a skill run or a user's repository
+    # carries neither and must not be called synthetic (skill/art30/scripts/render.py)
+    kind = "real" if "real" in parts else "synthetic" if "synthetic" in parts else None
     count = ver.get("submits")
     word = "submission" if count == 1 else "submissions"
     verified = f"{count} {word}, accepted on attempt {ver.get('accepted_on_attempt')}"
     if ver.get("rule_set_sha"):
         verified += f", rule set `{ver['rule_set_sha']}`"
     rows = [
-        ("Case", f"{prov.get('case')} ({kind})"),
+        ("Case", f"{prov.get('case')} ({kind})" if kind else str(prov.get("case"))),
         ("Arm", str(prov.get("arm"))),
         ("Model", f"{prov.get('model')}, effort {prov.get('effort')}"),
         ("Run", f"`{prov.get('run_id')}`"),
