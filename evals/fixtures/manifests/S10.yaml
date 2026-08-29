@@ -1,0 +1,113 @@
+case: S10
+split: test
+source: synthetic
+intent: a defined-but-uncalled cleanup helper and a docstring that contradicts the call graph; rows are
+  erased after a timer, files and the payment customer are not
+spec_sha256: 03417702f5e7acd1eaa6ef698476f11bddcaec11cf523a43a98ad2fa24495bcd
+gen_version: 1
+normalisation:
+  prefixes: []
+labelling_minutes: null
+entry_points:
+- name: close_account
+  file: api/account.py
+  line: 12
+  kind: route
+stores:
+- name: users
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 11
+  fields:
+  - name: email
+    category: contact
+    file: models.py
+    line: 14
+  - name: full_name
+    category: identifier
+    file: models.py
+    line: 15
+  - name: signup_ip
+    category: technical
+    file: models.py
+    line: 16
+  - name: last_seen_at
+    category: behavioural
+    file: models.py
+    line: 17
+  - name: deleted_at
+    category: technical
+    file: models.py
+    line: 18
+  erasure:
+    verdict: erased_after_timer
+    timer_days: 30
+    evidence: jobs/purge.py:18
+- name: uploads
+  kind: object_storage
+  subject_link:
+    file: storage.py
+    line: 11
+  fields:
+  - name: avatar_key
+    category: identifier
+    file: storage.py
+    line: 11
+  - name: original_filename
+    category: free_text_may_contain
+    file: storage.py
+    line: 23
+  erasure:
+    verdict: not_erased
+    evidence: null
+    note: cleanup_user_files defined at storage.py:29, never called
+- name: stripe
+  kind: third_party
+  recipient_kind: unknown
+  subject_link:
+    file: billing.py
+    line: 11
+  fields:
+  - name: email
+    category: contact
+    file: billing.py
+    line: 12
+  - name: name
+    category: identifier
+    file: billing.py
+    line: 13
+  erasure:
+    verdict: external_manual
+    evidence: null
+    note: customer created at billing.py:11; no deletion call exists in the repository
+- name: nightly_backup
+  kind: backup
+  subject_link:
+    file: jobs/backup.py
+    line: 9
+  fields:
+  - name: email
+    category: contact
+    file: jobs/backup.py
+    line: 9
+  - name: full_name
+    category: identifier
+    file: jobs/backup.py
+    line: 9
+  erasure:
+    verdict: governed_by_retention
+    timer_days: 35
+    evidence: jobs/backup.py:12
+retention:
+- store: users
+  category: contact
+  days: 30
+  file: jobs/purge.py
+  line: 10
+- store: nightly_backup
+  category: contact
+  days: 35
+  file: jobs/backup.py
+  line: 12
+negatives: []

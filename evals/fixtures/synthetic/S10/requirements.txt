@@ -1,0 +1,4 @@
+SQLAlchemy==2.0.52
+celery==5.4.0
+boto3==1.43.82
+stripe==11.4.1
