@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f \"$CLAUDE_PROJECT_DIR/art30-record.json\" || { rm -f \"$CLAUDE_PROJECT_DIR/.art30-hook-attempts\"; exit 0; }; n=$(cat \"$CLAUDE_PROJECT_DIR/.art30-hook-attempts\" 2>/dev/null || echo 0); case \"$n\" in ''|*[!0-9]*) n=0;; esac; [ \"$n\" -ge 3 ] && { rm -f \"$CLAUDE_PROJECT_DIR/.art30-hook-attempts\"; exit 0; }; out=$(cd \"$CLAUDE_PROJECT_DIR\" && uv run --project /absolute/path/to/art30 python /absolute/path/to/skill/art30/scripts/verify.py --repo . --record ./art30-record.json 2>&1); status=$?; if [ $status -eq 0 ]; then rm -f \"$CLAUDE_PROJECT_DIR/.art30-hook-attempts\"; exit 0; fi; printf '%s\\n' \"$out\" >&2; if [ $status -eq 1 ]; then echo $((n+1)) > \"$CLAUDE_PROJECT_DIR/.art30-hook-attempts\"; exit 2; fi; rm -f \"$CLAUDE_PROJECT_DIR/.art30-hook-attempts\"; exit 1"
+          }
+        ]
+      }
+    ]
+  }
+}
