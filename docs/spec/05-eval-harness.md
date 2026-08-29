@@ -6,6 +6,8 @@ Three files under `evals/harness/`: `score.py` turns one record and one manifest
 
 **Assumption, now discharged:** the first draft was written before `docs/spec/01-architecture.md` existed and said that document would win where the two overlapped. It has landed and it does. Three places are amended rather than argued with: replay concurrency is 1, not 8 (§5.2, 01 §8); `metrics.json` carries no wall-clock time (§4.3, §6, §10, 01 Decision 19); and the cost and runtime model is 01 §10's, this document's own estimate having been deleted (§11).
 
+Amended 2026-08-29: three files became twelve, each under AGENTS.md's ~300 lines and each with the same responsibility split further. `run.py` keeps the sweep — the two pre-flight gates, the lock, the launch, the timing file — and hands off to `plan.py` (case selection and the cell plan), `ledger.py` (the test-split ledger and its hash chain) and `cells.py` (the child process, its trace repair and its scoring). `report.py` keeps what it reads off disk and hands off to `stats.py` (aggregates, the exact McNemar, the paired bootstrap, human time) and `tables.py` (the Markdown and the changelog row). `trace_check.py` keeps checks 1 and 2 and the CLI; checks 3 to 18 are `trace_checks.py`. Two files the plan never named were added: `verify_docs.py` (`make verify-docs`) and `failure_index.py` (`traces/failures/README.md`). Every path a sandboxed sweep redirects stays owned by `run.py` and is passed in, so no module-level default is rebound in one file and read in another. `score.py` did **not** split: `art30/verify/rules.py` loads `norm` out of it at run time so the metric and the tool cannot drift, and at 315 lines it is a recorded exception to the line rule. (DEVIATIONS.md D-08)
+
 ---
 
 ## 1. The number
