@@ -168,6 +168,8 @@ submission and the number of attempts left.
 
 The `submit_record` description says the same thing about a rejection that the system prompt's Submitting section says, and nothing more: it holds in the baseline, where the list is schema errors, and in the advanced arm, where it is longer.
 
+Amended 2026-08-29: the four blocks above are byte-identical to `DESCRIPTIONS` in `art30/tools.py`, which is frozen by ADR 0006, and one of them under-describes the tool. `grep` skips `.git`, `__pycache__`, `node_modules`, `static` and `media` exactly as `list_tree` does — `EXCLUDED_DIRS` is module-level and `_greppable` applies it — and the `grep` description does not say so. The model is therefore told less than the tool does, in the safe direction: it cannot be surprised by a hit it was told to expect. Correcting the sentence would change the cached prefix and the step-1 request hash, so it waits for a re-record or stays as it is; `01-architecture.md` §7 carries the true behaviour in the meantime. (DEVIATIONS.md D-06)
+
 ## 2. `art30/prompts/taxonomy.md`
 
 ```markdown
