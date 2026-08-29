@@ -1,0 +1,246 @@
+# stores.yaml — scan surface and store kinds.
+#
+# Sections 1 (scan surface) and 2 (store kinds) of docs/spec/verifier-rules-draft.yaml,
+# as its header maps them. Every block carries the rule it implements (R1-R28 of
+# docs/research/framework-behaviour.md section 6, or the section of 03-verifier.md a
+# spec decision comes from) and the source IDs the behaviour was read from.
+version: 1
+section: "verifier-rules-draft.yaml sections 1 and 2"
+
+# ---------------------------------------------------------------------------
+# 1. Scan surface (03-verifier.md 1.1)
+# ---------------------------------------------------------------------------
+scan:
+  rule: "03-verifier.md 1.1"
+  source: [S35]
+  excluded_dirs:
+    - .git
+    - __pycache__
+    - node_modules
+    - static
+    - media
+    - .venv
+    - venv
+    - env
+    - site-packages
+    - .tox
+    - build
+    - dist
+    - .mypy_cache
+    - .ruff_cache
+    - htmlcov
+    - locale
+    - migrations
+    - tests
+    - test
+    - docs
+  excluded_files:
+    - "test_*.py"
+    - "*_test.py"
+    - conftest.py
+    - setup.py
+    - noxfile.py
+  always_scan:
+    - "settings.py"
+    - "settings/*.py"
+    - "**/management/commands/*.py"
+  max_file_bytes: 1048576
+  non_python_globs:
+    - "*.tf"
+    - "*.tfvars"
+    - "*.yaml"
+    - "*.yml"
+    - "*.json"
+    - "Dockerfile*"
+    - "docker-compose*"
+  non_python_max_depth: 4
+  r13_also_searches_python_as_text: true
+
+# ---------------------------------------------------------------------------
+# 2. Store kinds, detection and deletion primitives.
+#    Kinds are the closed set of 00-contract.md "Record vocabulary".
+# ---------------------------------------------------------------------------
+store_kinds:
+
+  relational:
+    rule: R1
+    source: [S1, S15, S18]
+    detect:
+      django_model:
+        base: [Model, models.Model, django.db.models.Model]
+        table_name_from: [Meta.db_table, class_name]
+        subject_root_bases: [AbstractUser, AbstractBaseUser]
+        subject_root_setting: AUTH_USER_MODEL
+        field_call_suffix: Field
+        file_field_calls: [FileField, ImageField]
+        relation_calls: [ForeignKey, OneToOneField, ManyToManyField]
+        opaque_container_calls: [JSONField]
+      sqlalchemy_declarative:
+        # `db.Model` is Flask-SQLAlchemy's declarative base [S21]; it is matched on the
+        # dotted form so it can never be read as Django's `models.Model`.
+        base: [DeclarativeBase, Base, declarative_base, SQLModel, "db.Model"]
+        requires_any: [__tablename__, "table=True"]
+        field_calls: [Column, mapped_column, Field]
+        relation_calls: [relationship]
+        foreign_key_call: ForeignKey
+      sqlalchemy_core_table:
+        call: [Table]
+        name_from: arg0
+      association_table:
+        from_kwarg: secondary
+      # 03-verifier.md 3.1 marks the subject root; Bearer's known-object split [S5].
+      # A class whose normalised name or table is one of these AND that carries a
+      # strong personal-data field is the subject root where no AUTH_USER_MODEL and
+      # no AbstractUser base names one.
+      subject_root_names: [user, users, account, accounts, customer, member,
+                           person, profile, subscriber, patient]
+    deletion_primitives:
+      - {call: [".delete"], mode: model_delete, rule: R14, source: [S7]}
+      - {call: ["objects.filter.delete", "objects.all.delete", "objects.delete",
+                "objects.exclude.delete"],
+         mode: queryset_delete, rule: R15, source: [S3]}
+      - {call: ["session.delete", "db.session.delete"], mode: session_delete,
+         rule: R7, source: [S18, S19]}
+      - {call: ["session.execute"], arg0_call: [delete], mode: bulk_dml,
+         rule: R17, source: [S15, S16]}
+      - {call: ["cursor.execute", "connection.execute", "session.execute"],
+         arg0_call: [text], mode: raw_sql, rule: R19, source: [S11, S16]}
+      # R19 [S11]: 4.1 names `connection.cursor().execute("DELETE ...")` as the raw_sql
+      # mode's own example and R19 reads the table "only when it is a string literal",
+      # so the bare-string form needs an entry of its own -- gated on `arg0_call: [text]`
+      # it matched nothing and every psycopg / cursor.execute repository lost R19.
+      # `mode: raw_sql` is what routes it to the literal parse; `arg0_literal_sql`
+      # records the shape the entry is written for.
+      - {call: ["cursor.execute", "connection.execute"], arg0_literal_sql: true,
+         mode: raw_sql, rule: R19, source: [S11]}
+      - {call: ["_raw_delete"], mode: raw_sql, rule: R19, source: [S11]}
+    child_delete_predicate:
+      qualifying_only:
+        - "filter(<fk to subject> = <subject var>)"
+        - "filter(<fk to subject>__in = <subject collection>)"
+        - "<subject var>.<related manager>.all()"
+        - "query(Child).filter(Child.<fk> == <subject var>.id)"
+      extra_predicate_note: >-
+        A filtered child delete (status="draft") leaves rows behind AND makes the parent
+        delete raise ProtectedError, so nothing is erased. Research section 4.4(c).
+
+  object_storage:
+    rule: R8
+    source: [S1, S2, S14, S23]
+    detect:
+      django_file_field:
+        field_call: [FileField, ImageField]
+        store_id: "{model}.{field}"
+      boto3_client:
+        call: ["boto3.client", "boto3.resource"]
+        arg0_literal: [s3]
+      django_storages:
+        import: [storages.backends.s3, storages.backends.s3boto3]
+        base: [S3Storage, S3Boto3Storage]
+        setting: [DEFAULT_FILE_STORAGE, STORAGES]
+      default_storage:
+        import: ["django.core.files.storage"]
+      bucket_kwarg: Bucket
+      write_calls: [put_object, upload_file, upload_fileobj, save]
+    deletion_primitives:
+      - {call: ["delete_object", "delete_objects"], rule: R13, source: [S23]}
+      - {call: ["Object.delete", "objects.filter.delete"], rule: R13, source: [S14]}
+      - {call: ["storage.delete", "default_storage.delete", "Storage.delete"],
+         rule: R13, source: [S12]}
+      - {call: [".delete"], receiver_is_file_field: true, rule: R8, source: [S1]}
+    store_identity_match: Bucket
+    versioning_blocks_erasure: true
+    version_id_kwarg: VersionId
+
+  cache:
+    rule: R20
+    source: [S24, S25]
+    detect:
+      redis:
+        import: [redis, aioredis, django_redis]
+        call: ["redis.Redis", "redis.StrictRedis", "redis.from_url",
+               "Redis.from_url", "get_redis_connection"]
+      django_cache:
+        import: ["django.core.cache"]
+      write_calls: [set, setex, psetex, hset, mset, setnx, get, hget]
+    key_namespace_from: literal_prefix
+    store_identity_match: key_prefix
+    deletion_primitives:
+      - {call: ["delete", "unlink", "delete_pattern", "flushdb"], rule: R20, source: [S24]}
+    retention_only:
+      - call: ["expire", "pexpire", "setex", "psetex", "set"]
+        kwarg: [ex, px, timeout]
+        rule: R20
+        source: [S25]
+        note: >-
+          A timeout is cleared by any command that overwrites the value and a repeated
+          EXPIRE extends it, so a refreshed session key never expires [S25].
+
+  search_index:
+    rule: R21
+    source: [S26, S27]
+    detect:
+      import: [elasticsearch, opensearchpy, elasticsearch_dsl, haystack, meilisearch]
+      call: ["Elasticsearch", "OpenSearch", "Client"]
+      write_calls: [index, create, bulk, update]
+    index_name_from_kwarg: index
+    store_identity_match: index
+    deletion_primitives:
+      - {call: ["delete", "delete_by_query", "indices.delete"], rule: R21, source: [S26, S27]}
+
+  queue:
+    rule: "03-verifier.md 3.5"
+    source: [S24]
+    detect:
+      celery:
+        import: [celery]
+        call: ["delay", "apply_async", "send_task"]
+      rq:
+        import: [rq]
+        call: ["enqueue", "enqueue_at"]
+      other:
+        import: [django_q, dramatiq, huey, pika, kombu, boto3]
+        call: ["lpush", "rpush", "basic_publish", "publish", "send_message"]
+      queue_name_kwargs: [routing_key, queue, queue_name, QueueUrl, exchange]
+      payload_kwargs: [body, args, kwargs, message, MessageBody, payload]
+    is_store_only_if_payload_personal: true
+    store_identity_match: queue_or_task_name
+    deletion_primitives:
+      - {call: ["purge", "revoke", "empty"], rule: "03-verifier.md 3.5", source: [S24]}
+    retention_only:
+      - {setting: [result_expires, CELERY_RESULT_EXPIRES], rule: "03-verifier.md 3.5", source: [S24]}
+
+  third_party:
+    rule: R22
+    source: [S28, S30, S32]
+    detect: see_recipients_yaml
+    recipient_kind_default: unknown
+
+  log:
+    rule: "03-verifier.md 3.7"
+    source: [S11]
+    detect:
+      import: [logging, structlog, loguru]
+      call: ["logger.info", "logger.warning", "logger.error", "logger.exception",
+             "logger.debug", "log.info", "log.warning", "log.error", "print"]
+      logger_factory: [getLogger, get_logger]
+      personal_data_in_args: true
+    deletion_primitives: []
+    note: >-
+      A rotation or retention setting is rendered in the retention column; it never
+      changes the verdict. governed_by_retention is reserved for kind backup
+      (00-contract.md, AMBIGUITIES 6).
+
+  backup:
+    rule: "03-verifier.md 3.8"
+    source: [S10, S11]
+    detect:
+      name_matches: [backup, snapshot, dump, pg_dump, mysqldump, export_all]
+      call: ["create_db_snapshot", "create_snapshot", "create_db_cluster_snapshot"]
+      # The store is named after the identifier the code carries (00-contract.md,
+      # "Store identity"): a module-level name constant where one exists, the job
+      # module otherwise.
+      name_constants: [BACKUP_NAME, DUMP_NAME, SNAPSHOT_NAME, EXPORT_NAME]
+      column_constants: [DUMP_COLUMNS, BACKUP_COLUMNS, EXPORT_COLUMNS]
+    verdicts_allowed: [governed_by_retention, no_schedule_evidenced]
+    schedule_sources: [crontab, beat_schedule, RETENTION_DAYS, lifecycle_days]

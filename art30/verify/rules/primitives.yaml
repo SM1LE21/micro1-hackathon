@@ -1,0 +1,78 @@
+# primitives.yaml — the framework tokens the rules read.
+#
+# Section 5 of docs/spec/verifier-rules-draft.yaml. These are the semantics behind
+# the synthetic edges of 03-verifier.md 4.2: which on_delete token is an edge, which
+# cascade string is a delete cascade, when an ondelete FK is enforced, and which
+# signal wiring counts.
+version: 1
+section: "verifier-rules-draft.yaml section 5"
+
+django_on_delete:
+  rule: R1
+  source: [S1, S3, S4]
+  tokens:
+    CASCADE:        {edge: true,  signals: true,  modes: [model_delete, queryset_delete],
+                     rule: R1, source: [S1, S4]}
+    DB_CASCADE:     {edge: true,  signals: false, sets_mode: db_cascade,
+                     modes: [model_delete, queryset_delete], rule: R4, source: [S1, S3]}
+    PROTECT:        {edge: false, note: "children must be deleted first; else ProtectedError",
+                     rule: R3a, source: [S1]}
+    RESTRICT:       {edge: false, verdict_when_cascade_sibling: unverified,
+                     rule: R3b, source: [S1]}
+    SET_NULL:       {edge: false, rule: R2, source: [S1]}
+    DB_SET_NULL:    {edge: false, rule: R2, source: [S1]}
+    SET_DEFAULT:    {edge: false, rule: R2, source: [S1]}
+    DB_SET_DEFAULT: {edge: false, rule: R2, source: [S1]}
+    SET:            {edge: false, rule: R2, source: [S1]}
+    DO_NOTHING:     {edge: false, rule: R2, source: [S1]}
+
+django_signals:
+  rule: R9
+  source: [S5, S6]
+  delete_signals: [pre_delete, post_delete]
+  receiver_decorator: receiver
+  connect_call: connect
+  sender_kwarg: sender
+  no_sender_covers_all_models: true
+  no_sender_body_guards: ["sender", "type(instance)", "isinstance"]
+  weak_kwarg: weak
+  connected_modules:
+    - "<installed_app>/models.py"
+    - "<installed_app>/apps.py"
+    - "modules imported from AppConfig.ready()"
+    - "modules transitively imported from either"
+
+django_cleanup:
+  rule: R10
+  source: [S13]
+  active_labels: [django_cleanup, django_cleanup.apps.CleanupConfig]
+  select_mode_label: django_cleanup.apps.CleanupSelectedConfig
+  select_decorator: cleanup.select
+  ignore_decorator: cleanup.ignore
+  requires_row_delete: true
+  split_settings:
+    reaching_verdict_uses: intersection
+    conservative_verdict_uses: union
+    on_disagreement: unverified
+
+sqlalchemy:
+  rule: R5
+  source: [S15, S16, S17, S18, S19, S46]
+  cascade_delete_tokens: [delete, all]
+  cascade_token_trap: delete-orphan
+  cascade_kwarg: cascade
+  passive_deletes_kwarg: passive_deletes
+  secondary_kwarg: secondary
+  fk_ondelete_kwarg: ondelete
+  enforcing_engine_evidence:
+    bound_engine_only: true
+    unresolvable_binding_verdict: unverified
+    binding_calls: [create_engine, sessionmaker, Session, scoped_session]
+    bind_kwarg: bind
+    non_sqlite_url_prefixes: [postgresql, postgres, mysql, mariadb, oracle, mssql]
+    django_engines: [django.db.backends.postgresql, django.db.backends.mysql,
+                     django.db.backends.oracle]
+    sqlite_pragma_literal: "PRAGMA foreign_keys=ON"
+    sqlite_pragma_alt: "PRAGMA foreign_keys = ON"
+  mapper_delete_events: [before_delete, after_delete]
+  session_imports: [sqlalchemy.orm, sqlmodel, flask_sqlalchemy]

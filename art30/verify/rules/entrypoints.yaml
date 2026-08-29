@@ -1,0 +1,151 @@
+# entrypoints.yaml — where a person's account deletion begins.
+#
+# Section 4 of docs/spec/verifier-rules-draft.yaml (03-verifier.md section 2;
+# AMBIGUITIES 3 and 15). Blocks the draft wrote as bare lists carry their payload
+# under `names:`/`items:` so that each can name its rule and its sources.
+version: 1
+section: "verifier-rules-draft.yaml section 4"
+
+entry_points:
+
+  vocabulary:
+    rule: "03-verifier.md 2.1"
+    source: [S17]
+    names:
+      - delete_user
+      - delete_account
+      - close_account
+      - deactivate_account
+      - remove_account
+      - delete_me
+      - delete_profile
+      - destroy_user
+      - terminate_account
+      - cancel_account
+      - purge
+      - purge_user
+      - erase
+      - forget
+      - forget_me
+      - anonymize
+      - anonymise
+      - gdpr
+      - dsr
+      - right_to_be_forgotten
+      - scrub
+      - wipe
+      - offboard
+      - account_deletion
+      - data_deletion
+
+  excluded_vocabulary:
+    rule: "03-verifier.md 2.1, decision 6"
+    source: [S17]
+    names: [cleanup, remove, delete, destroy, deactivate]
+
+  action_only_vocabulary:
+    rule: "03-verifier.md 2.1, decision 6"
+    source: [S17]
+    # A bare verb names an action and not whose data it acts on. `purge_closed_accounts`
+    # qualifies; `purge_session` does not, and treating it as an entry point would make
+    # S05's cache store read erased from a helper nothing calls. Same argument as the
+    # exclusion of bare `delete` and `destroy`: the subject is the qualification.
+    names: [purge, erase, forget, scrub, wipe, anonymize, anonymise]
+    subject_required: true
+
+  decorators:
+    rule: "03-verifier.md 2.2"
+    source: [S5, S6]
+    route:
+      - {name: route, kwarg_methods: [DELETE], requires: vocabulary_or_subject_root}
+      - {name: delete, requires: vocabulary_or_subject_root}
+      - {name: api_view, kwarg_methods: [DELETE], requires: vocabulary_or_subject_root}
+      - {name: action, kwarg_methods: [delete], requires: vocabulary_or_subject_root}
+    task:
+      - {name: task}
+      - {name: shared_task}
+      - {name: periodic_task}
+      - {name: job}
+    cli:
+      - {name: command}
+      - {name: group}
+    signal:
+      - {name: receiver}
+
+  vocabulary_or_subject_root:
+    rule: "03-verifier.md 2.2, decision 6a"
+    source: [S17]
+    qualifies_if_any:
+      - function_name_matches_vocabulary
+      - deleted_model_is_subject_root
+      - terminal_path_segment_names_subject
+    subject_path_segments: [users, user, me, account, accounts, profile]
+    counterexample: >-
+      @router.delete("/posts/{post_id}") def delete_post(...) is not an erasure entry point.
+      Without the qualifier every DELETE endpoint is one, rows:post reads erased on account
+      closure in a repository with no account-closure path, and S08 and R04 lose their
+      expected no_entry_point to one unrelated route. AMBIGUITIES row 2 reading A.
+
+  declared_only:
+    rule: "03-verifier.md 2.5, decision 5a"
+    source: [S17]
+    registration_shapes:
+      - route_decorator
+      - urlpatterns_reference
+      - BaseCommand_subclass
+      - click_or_typer_command
+      - task_decorator_plus_schedule_registration
+      - admin_registration
+    unregistered_verdict_cap: unverified
+    why: >-
+      Adding a start node makes MORE stores read erased, which is the unsafe direction.
+      Without the cap a record declaring {name: cleanup_user_files, file: storage.py,
+      line: 41} hands S10 the entry point section 2.1 excludes `cleanup` from the
+      vocabulary to refuse.
+
+  django:
+    rule: R16
+    source: [S8, S9]
+    urlconf_calls: [path, re_path, url]
+    delete_view_bases: [DeleteView]
+    management_command_base: BaseCommand
+    admin:
+      register_calls: ["admin.register", "admin.site.register", "register"]
+      entry_points:
+        - {name: admin_delete_model, mode: model_delete, flag: admin_only}
+        - {name: admin_delete_selected, mode: queryset_delete, flag: admin_only}
+      disabled_when: ["has_delete_permission returns False",
+                      "delete_selected removed from actions"]
+
+  route_registration:
+    # 2.2 route row, the non-decorator form. Flask registers a handler with
+    # `app.add_url_rule("/account", "delete_user", delete_user, methods=["DELETE"])`,
+    # which no decorator scan can see; the subject qualification of decision 6a binds
+    # it exactly as it binds `@app.route(..., methods=["DELETE"])`.
+    rule: "03-verifier.md 2.2"
+    source: [S35]
+    calls: [add_url_rule]
+    view_func_positional: 2
+    view_func_kwarg: view_func
+    methods_kwarg: methods
+
+  drf:
+    rule: "03-verifier.md 2.2"
+    source: [S17]
+    viewset_bases: [ViewSet, ModelViewSet, GenericViewSet]
+    destroy_methods: [destroy, perform_destroy]
+    queryset_attrs: [queryset, get_queryset]
+
+  cli_frameworks:
+    rule: "03-verifier.md 2.2"
+    source: [S35]
+    click: {decorators: [command, group], name_from: arg0_or_function_name}
+    typer: {decorators: [command], name_from: function_name}
+    argparse: {calls: [add_parser], func_kwarg: func}
+
+  celery_task_names:
+    rule: CG-16
+    source: [S35]
+    default: "{module}.{function}"
+    override_kwarg: name
+    dispatch_calls: [delay, apply_async, send_task, enqueue]

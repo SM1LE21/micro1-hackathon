@@ -1,0 +1,112 @@
+# recipients.yaml — stores of kind third_party.
+#
+# Section 3 of docs/spec/verifier-rules-draft.yaml. Import alone is not evidence;
+# a call carrying personal data is (AMBIGUITIES 7 reading B). Every entry carries
+# its rule id (R22-R24) and the source IDs behind it.
+version: 1
+section: "verifier-rules-draft.yaml section 3"
+
+recipients:
+
+  stripe:
+    rule: R22
+    source: [S28, S29]
+    import: [stripe]
+    transmitting_calls: ["Customer.create", "Customer.modify", "Customer.update",
+                         "PaymentIntent.create", "Charge.create", "Invoice.create"]
+    deletion_requests: ["Customer.delete"]
+    upgrades_to_erased: false
+    verdict: external_manual
+    note: >-
+      Deleted customers "can still be retrieved through the API" [S28]; transactions can only
+      be redacted after 90 days and invoices are excluded from redaction entirely [S29].
+
+  sentry:
+    rule: R23
+    source: [S30, S31, S42]
+    import: [sentry_sdk]
+    transmitting_calls: ["init"]
+    fields_by_default:
+      - {name: url, category: technical}
+      - {name: query_string, category: technical}
+      - {name: request_body, category: free_text_may_contain}
+      - {name: stack_locals, category: free_text_may_contain}
+      - {name: source_context, category: free_text_may_contain}
+    fields_when_pii_enabled:
+      - {name: http_headers, category: technical}
+      - {name: cookies, category: technical}
+      - {name: user_identity, category: identifier}
+      - {name: email, category: contact}
+      - {name: ip_address, category: technical}
+    pii_flag_kwarg: send_default_pii
+    pii_calls: [set_user, set_context]
+    supersedes_flag: '_experiments.data_collection'
+    deletion_requests: []
+    upgrades_to_erased: false
+    verdict: external_manual
+
+  mixpanel:
+    rule: R24
+    source: [S32]
+    import: [mixpanel]
+    transmitting_calls: ["track", "people_set", "people_set_once", "alias"]
+    deletion_requests: ["data-deletions", "create_deletion"]
+    upgrades_to_erased: false
+    verdict: external_manual
+    note: >-
+      The endpoint "Creates a task that specifies a list of users in a project to delete"
+      [S32] - a queued request, not a confirmation. The verdict stays external_manual.
+
+  segment:
+    rule: R24
+    source: [S33, S47]
+    import: [analytics, segment]
+    transmitting_calls: ["identify", "track", "page", "group"]
+    deletion_call: create_regulation
+    regulation_type_kwarg: regulation_type
+    forwarding_types: [SUPPRESS_WITH_DELETE, DELETE_ONLY]
+    upgrades_to_erased: forwarding_types_only
+    non_forwarding_types: [DELETE_INTERNAL]
+    verdict: external_manual
+    note: >-
+      Only the Segment & Destination regulation types forward downstream; DELETE_INTERNAL
+      clears Segment and leaves connected destinations untouched [S47]. This is the only
+      row where a third_party store can reach erasure at all.
+
+  sendgrid:
+    rule: R24
+    source: [S34]
+    import: [sendgrid]
+    transmitting_calls: ["send", "contacts.put", "marketing.contacts"]
+    deletion_requests: ["contacts.delete"]
+    upgrades_to_erased: false
+    verdict: external_manual
+
+  mail_generic:
+    rule: R24
+    source: [S34]
+    import: [django.core.mail, smtplib, mailgun, postmark, mandrill, ses]
+    transmitting_calls: ["send_mail", "EmailMessage.send", "send_messages", "sendmail",
+                         "send_email", "send_raw_email"]
+    deletion_requests: []
+    upgrades_to_erased: false
+    verdict: external_manual
+
+  gravatar:
+    rule: R24
+    source: [S12]
+    literal: ["gravatar.com/avatar"]
+    transmitting_calls: ["md5", "sha256"]
+    deletion_requests: []
+    upgrades_to_erased: false
+    verdict: external_manual
+
+  other_sdks:
+    rule: R24
+    source: [S32, S33]
+    import: [twilio, intercom, hubspot, amplitude, posthog, slack_sdk, customerio, braze]
+    transmitting_calls: ["track", "identify", "create", "send", "capture", "messages.create",
+                         "chat_postMessage"]
+    deletion_requests: []
+    upgrades_to_erased: false
+    verdict: external_manual

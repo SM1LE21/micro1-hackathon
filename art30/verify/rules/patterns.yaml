@@ -1,0 +1,98 @@
+# patterns.yaml — soft delete, anonymisation, timers, versioning, guard field names.
+#
+# Section 6 of docs/spec/verifier-rules-draft.yaml. personal_data_field_patterns is
+# read by the completeness guard only (03-verifier.md 3.9): it never assigns a
+# category, never appears in the record and never decides a verdict.
+version: 1
+section: "verifier-rules-draft.yaml section 6"
+
+soft_delete_markers:
+  rule: R25
+  source: [S10]
+  fields: [is_active, is_deleted, deleted, deleted_at, deactivated_at, disabled_at,
+           archived_at, removed_at, status, state, is_archived, is_disabled]
+  values: [false, "False", "None", "null", "deleted", "inactive", "archived", "closed"]
+  timestamp_calls: [now, utcnow, "timezone.now", "datetime.now"]
+  verdict: not_erased
+  upgrade_to: erased_after_timer
+  note: >-
+    Django recommends setting is_active to False instead of deleting accounts [S10],
+    which is why the pattern is everywhere and why the verifier refuses it.
+
+anonymisation:
+  rule: "03-verifier.md 4.7"
+  source: [S11, S12]
+  anonymised_rhs:
+    kinds: [string_literal, numeric_literal, "None", empty_string, module_constant]
+    redacted_literals: [REDACTED, deleted, removed, anonymous, "n/a"]
+  pseudonymised_rhs:
+    calls: ["hashlib.md5", "hashlib.sha1", "hashlib.sha256", "hashlib.blake2b", "hmac.new",
+            "uuid.uuid4", "uuid.uuid1", "secrets.token_hex", "secrets.token_urlsafe",
+            "base64.b64encode", "hashids.encode"]
+    templates_retaining_key: ["{id}", "{pk}", "{user_id}", "%s", "user.id", "self.id"]
+    masks: ["x *", "[:2]", "***", "****"]
+  requires_all_fields_overwritten: true
+  field_source: detected_columns_union_record_claims_minus_pk
+  surviving_subject_fk_downgrades: true
+  note: >-
+    WP29 05/2014: "the processing must be irreversible" [S12]; the EDPB found controllers
+    substituting "basic pseudonymisation or partial masking" for deletion [S11].
+
+timers:
+  rule: "03-verifier.md 6.2 and 6.3"
+  source: [S22]
+  day_patterns:
+    - {call: timedelta, kwarg: days}
+    - {call: timedelta, kwarg: hours, convert: hours_to_days, min: 1}
+    - {kwarg: days}
+    - {constant_names: [RETENTION_DAYS, RETENTION_PERIOD_DAYS, PURGE_AFTER_DAYS,
+                        DATA_RETENTION_DAYS, GRACE_PERIOD_DAYS, BACKUP_RETENTION_DAYS]}
+    - {s3_lifecycle_keys: [Days, NoncurrentDays]}
+  schedule_patterns:
+    - {call: crontab}
+    - {kwarg: run_every}
+    - {setting: [CELERYBEAT_SCHEDULE, beat_schedule]}
+    - {call: add_periodic_task}
+    - {call: [cron, schedule], framework: rq_scheduler}
+    - {literal_cron: "^([-*/,0-9]+\\s+){4}[-*/,0-9]+$"}
+  schedule_registration_required: true
+  unregistered_job_verdict: not_erased
+  unresolved_renders: no_timer_evidenced
+
+versioning_declarations:
+  rule: R13
+  source: [S22, S23]
+  literals:
+    - put_bucket_versioning
+    - BucketVersioning
+    - aws_s3_bucket_versioning
+    - VersioningConfiguration
+    - versioning_configuration
+  qualifier_regex: 'status["'']?\s*[:=]\s*["'']?enabled'
+  qualifier_window: 5
+  surfaces: [non_python_globs, scanned_python_as_text]
+  assumption: >-
+    Where no declaration is found in the repository, an object-store delete on the erasure
+    path is scored as reaching erasure (framework-behaviour.md section 3, narrowed).
+    Where one is found and the delete passes no VersionId, the verdict is not_erased.
+  standing_note: >-
+    A versioned bucket retains prior versions unless versionId is supplied; a GET then
+    returns 404 "even though it has not been erased" [S22].
+
+personal_data_field_patterns:
+  rule: "03-verifier.md 3.9"
+  source: [S5]
+  strong:
+    [email, e_mail, mail, first_name, last_name, full_name, username, phone,
+     phone_number, mobile, address, street, city, postcode, zip, country, dob,
+     date_of_birth, birth_date, ssn, national_id, passport, iban, vat, tax_id,
+     ip, ip_address, user_agent, latitude, longitude, avatar, photo, picture]
+  qualified:
+    [name, notes, comment, bio, message, content, body]
+  subject_link_names: [user, customer, member, patient, account, owner, profile, subscriber]
+  fires_when: "strong match, OR qualified match AND subject link"
+  never_used_for: [category_assignment, verdicts, the_record]
+  note: >-
+    `name` moved from strong to qualified on measurement, not taste: with it strong the
+    guard fires on FlaskBB's Group and PluginRegistry, neither of which holds personal
+    data, and missing_stores blocks acceptance (03-verifier.md 3.9 and 7.4).
