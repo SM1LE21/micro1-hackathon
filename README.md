@@ -82,11 +82,13 @@ Docker path and the live runs: [REPRODUCE.md](REPRODUCE.md).
 Test split, mean over three runs per case. `±` is `f1_std_seeds`, the mean over cases of the
 standard deviation across that case's three runs (`05-eval-harness.md` §7.3).
 
+<!-- metrics:begin -->
 | Metric | Simple baseline | Agent solution | Change |
 |---|---|---|---|
 | Erasure-inventory F1 (test) | [arms.baseline.test.f1_mean] ± [arms.baseline.test.f1_std_seeds] | [arms.advanced.test.f1_mean] ± [arms.advanced.test.f1_std_seeds] | [comparison.test.f1_bootstrap.delta_mean] (95% CI [comparison.test.f1_bootstrap.ci95]) |
 | Human time per task | [human_time.manual_minutes.mean] min (hand-labelling) | [human_time.machine_minutes.advanced] machine min + [human_time.gate_minutes.mean] min at the gate | −[human_time.manual_minutes.mean − human_time.gate_minutes.mean] min of a person's time (the machine minutes are unattended and are not subtracted from it) |
 | Cost per task | $[arms.baseline.test.cost_usd_mean] | $[arms.advanced.test.cost_usd_mean] | $[arms.advanced.test.cost_usd_mean − arms.baseline.test.cost_usd_mean] |
+<!-- metrics:end -->
 
 False safe — the agent says a store is erased where the manifest says it is not — is the row that
 matters more than F1, because it is the error that costs a founder a month:
