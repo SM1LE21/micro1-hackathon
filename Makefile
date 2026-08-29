@@ -1,6 +1,7 @@
 .PHONY: setup smoke test fixtures run baseline advanced eval eval-replay report traces gate-timing check-secrets check-traces verify-docs check-clean
 
 CLAUDE_PROJECT_DIR ?= $(HOME)/.claude/projects/-Users-tun-Documents-micro1-hackathon
+CLAUDE_SESSION_ID ?= 607542c8-6252-4232-8b55-d688feb5e054
 CASE ?= S05
 MODE ?= live
 OUT ?= results/runs
@@ -60,10 +61,12 @@ check-secrets:
 # author-only: the transcripts live outside the repository. Judges read the committed HTML.
 traces:
 	@if [ -d "$(CLAUDE_PROJECT_DIR)" ]; then \
-	  uvx claude-code-log@1.5.0 "$(CLAUDE_PROJECT_DIR)" -o traces/build-trajectory.html && echo "rendered traces/build-trajectory.html"; \
+	  uvx claude-code-log@1.5.0 "$(CLAUDE_PROJECT_DIR)/$(CLAUDE_SESSION_ID).jsonl" -o traces/build-trajectory.html \
+	  && gzip -9 -f traces/build-trajectory.html \
+	  && echo "rendered traces/build-trajectory.html.gz (gunzip to read; the main session transcript, subagent transcripts excluded)"; \
 	else \
 	  echo "author-only target; transcripts not present."; \
-	  echo "the rendered trajectory is committed at traces/build-trajectory.html"; \
+	  echo "the rendered trajectory is committed at traces/build-trajectory.html.gz"; \
 	fi
 
 # qualification-gate checks (docs/judging/requirements-matrix.md, 08-plan.md section 2)
@@ -71,7 +74,7 @@ check-traces:
 	uv run python -m evals.harness.failure_index
 	@test -n "$$(ls traces/baseline/*.jsonl 2>/dev/null)" || { echo "no baseline traces"; exit 1; }
 	@test -n "$$(ls traces/advanced/*.jsonl 2>/dev/null)" || { echo "no advanced traces"; exit 1; }
-	@test -f traces/build-trajectory.html || { echo "traces/build-trajectory.html missing"; exit 1; }
+	@test -f traces/build-trajectory.html.gz || { echo "traces/build-trajectory.html.gz missing"; exit 1; }
 	@echo "check-traces OK"
 
 verify-docs:

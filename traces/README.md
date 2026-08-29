@@ -19,3 +19,7 @@ by `make traces` (author-only target; the HTML is committed so no judge needs to
 ## Reading one by hand
 
 Everything below is stdlib Python; no `jq`, no viewer.
+
+## The build trajectory
+
+`traces/build-trajectory.html.gz` is the Claude Code transcript of the session that built this project, rendered with `claude-code-log` 1.5.0 and gzipped (the uncompressed page is ~60 MB; `gunzip -k traces/build-trajectory.html.gz` and open it in a browser). It covers the main session; the ~120 subagent transcripts it spawned are not rendered, and `make traces` (author-only) regenerates it.
