@@ -359,3 +359,15 @@ def test_first_turn_template_carries_no_absolute_path() -> None:
     assert "S01" in rendered and "60 tool calls" in rendered and "5 submit_record" in rendered
     placeholders = set(re.findall(r"{(\w+)}", loop.FIRST_TURN))
     assert placeholders == {"repo_name", "tool_call_budget", "submit_budget"}
+
+
+def test_trace_dir_env_is_honoured(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """01-architecture.md section 9 seam: the harness hands each cell its own trace directory
+    through ART30_TRACE_DIR; a child that ignored it would overwrite the committed traces."""
+    from art30 import config as config_mod
+    monkeypatch.setattr(config_mod, "read_dotenv", lambda *a, **k: {})
+    monkeypatch.setenv("ART30_TRACE_DIR", str(tmp_path / "elsewhere"))
+    cfg = config_mod.load()
+    assert cfg.trace_dir == tmp_path / "elsewhere"
+    monkeypatch.delenv("ART30_TRACE_DIR")
+    assert config_mod.load().trace_dir == Path("traces")
