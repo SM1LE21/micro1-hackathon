@@ -125,7 +125,7 @@ contributor was [WRITE: the row named in CHANGELOG_EVAL.md's Final cell, copied 
 This repository was created after kickoff on 2026-08-28 15:00 UTC. Nothing in it predates that except:
 
 - The tools: Claude Code (the coding agent that wrote most of the code; sessions rendered at
-  `traces/build-trajectory.html`), the `claude-opus-5` model both arms call, Python 3.12, uv, the
+  `traces/build-trajectory.html.gz`), the `claude-opus-5` model both arms call, Python 3.12, uv, the
   `anthropic` SDK, `pyyaml`, `jsonschema`, `pytest`, `claude-code-log` 1.5.0, `gitleaks`, Docker.
 - Four open-source repositories vendored as eval cases at pinned SHAs, each keeping its upstream
   LICENSE and a `SOURCE.md` with url, sha, licence, date and what was stripped:
@@ -189,7 +189,7 @@ also ships under MIT or Apache-2.0 is the author's call — .vault/QUESTIONS.md]
   feature exists.
 
 `traces/failures/` holds every failed run with a one-line diagnosis.
-`traces/build-trajectory.html` is the rendered transcript of the Claude Code sessions that built
+`traces/build-trajectory.html.gz` is the rendered transcript of the Claude Code sessions that built
 this repository (`make traces`, author-only; the HTML is committed).
 
 ## Main failure mode and hot take
