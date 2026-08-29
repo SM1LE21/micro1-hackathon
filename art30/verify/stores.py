@@ -11,6 +11,8 @@ from __future__ import annotations
 from art30.verify import imports as importmap
 from art30.verify import services
 from art30.verify.context import Ctx
+from art30.verify.subjects import guard as _guard
+from art30.verify.subjects import subject_links as _subject_links
 from art30.verify.entities import ClassInfo
 from art30.verify.findings import Cite, Graph, Relation, Store, StoreField
 from art30.verify.rules import RuleSet, norm
@@ -206,10 +208,15 @@ def _relations(ctx: Ctx, cls: ClassInfo, tables: dict[str, str]) -> None:
         if short in {"ForeignKey", "OneToOneField", "ManyToManyField"} and decl.raw:
             target = _target_table(ctx, cls, decl.raw[0] or decl.kwraw.get("to", ""), tables)
             token = (decl.keywords.get("on_delete").value if "on_delete" in decl.keywords else "")
+            # 4.8: `related_name` is the accessor `<subject>.<relation>.all().delete()`
+            # names, and the only way that shape resolves to the child store (R15).
+            related = (decl.keywords["related_name"].value
+                       if "related_name" in decl.keywords else "")
             if target:
                 ctx.graph.relations.append(Relation(
                     parent=target, child=child, kind="fk", token=token.split(".")[-1],
-                    file=decl.file, line=decl.line, field_name=decl.target))
+                    file=decl.file, line=decl.line, field_name=decl.target,
+                    related_name=related))
         elif short == "relationship":
             arg = decl.args[0].value if decl.args else decl.kwraw.get("argument", "")
             target = _target_table(ctx, cls, arg, tables)
@@ -276,43 +283,3 @@ def _file_store(ctx: Ctx, cls: ClassInfo, decl) -> None:
     store.fields.append(StoreField(name=decl.target, file=decl.file, line=decl.line,
                                    declared=decl.short_call))
     ctx.add(store)
-
-
-# ---------------------------------------------------------------------------
-# subject links and the 3.9 guard
-# ---------------------------------------------------------------------------
-def _subject_links(ctx: Ctx) -> None:
-    roots = {s.id for s in ctx.graph.stores.values() if s.subject_root}
-    for store in ctx.graph.stores.values():
-        if store.subject_link is not None:
-            continue
-        if store.kind != "relational":
-            continue
-        if store.subject_root:
-            store.subject_link = store.declared_at
-            continue
-        # The foreign key on the child is the citation that ties the row to the
-        # subject; a `relationship()` on the parent names the same pair one class up.
-        for wanted in ("fk", "secondary", "relationship"):
-            for relation in ctx.graph.relations:
-                if relation.kind != wanted:
-                    continue
-                if relation.child == store.id and relation.parent in roots:
-                    store.subject_link = Cite(relation.file, relation.line)
-                    break
-                if relation.parent == store.id and relation.child in roots:
-                    store.subject_link = Cite(relation.file, relation.line)
-                    break
-            if store.subject_link is not None:
-                break
-
-
-def _guard(ctx: Ctx) -> None:
-    """3.9, the completeness guard only: never a category, never a verdict."""
-    for store in ctx.graph.stores.values():
-        hits = {ctx.rules.guard_hit(f.name) for f in store.fields}
-        linked = store.subject_link is not None or ctx.rules.subject_word(store.name)
-        if "strong" in hits:
-            store.guard = "strong"
-        elif "qualified" in hits and linked:
-            store.guard = "qualified"
