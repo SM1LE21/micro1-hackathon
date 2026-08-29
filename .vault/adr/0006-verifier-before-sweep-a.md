@@ -25,3 +25,5 @@ The verifier (`art30/verify/`), its tests and `advanced/arm.py` are written befo
 
 - The frozen-file list is checked before Sweep A: `git log --oneline <this commit>.. -- baseline/arm.py art30/prompts art30/schema art30/tools.py art30/loop.py art30/llm.py art30/config.py` must be empty, or the change is a changelog row.
 - The plan's kill switch 1 (verifier not passing its rule tests) moves earlier and loses none of its meaning.
+
+Addendum 2026-08-29 (before any cache exists, so nothing is invalidated): two frozen files changed after the independent audit — `art30/config.py` now reads `ART30_TRACE_DIR` (the harness seam it was always meant to honour; without it `make gate-timing` overwrote committed traces), and `art30/loop.py` treats `stop_reason: model_context_window_exceeded` as an early stop. Neither changes a hashed byte of any request. The frozen-list check in this ADR now runs from the commit that lands this addendum.
