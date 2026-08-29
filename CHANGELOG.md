@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-29 20:13 UTC — Phase 3 built and audited: v1 ready for review
+
+- Evidence tooling (`verify-docs`, failure index, gate targets), spec-vs-code audit (`docs/spec/DEVIATIONS.md`, 21 rows, specs amended to the code), example record regenerated from the generated S10, hardening and record→replay tests; README and REPRODUCE materialised; build trajectory committed (main session, gzipped)
+- Independent end-to-end audit: clean clone passes in ~10 s, no SDK mismatch, no false safe on four hand-run repos; five defects fixed before any recording (trace dir seam, sweep scoping, cost ceiling, report scope, D02 emitter)
+- 656 offline tests green; live sweeps wait on the API key, the cost ceiling and the hand-labelled real-repo manifests
+
 ## 2026-08-29 15:34 UTC — Phase 2 built: the verifier and the advanced arm
 
 - `art30/verify/` on stdlib ast: call graph, entry points, store detection, synthetic edges, reachability over (node, mode, passed) states, the 6.1 verdict table, claim checking with the contract's feedback object; `advanced/arm.py` and gate
