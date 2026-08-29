@@ -48,6 +48,10 @@ FEEDBACK_LINES = (
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="art30", description="Read an Art. 30 record out of a repository.")
     subs = parser.add_subparsers(dest="command", required=True)
+    serve = subs.add_parser("serve", help="local website: drive scans and watch them (ADR 0007)")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8734)
+    serve.add_argument("--open", action="store_true", help="open the page in a browser")
     scan = subs.add_parser("scan", help="scan one repository with one arm")
     scan.add_argument("repo", help="path to the repository to read; nothing in it is executed")
     scan.add_argument("--arm", required=True, choices=("advanced", "baseline"))
@@ -93,6 +97,9 @@ def _files(root: Path) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "serve":
+        from art30.web.server import serve as _serve   # lazy: the website is optional
+        return _serve(args.host, args.port, args.open)
     repo = Path(args.repo)
     if not repo.is_dir():
         print(f"not a directory: {args.repo}", file=sys.stderr)
