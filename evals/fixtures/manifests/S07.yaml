@@ -1,0 +1,94 @@
+case: S07
+split: dev
+source: synthetic
+intent: 'semantic classification and the pseudonymisation trap: a hashed email is not erasure, and a field-level
+  override sits inside a store that did not reach it'
+spec_sha256: b83cdb5f508600af98397723e646252dbde9643fb8de4a68f7c7f66c37716c00
+gen_version: 1
+normalisation:
+  prefixes: []
+labelling_minutes: null
+entry_points:
+- name: close_account
+  file: api/account.py
+  line: 11
+  kind: route
+stores:
+- name: users
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 12
+  fields:
+  - name: email
+    category: contact
+    file: models.py
+    line: 15
+  - name: full_name
+    category: identifier
+    file: models.py
+    line: 16
+    erasure:
+      verdict: anonymised
+      evidence: privacy.py:10
+  - name: metadata_json
+    category: free_text_may_contain
+    file: models.py
+    line: 17
+    erasure:
+      verdict: not_erased
+      evidence: null
+  - name: deleted_at
+    category: technical
+    file: models.py
+    line: 18
+  erasure:
+    verdict: pseudonymised
+    evidence: privacy.py:9
+    note: the email is replaced by a SHA-256 digest at privacy.py:9; the row, its primary key and every
+      ticket foreign key survive
+- name: tickets
+  kind: relational
+  subject_link:
+    file: models.py
+    line: 28
+  fields:
+  - name: subject
+    category: free_text_may_contain
+    file: models.py
+    line: 25
+  - name: notes
+    category: free_text_may_contain
+    file: models.py
+    line: 26
+  - name: opened_at
+    category: technical
+    file: models.py
+    line: 27
+  erasure:
+    verdict: not_erased
+    evidence: null
+    note: anonymize_user does not touch this table and the relationship at models.py:19 carries no delete
+      token
+- name: request_log
+  kind: log
+  subject_link:
+    file: middleware.py
+    line: 11
+  fields:
+  - name: ip_address
+    category: technical
+    file: middleware.py
+    line: 9
+  - name: path
+    category: behavioural
+    file: middleware.py
+    line: 10
+  erasure:
+    verdict: not_erased
+    evidence: null
+    note: the client address is bound at middleware.py:9 and written at middleware.py:11; nothing on the
+      account-closure path removes log lines
+retention: []
+negatives:
+- products
