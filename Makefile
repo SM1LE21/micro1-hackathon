@@ -65,3 +65,19 @@ traces:
 	  echo "author-only target; transcripts not present."; \
 	  echo "the rendered trajectory is committed at traces/build-trajectory.html"; \
 	fi
+
+# qualification-gate checks (docs/judging/requirements-matrix.md, 08-plan.md section 2)
+check-traces:
+	uv run python -m evals.harness.failure_index
+	@test -n "$$(ls traces/baseline/*.jsonl 2>/dev/null)" || { echo "no baseline traces"; exit 1; }
+	@test -n "$$(ls traces/advanced/*.jsonl 2>/dev/null)" || { echo "no advanced traces"; exit 1; }
+	@test -f traces/build-trajectory.html || { echo "traces/build-trajectory.html missing"; exit 1; }
+	@echo "check-traces OK"
+
+verify-docs:
+	uv run python -m evals.harness.verify_docs
+
+check-clean:
+	@! git grep -niE "\btk ?media\b|\bfounta\b" -- ':!docs/problem/*' ':!AGENTS.md' ':!Makefile' >/dev/null || { echo "forbidden name in tree"; exit 1; }
+	@! git log -p --all -- . ':!AGENTS.md' ':!Makefile' | grep -qiE "\btk ?media\b|\bfounta\b" || { echo "forbidden name in history"; exit 1; }
+	@echo "check-clean OK"
