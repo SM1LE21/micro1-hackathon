@@ -1,0 +1,206 @@
+[
+  {
+    "case": "S01",
+    "spec_sha256": "704a3aedd18b4925b6df08cf19a0e8d0401a16abbe67fe0afd837e6ccff6a7a6",
+    "gen_version": 1,
+    "files": {
+      "README.md": "83f646391a55869a8b13cc0d5376e0fa9d18e979632337cc1a087e70d1149f0d",
+      "api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "api/account.py": "e78ff708eab8db16dc7724975d6a0d79d9c06844b0ccc3d43403640456f12bb0",
+      "api/profile.py": "16731774cb6058a060d8a1e81c037d9038d6fff8047349126130a5077c4eb465",
+      "app.py": "4d6fbdeb60c778e84592c1140b24e0f8e538cdd185017732692c8e6f6c0c079f",
+      "catalog.py": "b29d17b5b69d977ab24b8aa1a2626bb15639e97737a322163b7602472c9f7c66",
+      "config.py": "a95e2c64fc8958ac54efa2c8b5e92c331eaab4fa669551c9333d0b4a1d5fe223",
+      "db.py": "2f8b99b6b35b490cd73ad4586134d8257971b787bfc9976a5a79bfb7e9a42f0d",
+      "models.py": "b678e0b71cc1c61720cad92a93d5e9a44b8a72e741d4d0f32cd51cbc3827b3f6",
+      "requirements.txt": "76f750cfe861be405ae293dff0a2000fd7ffda238c6262b11b457eb6e2da7763",
+      "utils/text.py": "b2e4e36f9838c2ef7d3c9320100271b4ab2054559ce82ae2f53c8a9bf300840e"
+    }
+  },
+  {
+    "case": "S02",
+    "spec_sha256": "d5abff14992fd6770032442b58e294c55b796a7d606b68fcadecbff7ab1940bf",
+    "gen_version": 1,
+    "files": {
+      "README.md": "70f4ef413ba76a3cd7224074de02bf965676bb5e1368726c08ce7cdbacf0cc31",
+      "api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "api/account.py": "98c90b60f652677b2dae60a5f4eeed92ec59a12cb157fcae5b762025fa7355a7",
+      "api/profile.py": "9740d0df4a1b76cdf2811a81f6f2666ff42c73cebf76bc495415f9adc282c8ae",
+      "app.py": "c2a4955daf53a48953d9c0795d6b3232746f03dabba6e39474fee37f1a8fa2c1",
+      "config.py": "0d4876e2ff79d81066777bfe1fa5a3179168732a77a3c2c61cf7e2540b95e66a",
+      "db.py": "2f8b99b6b35b490cd73ad4586134d8257971b787bfc9976a5a79bfb7e9a42f0d",
+      "models.py": "85049a51c32cd272c04f1804fc400aa9c11dbb4c16a7445aa29ce32b1ecfb3d4",
+      "requirements.txt": "76f750cfe861be405ae293dff0a2000fd7ffda238c6262b11b457eb6e2da7763",
+      "utils/text.py": "b2e4e36f9838c2ef7d3c9320100271b4ab2054559ce82ae2f53c8a9bf300840e"
+    }
+  },
+  {
+    "case": "S03",
+    "spec_sha256": "7b3e95b6c84288593189b25808c33b9387d03415f860ac71bec67086391f41ed",
+    "gen_version": 1,
+    "files": {
+      "README.md": "700dcf516d2de9ee8b4c870bce39e3ca7a4c75c79eb1f0c230ab8322139e2ae2",
+      "api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "api/account.py": "bc1bf02519736088995a4f3de28f9b673694b9647810364bf86c4a16fd838029",
+      "api/profile.py": "ae222788dd8944ad21a14164362794767d26e7721965ce0baf99772a94c0f87f",
+      "app.py": "73c2e8349766a1b5f33e5c474121fcc3ff7fdc3d68f45c1ec08dbd3c21637298",
+      "config.py": "ce57de4841fe57511de021c299d29d19a9e5c585e914a342fff73a2842b277f6",
+      "db.py": "2f8b99b6b35b490cd73ad4586134d8257971b787bfc9976a5a79bfb7e9a42f0d",
+      "jobs/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "jobs/backup.py": "dad91370ec3d11685c79a6f5cf5ce2a33e5103443f2b75054a6bcc7e8521c679",
+      "jobs/purge.py": "a08461007794237f3e45280c99ed5a1be085b17ae717b4165f29e70972cde4fd",
+      "models.py": "61e85a686981cb48d66c73400389b18ea7212db8dde66e1f55fdcf7014d09755",
+      "requirements.txt": "e181e4ead9610a498421da68bcae1df9ac9d07c03150457cef5edc5cb5582a7b",
+      "utils/text.py": "b2e4e36f9838c2ef7d3c9320100271b4ab2054559ce82ae2f53c8a9bf300840e"
+    }
+  },
+  {
+    "case": "S04",
+    "spec_sha256": "f4e69b399a5dec4a99cf3fd3d17a66cc5dfcb47799b6f67fad99036433be7a08",
+    "gen_version": 1,
+    "files": {
+      "README.md": "aaeb80c67bb87bfeb5e20e323af04ac7caa74887df1050fccdf93d0b0ea1d0bd",
+      "api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "api/account.py": "5f13fa91e06ce1e05f484715448faebbe34a4b6eda23fc808c28fa57cb12a626",
+      "api/profile.py": "32519e7f74f729bef21d172d83ca3930a2ab573cf3826aaba279bd5de1c6331d",
+      "app.py": "ef56d89f06b5d7613ae2793617f89e6b7356e789f6e84235b135cfbc977971c9",
+      "catalog.py": "960e95423e2bbde4c9c6956563cf5f7e1e3370128fcaf83b659dce7a4562f7d9",
+      "config.py": "1c6ee8b6992e4dd517b94678b61f6e60f6bcc9d9350eb602ce70614d58f71100",
+      "db.py": "2f8b99b6b35b490cd73ad4586134d8257971b787bfc9976a5a79bfb7e9a42f0d",
+      "models.py": "33b9a065b7f18d82b07330b32f6972d87257a7a6acac306491366745e0f2580b",
+      "requirements.txt": "900ffca633b3b274b76c81e1cdd82ce4b6b55d80a0c40858aaa74e83f6f19165",
+      "storage.py": "6c56cc20ee83d77c9bf21a91fbe36d9ec27c019085a24919d182bb1aabf66bd7",
+      "utils/text.py": "b2e4e36f9838c2ef7d3c9320100271b4ab2054559ce82ae2f53c8a9bf300840e"
+    }
+  },
+  {
+    "case": "S05",
+    "spec_sha256": "eb7fd83057111bb28e83057f3a5b649c4a087f18aeb61cc30c4f7f251ac83d0f",
+    "gen_version": 1,
+    "files": {
+      "README.md": "14251999579b50147dbc054a351178458e71ba64a26c6d453c9874af7d8ad08f",
+      "analytics.py": "a2fd79354c7c53004d73d8a8939a282350172ae1b9e6bb6c103ec0a9e843aed7",
+      "api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "api/account.py": "6371feb6419cdc5e16fbb4c2c5aa54bbf15e879c8911754b148198064c5b6737",
+      "api/profile.py": "3568e440e4185de7454428100f1e1b885ecf142046728d1a25aeeb474fc9bb80",
+      "app.py": "c8983937f716f6287c2490f96a6dadb9efbb67683a10034bedc82604e6caaa02",
+      "billing.py": "79ec0dd9e2f2d724b8222fe81dba50ed71ca459c497b3664900a1901443cfb46",
+      "cache.py": "0c51dcca7196f280070796dea44801e4ee6f2c23e65a4a5c9a1838e65c9e38a8",
+      "catalog.py": "960e95423e2bbde4c9c6956563cf5f7e1e3370128fcaf83b659dce7a4562f7d9",
+      "config.py": "8af4620c92a2a528d2f7457761a61c146b6caf44a8e4573fe5424d0fd2db21d3",
+      "db.py": "2f8b99b6b35b490cd73ad4586134d8257971b787bfc9976a5a79bfb7e9a42f0d",
+      "mail.py": "078e1278b464dfbe1320d15252d4571deb85d417f1d771a7d993fc25ebfad7e4",
+      "models.py": "1a36dbd43759b1e7de904659766306782b516c1b64ce5d9369d308d511b6a98f",
+      "requirements.txt": "ff32f6d4d5bfbf36e8d04a3f77ad6de01f923a66dfb5e35aa467c58c0698a5a5",
+      "utils/text.py": "b2e4e36f9838c2ef7d3c9320100271b4ab2054559ce82ae2f53c8a9bf300840e"
+    }
+  },
+  {
+    "case": "S06",
+    "spec_sha256": "739aae5e486288a12a91ae1c911f9219f6e5562e46fa00f267f02524effcb5f9",
+    "gen_version": 1,
+    "files": {
+      "README.md": "c91d019f2711517b0a7e4f793781e77ec5c042b97bceb3bfa0d28c7d36412221",
+      "accounts/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "accounts/admin.py": "ef70ab5a7cc3b95fdf0c38810e6290ae25b5145cc54c2df5cbc73d1fa15d642a",
+      "accounts/apps.py": "86fd50ed17f4c8970f287a7505c5a7420beeec578c90362c2bf910415276d48b",
+      "accounts/models.py": "d7e2de0c064735aae140645c50d50fd99c6d2432cf9ea6b486b41f6e9197adc5",
+      "accounts/signals.py": "55f7b9326c526f6b24947bfbe515910a9db0031b1fd7db9e6fcb4ceac8aee682",
+      "accounts/utils.py": "b2e4e36f9838c2ef7d3c9320100271b4ab2054559ce82ae2f53c8a9bf300840e",
+      "accounts/views.py": "50734125e500b0d4928c27d01bb0981b9d6e237e7a74b07ff30a23c03c21a74e",
+      "catalog/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "catalog/models.py": "9222d8b82d9e1bc45e70ba166ebce5e803fb24461da8bbe48341eef43a549dc3",
+      "manage.py": "25e97a61b69a638ca44990e17250ecbfe9142f53677db4b3b0d514271765183b",
+      "northgate/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "northgate/settings.py": "2b86977d0d2045e77040b4cb95dff3d7efea1821b2d873026cc15a7ade0118a9",
+      "northgate/urls.py": "f8593c2961cf6b5c84a26e2811f376c4e1e59c885e7aed0988355fe94535db1f",
+      "requirements.txt": "3869908e43c7e57d3b3a3ff828b84923634062ef63adc07ce7640fa62244e042"
+    }
+  },
+  {
+    "case": "S07",
+    "spec_sha256": "b83cdb5f508600af98397723e646252dbde9643fb8de4a68f7c7f66c37716c00",
+    "gen_version": 1,
+    "files": {
+      "README.md": "e02cda1ddcb76fcce551c34fa42779b14149c72ee26e1570e467516127201166",
+      "api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "api/account.py": "b6989b9af6e753c3597ba898d26841503d022c0500f8e8373ad61ea636dee237",
+      "api/profile.py": "0a14b9a94ced822bff4b556d660b2189c875c7b90d965bc552164e81bd599fa0",
+      "app.py": "38f1f90df4167c4c35eb9c6019bca487045b4ce87ce47b3b84be8df61ab83975",
+      "catalog.py": "b29d17b5b69d977ab24b8aa1a2626bb15639e97737a322163b7602472c9f7c66",
+      "config.py": "d8317623b1f1157080117341902d108f27be665bb33e703c4c4e73cc5eec6217",
+      "db.py": "2f8b99b6b35b490cd73ad4586134d8257971b787bfc9976a5a79bfb7e9a42f0d",
+      "middleware.py": "8ac10d361a398c76c0dfdf32879d650332cedd652de409dad5016fce91ecad6c",
+      "models.py": "d6cad9156684b791efeec9d2bf4db03c75f6abd1bd1a32aeb1b65925babd1aef",
+      "privacy.py": "c56c6b63a7715e770b10a64f322ddf1df20e894d53258de55ccd821c354b5689",
+      "requirements.txt": "76f750cfe861be405ae293dff0a2000fd7ffda238c6262b11b457eb6e2da7763",
+      "utils/text.py": "b2e4e36f9838c2ef7d3c9320100271b4ab2054559ce82ae2f53c8a9bf300840e"
+    }
+  },
+  {
+    "case": "S08",
+    "spec_sha256": "35e361379d0dc0105da0d1c8da8d52f2fe22bd957f1e761980c0ad2baf79ab56",
+    "gen_version": 1,
+    "files": {
+      "README.md": "de122e3bb9e905ec0a10ee3457716603106dc11f388bd096c15d6341354e5749",
+      "api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "api/account.py": "5e58cd065b619d9432467f645cac46a92094cccb9c798fea325b1c8156bb43e1",
+      "app.py": "c0e29b241f709ca703465ed15a6accdfc4507cabbe10ded7a0c3a6308784c748",
+      "catalog.py": "3c82a6ab47107cd8c5372bcba7253dcd952c1dbae21a424adc497e2b4f3e1d43",
+      "config.py": "da758bcbe710af4f9f7583a9e5b21787ccef7eced77f7a7c05ec06c02eee039b",
+      "db.py": "2f8b99b6b35b490cd73ad4586134d8257971b787bfc9976a5a79bfb7e9a42f0d",
+      "jobs/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "jobs/dump.py": "3fb71ce89978b41e78c276a6d211e8b5116c49269b2e15997f0ef123b7521fe8",
+      "models.py": "9c6296586a40d154f60a19420df656d50ad5da65c2106cdcce88d6e78e964fc7",
+      "queue.py": "760dff61de9c4a1d4c85e35792f2d8906b83aa7d1bee413b0dc8c8dee5056a51",
+      "requirements.txt": "d0add8be84613e779048d452d6e212b61e366a5c3cd4b7cea35748394631069a",
+      "search.py": "63bde4faaff04b9d91cdccfbcf29e8c55e973110d46d91c00f86ca66cdde9d7a",
+      "storage.py": "7e9b43765d6de26f4328e988affdfedd0f0a6289b956e8872f75ea2fb06598fd",
+      "utils/text.py": "b2e4e36f9838c2ef7d3c9320100271b4ab2054559ce82ae2f53c8a9bf300840e"
+    }
+  },
+  {
+    "case": "S09",
+    "spec_sha256": "b46111195bd5ce2cbbefc64a20eb2ca45b0e8fc7068843399c49f7c29a0b0921",
+    "gen_version": 1,
+    "files": {
+      "README.md": "2ffb30c1ce7690ad326b012758251fdfc12968bea9756189e741cec15f86729d",
+      "catalog/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "catalog/models.py": "9222d8b82d9e1bc45e70ba166ebce5e803fb24461da8bbe48341eef43a549dc3",
+      "gallery/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "gallery/admin.py": "558a8c868d9d6777bbacff0026645f0498256d37e2e5ad398fde75b31def15a2",
+      "gallery/apps.py": "7b664830ea98ec89eb98678147f021864c46e120511cbd9798de8e31a0c7380f",
+      "gallery/models.py": "d0cc60998a853d6764dd99ff3bf14b092c7729bb959df35752d2cca93993a177",
+      "gallery/signals.py": "f91db9faa363310453fc59db28d98843735f2c4822f74f5f6c693a28b02f212e",
+      "gallery/utils.py": "b2e4e36f9838c2ef7d3c9320100271b4ab2054559ce82ae2f53c8a9bf300840e",
+      "gallery/views.py": "9d33ef16b11e7194ed6609b7bf1f83f55ef96877b8e550ba070ba4c69ff08c0c",
+      "manage.py": "cbd2e16df40f460813351afdd888ba2275e5057319e5af39661ba3fea743b887",
+      "requirements.txt": "3869908e43c7e57d3b3a3ff828b84923634062ef63adc07ce7640fa62244e042",
+      "slatecove/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "slatecove/settings.py": "97eea47bc8ec0a836be3e2a1f44af0ea996af310bfbaf666293b8e1922bb7109",
+      "slatecove/urls.py": "14af6d9e7770a99aa9e02b43e61ba2f237532462a2cdef5a3848000faa4b3574"
+    }
+  },
+  {
+    "case": "S10",
+    "spec_sha256": "03417702f5e7acd1eaa6ef698476f11bddcaec11cf523a43a98ad2fa24495bcd",
+    "gen_version": 1,
+    "files": {
+      "README.md": "4cc0d11c145c21cbf3706ec9ac9e2527270117fee6d609bffc54c1eb33acf58c",
+      "api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "api/account.py": "b9a93c4195295f47b4dd608e5c06a52a08e35cd3f9617c8a588930530b64885c",
+      "api/profile.py": "44cf248ab7b0f51c1995552fda4ccb2bde7565d33755e85ace8018d817106a04",
+      "app.py": "98df1597a998a07f278772643de914ede583c3cb7aec5806323a0dee5459b2d7",
+      "billing.py": "79ec0dd9e2f2d724b8222fe81dba50ed71ca459c497b3664900a1901443cfb46",
+      "config.py": "2c0ec712d9c2859d9b4d476519904de4355ef83299c60568f2837757166d51a7",
+      "db.py": "2f8b99b6b35b490cd73ad4586134d8257971b787bfc9976a5a79bfb7e9a42f0d",
+      "jobs/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "jobs/backup.py": "fdd3f608d80227e8495ab426973f4adb15fd3ec1b368ac1776e8030d753d0614",
+      "jobs/purge.py": "a08461007794237f3e45280c99ed5a1be085b17ae717b4165f29e70972cde4fd",
+      "models.py": "5ec7abb461d51d985931e2de3fe004cc4dcf5bb9f25bf4f43ac5b86d142e7e23",
+      "requirements.txt": "012a61ab9644d318ebd038001732d32b40eb7a7309aabb230afef048e5145160",
+      "storage.py": "20c81e566f56e5c207ea6e23ec5146aa7b2a281ab32a37fa46b1be3cbe43aca8",
+      "utils/text.py": "b2e4e36f9838c2ef7d3c9320100271b4ab2054559ce82ae2f53c8a9bf300840e"
+    }
+  }
+]
