@@ -45,7 +45,7 @@ class Config:
     tool_budget: int = TOOL_BUDGET_BY_KIND["synthetic"]
     max_submits: int = DEFAULT_SUBMIT_BUDGET
     max_usd: float | None = None
-    approve: Literal["ask", "auto"] = "ask"
+    approve: Literal["ask", "auto", "file"] = "ask"   # "file": the website's gate (ADR 0007)
     concurrency: int = 4
     cache_dir: Path = Path("evals/cache")
     out_dir: Path = Path("results/runs")
