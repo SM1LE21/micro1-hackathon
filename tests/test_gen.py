@@ -67,7 +67,9 @@ def manifests() -> dict:
 
 
 def test_ten_cases():
-    assert CASES == [f"S{n:02d}" for n in range(1, 11)]
+    """Ten scored cases; the demo repos (evals/split.yaml `demo:`) sit beside them, never in a sweep."""
+    assert [c for c in CASES if c.startswith("S")] == [f"S{n:02d}" for n in range(1, 11)]
+    assert [c for c in CASES if c.startswith("D")] == ["D01", "D02"]
 
 
 def test_generation_is_byte_identical(cases):
@@ -184,7 +186,8 @@ def test_retention_rows_carry_a_citation(manifests):
 
 def test_file_counts_match_the_spec_table(cases):
     expected = {"S01": 11, "S02": 10, "S03": 13, "S04": 12, "S05": 15,
-                "S06": 15, "S07": 13, "S08": 15, "S09": 15, "S10": 15}
+                "S06": 15, "S07": 13, "S08": 15, "S09": 15, "S10": 15,
+                "D01": 14, "D02": 16}   # demo repos pinned at their generated counts
     assert {case.name: len(case.files) for case in cases} == expected
 
 
