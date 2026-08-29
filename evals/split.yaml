@@ -40,6 +40,10 @@ test:
   - R03   # pinry/pinry @ 05476b1
   - R04   # miguelgrinberg/microblog @ a975ef6
 
+demo:                                   # hand-testing repos; never scored, never in a sweep
+  - D01   # Django membership site: avatar file and audit log survive deletion
+  - D02   # SQLAlchemy shop: cache purged, tickets and search index survive
+
 reserve:
   - R05   # HackSoftware/Django-Styleguide-Example @ a70ef43 — run only if the full eval stays under ~30 min wall clock
 
