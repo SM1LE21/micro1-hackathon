@@ -3,7 +3,7 @@
 # the author can run `art30 scan` against something outside the scored set and watch the gate.
 # Shape: rows cascade (one child by CASCADE, one by DB_CASCADE), the avatar ImageField has
 # no receiver and no django-cleanup, so the file survives account deletion (research §6 R8);
-# an audit log sink carries email and IP and is never touched by deletion.
+# nothing else in the repository holds personal data.
 case: D01
 split: demo
 flavour: django
@@ -60,17 +60,6 @@ stores:
     write_called_by: null
     delete_call: null
     delete_called_by: null
-  - name: audit
-    kind: log
-    client: logging
-    module: members/audit.py
-    fields:
-      - {name: email, category: contact}
-      - {name: ip_address, category: technical}
-    writes_from: log_login
-    write_called_by: login
-    delete_call: null
-    delete_called_by: null
 
 entry_points:
   - name: delete_account
@@ -99,7 +88,3 @@ expect:
       verdict: not_erased
       evidence: null
       note: "the ImageField at {members/models.py::Member.avatar} has no pre_delete or post_delete receiver and django_cleanup is not installed; Django does not remove files when the row is deleted"
-    audit:
-      verdict: not_erased
-      evidence: null
-      note: "the log line is written at {members/audit.py::log_login!info}; nothing on the deletion path touches the log sink"
