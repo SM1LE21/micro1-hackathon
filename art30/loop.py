@@ -175,7 +175,7 @@ def _run(ctx: RunCtx, case: CaseRef, arm: Arm, cfg: Config, state: dict) -> RunR
             return _stop(ctx, state, kind, note=str(exc))
         cost = round(llm.cost_of(resp.usage, cfg.model), 6)
         ctx.cost_cum_usd = round(ctx.cost_cum_usd + cost, 6)
-        if resp.stop_reason in ("refusal", "max_tokens", "pause_turn"):
+        if resp.stop_reason in ("refusal", "max_tokens", "pause_turn", "model_context_window_exceeded"):
             _trace_step(ctx, state, step, resp, req_hash, cost, [], [])
             condition, note = _early_stop(resp, cfg, step)
             return _stop(ctx, state, condition, note=note)
@@ -302,6 +302,8 @@ def _early_stop(resp: llm.Response, cfg: Config, step: int) -> tuple[str, str]:
     if resp.stop_reason == "refusal":
         details = resp.stop_details or {}
         return "refusal", f"refusal category={details.get('category')}: {details.get('explanation')}"
+    if resp.stop_reason == "model_context_window_exceeded":
+        return "max_tokens", f"context window exceeded on step {step}"
     if resp.stop_reason == "max_tokens":
         # "truncated" is reserved for the harness's own partial-line repair
         # (06-traces.md check 16), so the note says the same thing in other words.
