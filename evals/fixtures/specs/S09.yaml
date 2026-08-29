@@ -65,7 +65,6 @@ stores:
     write_called_by: null
     delete_call: null
     delete_called_by: null
-    key_template: "photos/{user_id}/{photo_id}.jpg"
 
 receivers:
   - name: delete_attached_image
