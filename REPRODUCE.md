@@ -4,7 +4,7 @@ Written for a clean environment. No account with any provider is needed for the 
 
 ## Setup
 
-Requirements: git, and [uv](https://docs.astral.sh/uv/) (or Docker — see below). uv installs
+Requirements: git, make, and [uv](https://docs.astral.sh/uv/) (or Docker — see below). uv installs
 Python 3.12 itself; nothing else is needed and no API key is needed for the path below.
 
 ```
