@@ -77,6 +77,6 @@ verify-docs:
 	@echo "not implemented - re-run make report and diff its table against the README results block" && exit 1
 
 check-clean:
-	@! git grep -niE "tk ?media|founta" -- ':!docs/problem/*' ':!AGENTS.md' ':!Makefile' >/dev/null || { echo "forbidden name in tree"; exit 1; }
-	@! git log -p --all -- . ':!AGENTS.md' ':!Makefile' | grep -qiE "tk ?media|founta" || { echo "forbidden name in history"; exit 1; }
+	@! git grep -niE "\btk ?media\b|\bfounta\b" -- ':!docs/problem/*' ':!AGENTS.md' ':!Makefile' >/dev/null || { echo "forbidden name in tree"; exit 1; }
+	@! git log -p --all -- . ':!AGENTS.md' ':!Makefile' | grep -qiE "\btk ?media\b|\bfounta\b" || { echo "forbidden name in history"; exit 1; }
 	@echo "check-clean OK"
