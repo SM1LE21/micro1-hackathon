@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-29 15:34 UTC — Phase 2 built: the verifier and the advanced arm
+
+- `art30/verify/` on stdlib ast: call graph, entry points, store detection, synthetic edges, reachability over (node, mode, passed) states, the 6.1 verdict table, claim checking with the contract's feedback object; `advanced/arm.py` and gate
+- Acceptance: all twelve synthetic fixtures reproduce every manifest verdict; twelve adversarial false safes closed with regression tests; 590 offline tests green
+- Harness refactored under the 300-line rule with byte-identical CLI help; two demo repos D01/D02 for hand testing; R01 PEP 758 syntax noted (upstream, not a vendoring artefact)
+- Phase 2 restarted once after the machine slept mid-response; the build machine is held awake for the rest of the weekend
+
 ## 2026-08-29 01:02 UTC — Phase 1 built: fixtures, runtime, baseline arm, harness
 
 - R01–R04 vendored at pinned SHAs (LICENSE kept, SOURCE.md each); fixture generator + ten generated repos and manifests, `make fixtures` clean; 90 tuples as the spec's table
