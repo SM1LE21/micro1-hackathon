@@ -82,7 +82,7 @@ KEYS: tuple[Key, ...] = (
     Key("concurrency", "int", 4,
         description="How many evaluation cells the harness runs at once."),
     Key("codex_prices", "json", {},
-        description="Per-model `[input, output]` dollars per million tokens for pricing a `codex` run; a model with no entry is reported as tokens only."),
+        description="Per-model `[input, cached_input, output]` dollars per million tokens for pricing a `codex` run (two numbers are read as `[input, output]`, with cached input at the input rate); a model with no entry is reported as tokens only."),
     Key("anthropic_api_key", "str", None, secret=True,
         description="The key the SDK reads for the `api` brain; it lives in `.env`, and art30 reports only whether it is there."),
 )
