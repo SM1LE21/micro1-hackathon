@@ -436,3 +436,59 @@ def test_an_unparseable_submit_result_does_not_kill_the_parent(tmp_path: Path) -
     run._append_run_end(trace, "timeout", "killed at 900s; 0 bytes discarded", 900.0)
     end = json.loads(trace.read_text(encoding="utf-8").strip().split("\n")[-1])
     assert end["stop_condition"] == "timeout" and end["verify_rounds"] == 0 and end["submits"] == 1
+
+
+# --- the brain (ADR 0008 items 4 and 5) --------------------------------------------------------
+
+
+def test_the_brain_reaches_the_child_and_the_cell_pins_every_request_setting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ADR 0008 item 5: a cell is the same request on any machine, said out loud."""
+    calls = _spy_subprocess(monkeypatch)
+    run._launch(_cell(brain="claude", tool_budget=120))
+    command, env = calls[0]["command"], calls[0]["env"]
+    assert command[command.index("--brain") + 1] == "claude"
+    pinned = {"ART30_MODEL": "claude-opus-5", "ART30_EFFORT": "high", "ART30_MAX_TOKENS": "32000",
+              "ART30_TOOL_BUDGET": "120", "ART30_SUBMIT_BUDGET": "5", "ART30_MAX_TURNS": "60",
+              "ART30_IGNORE_SETTINGS_FILES": "1"}
+    assert {key: env[key] for key in pinned} == pinned
+
+
+def test_a_local_brain_cell_carries_no_dollar_ceiling(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ADR 0008 item 3: nothing enforces ART30_MAX_USD on a local brain, so it is not passed
+    on as a limit that is not there. The API brain keeps it."""
+    monkeypatch.setenv("ART30_MAX_USD", "6")
+    calls = _spy_subprocess(monkeypatch)
+    run._launch(_cell(brain="claude"))
+    assert "ART30_MAX_USD" not in calls[0]["env"]
+    calls.clear()
+    run._launch(_cell(brain="api"))
+    assert calls[0]["env"]["ART30_MAX_USD"] == "6"
+    assert calls[0]["command"][calls[0]["command"].index("--brain") + 1] == "api"
+
+
+def test_the_default_brain_is_the_api_one(sandbox: Path) -> None:
+    args = run.build_parser().parse_args(_argv(sandbox))
+    assert args.brain == "api"
+
+
+def test_the_identity_check_falls_back_to_prompt_sha_on_a_local_brain() -> None:
+    """A local brain hashes no request (ADR 0008 item 1), so `step1` is null on every row and
+    the API brain's check would pass two arms that ran different instructions."""
+    rows = [{"cell": _cell(arm=arm), "step1": None, "prompt_sha": sha}
+            for arm, sha in (("baseline", "a" * 64), ("advanced", "b" * 64))]
+    run._identity_check(rows, "api")   # nothing to compare: the hole the fallback closes
+    with pytest.raises(run.Abort) as caught:
+        run._identity_check(rows, "claude")
+    assert "prompt_sha differ between arms" in str(caught.value)
+    same = [{**row, "prompt_sha": "a" * 64} for row in rows]
+    run._identity_check(same, "claude")
+
+
+def test_the_ledger_line_records_the_brain(sandbox: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(run, "_launch", fake_launch())
+    assert run.main(_argv(sandbox, "--brain", "claude", "--unlock-test",
+                          "--reason", "acceptance run", case="S08")) == 0
+    line = (sandbox / "results" / "test-runs.log").read_text(encoding="utf-8")
+    assert "brain claude; acceptance run" in line
