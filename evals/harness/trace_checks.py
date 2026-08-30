@@ -34,6 +34,14 @@ REACHES = frozenset({"erased", "erased_after_timer", "anonymised"})
 USAGE_KEYS = ("input", "cache_read", "cache_write", "output")
 
 HEX64 = re.compile(r"\A[0-9a-f]{64}\Z")
+API_BRAIN = "api"
+# Which brain wrote the trace under validation, keyed by path. `check_start` is the
+# only check that sees `run_start`, `check_steps` is the only one that sees the step
+# lines, and `trace_check.check_trace` calls them in that order over one file, so this is
+# how the request_hash rule below gets its other half without changing either entry point's
+# shape for `trace_check.py` (ADR 0008). It is a fallback only: `check_steps` takes the
+# brain as an argument and pops the entry on the way out.
+_BRAIN: dict[str, str] = {}
 FILENAME = re.compile(r"\A(?P<case>[A-Za-z0-9_]+)-s(?P<seed>\d+)\Z")
 BYTE_COUNT = re.compile(r"\d+\s*bytes?", re.IGNORECASE)
 MODEL = os.environ.get("ART30_MODEL", "claude-opus-5")
@@ -82,11 +90,20 @@ def _find_record(trace: Path, record_path: Any) -> Path | None:
     return None
 
 
-def check_steps(path: Path, steps: list[tuple[int, dict]], accepted: bool) -> list[str]:
-    """Checks 3, 4, 5, 12 and the cost half of check 6."""
+def check_steps(path: Path, steps: list[tuple[int, dict]], accepted: bool,
+                brain: str | None = None) -> list[str]:
+    """Checks 3, 4, 5, 12 and the cost half of check 6.
+
+    `brain` is check 12's one input that is not on a step line (ADR 0008 item 1): it comes
+    off `run_start`, which only `check_start` sees. A caller that is not `check_trace` — a
+    test, the website's validator — passes it rather than being stuck with the API brain's
+    strict rule; unpassed, the `_BRAIN` map `check_start` filled is the fallback, and the
+    entry is dropped on the way out so no verdict depends on it outliving this call.
+    """
     bad: list[str] = []
     seen_ids: dict[str, int] = {}
     cum = 0.0
+    wrote = brain if brain is not None else _BRAIN.get(str(path), API_BRAIN)
     for index, (lineno, step) in enumerate(steps):
         if step.get("step") != index + 1:
             bad.append(f"{path}:{lineno}: check 3: step is {step.get('step')!r}, expected {index + 1}")
@@ -116,8 +133,7 @@ def check_steps(path: Path, steps: list[tuple[int, dict]], accepted: bool) -> li
             value = usage.get(key)
             if not isinstance(value, int) or isinstance(value, bool) or value < 0:
                 bad.append(f"{path}:{lineno}: check 12: usage.{key} is {value!r}, expected an integer >= 0")
-        if not HEX64.match(str(step.get("request_hash", ""))):
-            bad.append(f"{path}:{lineno}: check 12: request_hash is not 64 hex characters")
+        bad += _request_hash(path, lineno, step, wrote)
         if not step.get("stop_reason"):
             bad.append(f"{path}:{lineno}: check 12: stop_reason is missing")
         cost = _num(step.get("cost_usd"))
@@ -127,7 +143,27 @@ def check_steps(path: Path, steps: list[tuple[int, dict]], accepted: bool) -> li
         if abs(reported - (cum + cost)) > EPS:
             bad.append(f"{path}:{lineno}: check 6: cost_cum_usd {reported} != {cum} + cost_usd {cost}")
         cum = reported
+    _BRAIN.pop(str(path), None)
     return bad
+
+
+def _request_hash(path: Path, lineno: int, step: dict, brain: str) -> list[str]:
+    """Check 12, with ADR 0008 item 1's one exception.
+
+    The API brain hashes the request it assembled, and that hash is what makes a
+    recorded run replayable. A local brain assembles its request inside the `claude`
+    or `codex` process, so there are no bytes for art30 to hash and the field is null
+    rather than a number nobody could recompute. Null is accepted only there: on an
+    `api` run a missing hash is a lost replay and stays a violation.
+    """
+    raw = step.get("request_hash")
+    if raw is None and brain != API_BRAIN:
+        return []
+    if HEX64.match(str(raw or "")):
+        return []
+    if raw is None:
+        return [f"{path}:{lineno}: check 12: request_hash is null on a brain {brain!r} run"]
+    return [f"{path}:{lineno}: check 12: request_hash is not 64 hex characters"]
 
 
 def _budgets(start: dict) -> tuple[int, int]:
@@ -198,6 +234,7 @@ def _rejections(steps: list[tuple[int, dict]]) -> int:
 def check_start(path: Path, lineno: int, start: dict) -> list[str]:
     """Checks 13 and 18."""
     bad: list[str] = []
+    _BRAIN[str(path)] = str((start.get("config") or {}).get("brain") or API_BRAIN)
     match = FILENAME.match(path.stem)
     if not match:
         bad.append(f"{path}:{lineno}: check 13: filename is not <case>-s<seed>.jsonl")
