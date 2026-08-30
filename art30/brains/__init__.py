@@ -8,6 +8,11 @@ a log line.
 
 Safe on a machine with neither CLI installed: a missing binary, a timeout or a
 command that answers in a shape nobody expected all come back as "no".
+
+`run_brain` is the other half: the entry point `art30 scan --brain claude` calls
+instead of `art30.loop.run`, returning the same `RunResult`. It is a thin
+forwarder so that importing this module -- which the website does, on every page
+load, to draw the brain picker -- does not pull in the subprocess driver.
 """
 
 from __future__ import annotations
@@ -107,3 +112,18 @@ def detect(runner: Callable | None = None) -> dict[str, State]:
         found[name] = {"name": name, "label": spec["label"], "installed": True, "path": path,
                        "version": version, "logged_in": logged_in, "detail": detail}
     return found
+
+
+def run_brain(cfg, case, arm, seed, report=None):
+    """`art30.brains.driver.run_brain`, imported at call time (ADR 0008 item 1)."""
+    from art30.brains.driver import run_brain as _run_brain
+
+    return _run_brain(cfg, case, arm, seed, report)
+
+
+def built() -> tuple[str, ...]:
+    """The local brains that have a driver module. Both do; the CLI's "not built yet"
+    exit is what a brain named in the settings and missing from `driver.BRAINS` takes."""
+    from art30.brains.driver import BRAINS
+
+    return tuple(BRAINS)
