@@ -1,4 +1,4 @@
-.PHONY: setup smoke test fixtures run baseline advanced eval eval-replay report traces gate-timing check-secrets check-traces verify-docs check-clean skill serve
+.PHONY: setup smoke test fixtures run baseline advanced eval eval-replay eval-replay-local reverify report traces gate-timing check-secrets check-traces verify-docs check-clean skill serve
 
 CLAUDE_PROJECT_DIR ?= $(HOME)/.claude/projects/-Users-tun-Documents-micro1-hackathon
 CLAUDE_SESSION_ID ?= 607542c8-6252-4232-8b55-d688feb5e054
@@ -51,6 +51,17 @@ eval-replay:
 	ART30_REPRODUCIBLE=1 uv run python -m evals.harness.report --runs results/runs --out results/metrics.json --markdown
 	git diff --exit-code -- results/metrics.json
 	@echo "eval-replay reproduced results/metrics.json"
+
+# a local-brain sweep has no recorded responses to replay: re-run the verifier over every
+# recorded submission, re-score every record, re-aggregate, and diff (docs/runbook-sweeps.md)
+reverify:
+	uv run python -m evals.harness.reverify --runs results/runs
+
+eval-replay-local:
+	uv run python -m evals.harness.reverify --runs results/runs
+	ART30_REPRODUCIBLE=1 uv run python -m evals.harness.report --runs results/runs --out results/metrics.json --markdown
+	git diff --exit-code -- results/metrics.json
+	@echo "eval-replay-local reproduced results/metrics.json"
 
 report:
 	uv run python -m evals.harness.report --runs results/runs --out results/metrics.json --markdown
