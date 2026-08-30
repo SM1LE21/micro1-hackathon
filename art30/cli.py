@@ -8,6 +8,8 @@ printed by the loop as it happens.
 from __future__ import annotations
 
 import argparse
+
+from art30.config_cli import config_command, config_parser
 import os
 import re
 import sys
@@ -17,7 +19,7 @@ from pathlib import Path
 
 import yaml
 
-from art30 import __version__, config, tools
+from art30 import __version__, config, settings, tools
 from art30.loop import CaseRef, RunResult, out_dir, run
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -82,6 +84,10 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--mode", default=None, choices=("live", "replay"))
     scan.add_argument("--approve", default=None, choices=("ask", "auto", "file"))
     scan.add_argument("--out", default=None, help="where record.json, record.md and record.html go")
+    scan.add_argument("--brain", default=None, choices=settings.BRAINS,
+                      help="what runs the loop: the API, or your own logged-in claude/codex CLI")
+    scan.add_argument("--model", default=None, help="the model for the brain that was selected")
+    config_parser(subs)
     return parser
 
 
@@ -153,6 +159,8 @@ def _files(root: Path) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "config":
+        return config_command(args)
     if args.command == "serve":
         from art30.web.server import serve as _serve   # lazy: the website is optional
         return _serve(args.host, args.port, args.open)
@@ -169,8 +177,25 @@ def main(argv: list[str] | None = None) -> int:
         overrides["mode"] = args.mode
     if args.approve:
         overrides["approve"] = args.approve
+    if args.brain:
+        overrides["brain"] = args.brain
     kind = case_kind(case_id, files)
+    # `--model` is routed by the brain the loader resolved, never by the flag: a brain
+    # that came from art30.toml would otherwise move the API model and leave the CLI
+    # that runs with nothing (ADR 0008 item 1).
     cfg = config.load(overrides).for_case_kind(kind)
+    if args.model:
+        cfg = replace(cfg, **({"model": args.model} if cfg.brain == "api"
+                              else {"brain_model": args.model}))
+    if cfg.brain != "api":
+        # The two local brains land with art30/brains/; until then the flag parses,
+        # says so and spends nothing (ADR 0008 item 1).
+        print(f"brain {cfg.brain} is not built yet", file=sys.stderr)
+        raise SystemExit(USAGE_EXIT)
+    if cfg.model != config.DEFAULT_MODEL and "ART30_MODEL" not in cfg.overridden:
+        # A run at a model nobody configured is a run at non-default settings, and the
+        # header and provenance.config are where that has to show (07-ui.md section 1).
+        cfg = replace(cfg, overridden=tuple(sorted((*cfg.overridden, "ART30_MODEL"))))
 
     # The path decides as well as `--case`: a fixture that resolves to a test case is
     # locked even when `--case` names something else (evals/split.yaml, comment 4).
