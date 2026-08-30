@@ -49,6 +49,10 @@ def launch(cell: Cell) -> tuple[int, str, bool, float]:
                "--approve", cell.approve, "--out", cell.out]
     env = dict(os.environ)
     env["ART30_TRACE_DIR"] = cell.trace_dir  # the child's half of the section 9 seam
+    # ADR 0008 item 5: a sweep is run at art30's own defaults plus whatever the sweep
+    # itself set. `~/.config/art30/config.toml` is not a checkout artefact, so a clean
+    # checkout does not exclude it; this switch does, for every key at once.
+    env["ART30_IGNORE_SETTINGS_FILES"] = "1"
     if cell.unlock:
         env["ART30_UNLOCK_TEST"] = "1"  # the CLI's own half of the lock (section 5.4)
     # `--approve ask` puts a person at the child's terminal: a pipe swallows the prompt and
