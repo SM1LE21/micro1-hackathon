@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-30 00:22 UTC — Three surfaces: skill, CLI, local website
+
+- ADR 0007: one core, three surfaces; the website drives the CLI as a subprocess (same seam as the harness), never a second loop
+- `--approve file` gate mode; skill package generated from the prompt files with the verifier as a script and a Stop hook; CLI polish for arbitrary repositories; wheel ships both arms
+- `art30 serve`: stdlib server, SSE trace stream, file gate relay, jailed source excerpts, results view; one inlined page, bundled OFL font, no external requests
+- Advanced records now carry their verification history and rule-set sha (ADR 0006 addendum); 750 offline tests green; pixels unverified (no browser here)
+
 ## 2026-08-29 20:13 UTC — Phase 3 built and audited: v1 ready for review
 
 - Evidence tooling (`verify-docs`, failure index, gate targets), spec-vs-code audit (`docs/spec/DEVIATIONS.md`, 21 rows, specs amended to the code), example record regenerated from the generated S10, hardening and record→replay tests; README and REPRODUCE materialised; build trajectory committed (main session, gzipped)
