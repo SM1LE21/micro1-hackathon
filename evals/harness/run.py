@@ -36,8 +36,8 @@ from evals.harness.cells import run_cells as _cells_run
 # read the rest off it, so they are imported to be re-exported.
 from evals.harness.ledger import ZERO_SHA, git_sha7  # noqa: F401
 from evals.harness.plan import (  # noqa: F401
-    ARMS, REPO_ROOT, Abort, Cell, build_cells, cases_for, check_freeze, load_split,
-    membership, select_cases, timing_scope,
+    ARMS, BRAINS, DEFAULT_BRAIN, PINS, REPO_ROOT, Abort, Cell, build_cells, cases_for,
+    check_freeze, load_split, membership, select_cases, timing_scope,
 )
 from evals.harness.plan import manifest as _manifest_of
 
@@ -97,7 +97,18 @@ def _append_ledger(args: argparse.Namespace, cases: list[str], lines: list[str])
     # environment variable defeat the two-sweep ceiling with nothing left on the record.
     if args.mode == "replay" and os.environ.get("ART30_REPRODUCIBLE") == "1":
         return  # contract, Budgets: a replay rewrites neither the ledger nor the timing file
-    ledger.append(RESULTS / LEDGER, args, cases, lines)
+    ledger.append(RESULTS / LEDGER, _with_brain(args), cases, lines)
+
+
+def _with_brain(args: argparse.Namespace) -> argparse.Namespace:
+    """The ledger line says which brain spent the sweep (ADR 0008 item 4).
+
+    It rides in the reason field rather than in a ninth column: `results/test-runs.log` is
+    hash-chained and committed, and every line already on it has eight fields. Widening the
+    format would either rewrite the witness or leave two shapes in one chained file.
+    """
+    brain = str(getattr(args, "brain", None) or DEFAULT_BRAIN)
+    return argparse.Namespace(**{**vars(args), "reason": f"brain {brain}; {args.reason}"})
 
 
 # --- the plan and the child process ---------------------------------------------------------
@@ -126,16 +137,27 @@ def _run_cells(cells: list[Cell], jobs: int, finish, fail_fast: bool) -> list[di
 # --- what the sweep leaves behind -------------------------------------------------------------
 
 
-def _identity_check(rows: list[dict]) -> None:
-    """01 decision 8: the arms' step-1 request hashes match per case, or the comparison is invalid."""
+def _identity_check(rows: list[dict], brain: str = DEFAULT_BRAIN) -> None:
+    """01 decision 8: the arms sent the same first request, or the comparison is invalid.
+
+    On the API brain that is the step-1 request hash, which covers the prompt, the tools, the
+    model and every parameter. A local brain assembles its request inside the `claude` or
+    `codex` process and art30 never sees the bytes, so the hash is null on every step (ADR
+    0008 item 1) and the comparison falls back to `prompt_sha` — the instruction text, which
+    is the half art30 wrote and the half the arms could differ on. What that check cannot
+    cover is the CLI's own wrapper, and `docs/runbook-sweeps.md` says so rather than letting
+    a reader take a weaker check for the stronger one.
+    """
+    key, what = ("step1", "step-1 request hashes") if brain == DEFAULT_BRAIN else (
+        "prompt_sha", "prompt_sha")
     by_case: dict[str, dict[str, str]] = {}
     for row in rows:
-        if row["step1"]:
-            by_case.setdefault(row["cell"].case, {})[row["cell"].arm] = row["step1"]
+        if row.get(key):
+            by_case.setdefault(row["cell"].case, {})[row["cell"].arm] = row[key]
     for case in sorted(by_case):
         if len(set(by_case[case].values())) > 1:
             detail = ", ".join(f"{a}={h[:12]}" for a, h in sorted(by_case[case].items()))
-            raise Abort(1, f"{case}: step-1 request hashes differ between arms ({detail})")
+            raise Abort(1, f"{case}: {what} differ between arms ({detail})")
 
 
 def _stat(values: list[float]) -> dict:
@@ -179,6 +201,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--split", default="dev", choices=("dev", "test", "all"))
     parser.add_argument("--include-reserve", action="store_true", help="adds R05; needs --unlock-test")
     parser.add_argument("--arms", default="baseline,advanced")
+    parser.add_argument("--brain", default=DEFAULT_BRAIN, choices=BRAINS,
+                        help="what runs the loop in every cell: the API, or your own"
+                             " logged-in claude/codex CLI (ADR 0008)")
     parser.add_argument("--seeds", default="1,2,3")
     parser.add_argument("--mode", default="live", choices=("live", "replay"))
     parser.add_argument("--approve", default="auto", choices=("auto", "ask"))
@@ -208,7 +233,8 @@ def sweep(args: argparse.Namespace) -> int:
     if locked:
         _append_ledger(args, cases, ledger_lines)
     jobs = args.jobs if args.jobs else (1 if args.mode == "replay" else 4)
-    print(f"{len(cells)} runs · {len(cases)} cases · mode {args.mode} · jobs {jobs}")
+    print(f"{len(cells)} runs · {len(cases)} cases · mode {args.mode} · jobs {jobs}"
+          f" · brain {args.brain}")
 
     def finish(cell: Cell, outcome: tuple[int, str, bool, float]) -> dict:
         # `_repair` and `_append_run_end` are read here, at call time, for the reason `_launch` is:
@@ -223,7 +249,7 @@ def sweep(args: argparse.Namespace) -> int:
 
     rows = _run_cells(cells, jobs, finish, bool(args.fail_fast))
     failure_index(trace_root(args.out))
-    _identity_check(rows)
+    _identity_check(rows, args.brain)
     full, tag = timing_scope(args, cases, split_data)
     timing = _write_timing(args.mode, rows, full, tag)
     accepted = sum(1 for r in rows if r["end"].get("stop_condition") == "accepted")
