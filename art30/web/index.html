@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>art30</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230B1220'/%3E%3Cpath d='M8 22 L14 9 L20 22 M10.5 17 H17.5' stroke='%230FA3B1' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 
 <!-- =====================================================================
      art30 - the local website (ADR 0007).
@@ -159,6 +160,12 @@ select{font-size:14px}
 .strip-grid{display:grid;grid-template-columns:minmax(240px,2fr) minmax(190px,1.4fr) auto auto 84px auto;gap:16px 18px;align-items:end}
 .strip-grid .actions{display:flex;gap:8px}
 /* the hints live under the grid, so every control sits on one baseline */
+.callout{margin-top:16px;padding:14px 16px;border:1px solid var(--warn);border-left-width:4px;border-radius:10px;background:var(--warn-soft, #FAF1E1)}
+.callout-title{margin:0 0 6px;font-weight:700}
+.callout ol{margin:0;padding-left:20px}
+.callout li{margin:4px 0}
+.callout code{font-family:var(--mono);font-size:.9em;background:rgba(11,18,32,.06);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.callout-foot{margin:10px 0 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .form-hints{margin-top:14px}
 .form-hints .hint{margin:0}
 .form-hints .hint + .hint{margin-top:4px}
@@ -402,6 +409,11 @@ td code{font-size:12px}
           <button type="button" class="btn btn-quiet" id="cancel" hidden>Cancel</button>
         </div>
       </form>
+      <div class="callout" id="blocked" hidden>
+        <p class="callout-title" id="blocked-title"></p>
+        <ol id="blocked-steps"></ol>
+        <p class="callout-foot"><button type="button" class="btn btn-quiet btn-small" id="recheck">Check again</button> <span id="recheck-note" class="hint"></span></p>
+      </div>
       <div class="form-hints">
         <p class="hint" id="case-hint"></p>
         <p class="hint" id="mode-hint"></p>
@@ -669,6 +681,14 @@ function loadCases() {
   });
 }
 
+byId("recheck").addEventListener("click", function () {
+  byId("recheck-note").textContent = "checking";
+  loadCases().then(function () {
+    refreshModes();
+    byId("recheck-note").textContent = state.liveEnabled ? "a key is present: live runs are enabled" : "still no key in .env";
+  });
+});
+
 function fillCases(hint) {
   var picker = byId("case");
   clear(picker);
@@ -736,6 +756,31 @@ function refreshModes() {
   if (state.form.mode === "replay" && row && !replayable && state.liveEnabled && !held) { setMode("live"); }
   byId("mode-hint").textContent = reasons.join(" ");
   byId("start").disabled = isBlocked(row, replayable, held);
+  showBlocked(row);
+}
+
+/* Nothing can run on a fresh checkout: no key means no live run, and no recorded
+   response means no replay. Say so once, at the top, with the two steps that end it. */
+function showBlocked(row) {
+  var anyReplayable = state.cases.some(function (c) { return (c.replay_arms || []).length > 0; });
+  var box = byId("blocked");
+  if (state.liveEnabled || anyReplayable) { box.hidden = true; return; }
+  var caseId = row ? row.id : "D02";
+  byId("blocked-title").textContent = "Nothing can run yet: there is no API key for a live run and no recorded run to replay.";
+  var steps = byId("blocked-steps");
+  steps.replaceChildren();
+  [
+    ["Put the key in ", ".env", " at the project root (the file is git-ignored): ", "ANTHROPIC_API_KEY=... and ART30_MAX_USD=6", ". Then press Check again; the server reads the file on every request."],
+    ["Record a first run from a terminal, so replay has something to play: ", "ART30_RECORD=1 uv run art30 scan evals/fixtures/synthetic/" + caseId + " --arm advanced --case " + caseId + " --seed 1 --mode live --approve auto", ". After that this page can replay it without a key, or start live runs directly."]
+  ].forEach(function (parts) {
+    var li = document.createElement("li");
+    parts.forEach(function (part, i) {
+      if (i % 2 === 1) { var code = document.createElement("code"); code.textContent = part; li.appendChild(code); }
+      else { li.appendChild(document.createTextNode(part)); }
+    });
+    steps.appendChild(li);
+  });
+  box.hidden = false;
 }
 
 /* The server answers each of these with a 400; the page refuses first, so a
