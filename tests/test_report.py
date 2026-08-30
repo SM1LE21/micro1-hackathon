@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from evals.harness import report
+from evals.harness import report, run
 
 SPLIT = {"dev": ["D1", "D2", "D3"], "test": ["T1", "T2"], "reserve": []}
 SEEDS = [1, 2, 3]
@@ -29,17 +29,31 @@ def _metrics(case: str, arm: str, seed: int, f1: float, passed: bool, *, false_s
                     "verify_rounds": 0, "cost_usd": cost, "gate": None}}
 
 
-def _write_run(root: Path, case: str, arm: str, seed: int, payload: dict, sha: str = PROMPT_SHA) -> None:
-    out = root / "results" / "runs" / arm / case / f"s{seed}"
+def _write_run(root: Path, case: str, arm: str, seed: int, payload: dict, sha: str = PROMPT_SHA,
+               brain: str = "api", started: str = "2026-08-30T10:00:00Z",
+               tokens: tuple[int, ...] = (0, 0, 0, 0), runs: str = "results/runs",
+               traces: str | None = None, prov: dict | None = None) -> None:
+    out = root / runs / arm / case / f"s{seed}"
     out.mkdir(parents=True, exist_ok=True)
     (out / "metrics.json").write_text(json.dumps(payload), encoding="utf-8")
-    trace = root / "traces" / arm / f"{case}-s{seed}.jsonl"
+    if prov is not None:   # what art30/brains/driver.py writes into the delivered record
+        (out / "record.json").write_text(json.dumps({"provenance": prov}), encoding="utf-8")
+    trace = root / (traces or "traces") / arm / f"{case}-s{seed}.jsonl"
     trace.parent.mkdir(parents=True, exist_ok=True)
-    trace.write_text("\n".join([
-        json.dumps({"type": "run_start", "arm": arm, "case": case, "seed": seed,
-                    "mode": "replay", "prompt_sha": sha, "model": "claude-opus-5"}),
-        json.dumps({"type": "run_end", "stop_condition": payload["run"]["stop_condition"]}),
-    ]) + "\n", encoding="utf-8")
+    config: dict = {"max_tokens": 32000, "tool_budget": 60, "submit_budget": 5, "overridden": []}
+    if brain != "api":   # what art30/brains/driver.py writes on `run_start` (ADR 0008 item 1)
+        config.update(brain=brain, brain_model=None, cost_source="cli_estimate")
+    lines = [json.dumps({"type": "run_start", "arm": arm, "case": case, "seed": seed,
+                         "mode": "replay", "prompt_sha": sha, "model": "claude-opus-5",
+                         "config": config, "ts": started})]
+    if any(tokens):
+        cached = tuple(tokens) + (0, 0)
+        lines.append(json.dumps({"type": "step", "step": 1, "request_hash": None,
+                                 "usage": {"input": tokens[0], "output": tokens[1],
+                                           "cache_read": cached[2], "cache_write": cached[3]}}))
+    lines.append(json.dumps({"type": "run_end",
+                             "stop_condition": payload["run"]["stop_condition"]}))
+    trace.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 @pytest.fixture()
@@ -59,7 +73,12 @@ def tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def _build(tree: Path, **kwargs) -> dict:
-    metrics, _ = report.build(tree / "results" / "runs", SPLIT, ["baseline", "advanced"], SEEDS, **kwargs)
+    """`traces` is passed rather than left to `_traces_root`: this tree is not the
+    repository's own `results/runs`, so the default would be `<runs>/traces` (which is what
+    `test_the_traces_root_follows_the_runs_tree` checks) and never the fixture's."""
+    kwargs.setdefault("traces", tree / "traces")
+    metrics, _ = report.build(tree / "results" / "runs", SPLIT, ["baseline", "advanced"], SEEDS,
+                              **kwargs)
     return metrics
 
 
@@ -154,6 +173,7 @@ def test_prompt_sha_mismatch_exits_1(tree: Path, monkeypatch: pytest.MonkeyPatch
     split_file.write_text(yaml.safe_dump(SPLIT), encoding="utf-8")
     monkeypatch.setattr(report, "SPLIT_FILE", split_file)
     code = report.main(["--runs", str(tree / "results" / "runs"),
+                        "--traces", str(tree / "traces"),
                         "--out", str(tree / "results" / "metrics.json")])
     assert code == 1
     assert not (tree / "results" / "metrics.json").exists()
@@ -238,7 +258,8 @@ def test_an_unknown_arm_is_an_argument_error(tree: Path, monkeypatch: pytest.Mon
     split_file = tree / "split.yaml"
     split_file.write_text(yaml.safe_dump(SPLIT), encoding="utf-8")
     monkeypatch.setattr(report, "SPLIT_FILE", split_file)
-    assert report.main(["--runs", str(tree / "results" / "runs"), "--arms", "baseline,advnaced"]) == 1
+    assert report.main(["--runs", str(tree / "results" / "runs"), "--traces",
+                        str(tree / "traces"), "--arms", "baseline,advnaced"]) == 1
 
 
 def test_a_third_arm_with_a_cache_slot_is_compared_pairwise() -> None:
@@ -265,6 +286,7 @@ def test_main_writes_metrics_and_markdown(tree: Path, monkeypatch: pytest.Monkey
     monkeypatch.setattr(report, "SPLIT_FILE", split_file)
     out = tree / "results" / "metrics.json"
     code = report.main(["--runs", str(tree / "results" / "runs"), "--out", str(out),
+                        "--traces", str(tree / "traces"),
                         "--md", str(tree / "results" / "report.md")])
     assert code == 0
     assert json.loads(out.read_text(encoding="utf-8"))["identity_check"]["ok"] is True
@@ -288,3 +310,165 @@ def test_diff_row_reports_the_delta_its_interval_and_the_regressions(tree: Path)
     assert "regressions 1 (D3)" in row
     assert "cost/run $0.40 → $0.50" in row
     assert "bootstrap 95% CI" in row
+
+
+# --- the brain (ADR 0008 items 3 and 4) ------------------------------------------------------
+
+
+def _local(tree: Path, brain: str = "claude", **kwargs) -> None:
+    """Rewrite the whole tree as a local-brain sweep: same runs, traces from a CLI."""
+    for case in SPLIT["dev"] + SPLIT["test"]:
+        for seed in SEEDS:
+            _write_run(tree, case, "advanced", seed, _metrics(case, "advanced", seed, 0.9, True),
+                       brain=brain, tokens=(12000, 900, 4000, 2000), **kwargs)
+            _write_run(tree, case, "baseline", seed,
+                       _metrics(case, "baseline", seed, 0.6, False, false_safe=1, cost=0.3),
+                       brain=brain, tokens=(8000, 500, 3000, 1500), **kwargs)
+
+
+def test_the_api_brain_is_named_and_its_cost_is_measured(tree: Path) -> None:
+    metrics = _build(tree)
+    assert metrics["brain"] == "api" and metrics["cost_source"] == "measured"
+    assert metrics["arms"]["advanced"]["dev"]["brain"] == "api"
+    assert metrics["arms"]["advanced"]["dev"]["cost_source"] == "measured"
+    assert "tokens_input_mean" not in metrics["arms"]["advanced"]["dev"]
+    assert "| Cost per task (measured) | $0.30 | $0.40 | +$0.10 |" in report.markdown(metrics)
+
+
+def test_a_local_brain_is_named_and_its_cost_is_an_estimate_with_tokens_beside_it(
+    tree: Path,
+) -> None:
+    _local(tree)
+    metrics = _build(tree)
+    assert metrics["brain"] == "claude" and metrics["cost_source"] == "cli_estimate"
+    block = metrics["arms"]["advanced"]["dev"]
+    assert block["brain"] == "claude" and block["cost_source"] == "cli_estimate"
+    assert (block["tokens_input_mean"], block["tokens_output_mean"],
+            block["tokens_cached_mean"]) == (12000.0, 900.0, 6000.0)
+    # A cache read prices at 0.1x input and a one-hour cache write at 2x it, so the two
+    # halves are reported apart or the row cannot be checked against the price table.
+    assert (block["tokens_cache_read_mean"], block["tokens_cache_write_mean"]) == (4000.0, 2000.0)
+    text = report.markdown(metrics)
+    assert "| Cost per task (estimate at list prices) | $0.30 | $0.40 | +$0.10 |" in text
+    assert ("| Tokens per run (input · output · cache read · cache write) "
+            "| 8,000 · 500 · 3,000 · 1,500 | 12,000 · 900 · 4,000 · 2,000 |") in text
+
+
+def test_two_brains_in_one_results_tree_are_refused(tree: Path) -> None:
+    """ADR 0008 item 4: measured dollars and a list-price estimate are not one column."""
+    _write_run(tree, "D1", "advanced", 1, _metrics("D1", "advanced", 1, 0.9, True), brain="claude",
+               tokens=(10, 10, 10, 10))
+    with pytest.raises(report.Refuse) as caught:
+        _build(tree)
+    assert "more than one brain" in str(caught.value)
+
+
+def test_a_local_brains_recording_window_comes_from_the_traces(tree: Path) -> None:
+    """No response cache exists for a local brain, so `run_start.ts` is the window."""
+    _local(tree)
+    for seed in SEEDS:
+        for case in SPLIT["dev"] + SPLIT["test"]:
+            _write_run(tree, case, "baseline", seed,
+                       _metrics(case, "baseline", seed, 0.6, False, false_safe=1, cost=0.3),
+                       brain="claude", tokens=(8000, 500, 3000), started="2026-08-25T10:00:00Z")
+    with pytest.raises(report.Refuse) as caught:
+        _build(tree)
+    assert "recording windows do not overlap" in str(caught.value)
+
+
+# --- the traces root, the record's own verdict and the model that answered --------------------
+
+
+def test_a_scored_run_with_no_trace_is_refused(tree: Path) -> None:
+    """Every brain and cost fact hangs off the trace; silence relabels the tree `api`."""
+    _local(tree)
+    (tree / "traces" / "advanced" / "D1-s1.jsonl").unlink()
+
+    with pytest.raises(report.Refuse) as caught:
+        _build(tree)
+
+    assert "scored runs with no trace" in str(caught.value)
+    assert "advanced/D1-s1" in str(caught.value)
+
+
+def test_the_traces_root_follows_the_runs_tree(tree: Path) -> None:
+    """05 section 9: a sweep outside `results/runs` took its traces to `<out>/traces`.
+
+    Reading the module constant instead is how the runbook's own API-check tree came back
+    labelled `brain: api`, `cost_source: measured` — a subscription estimate rendered as
+    billed dollars — with every trace-keyed refusal passing vacuously.
+    """
+    for case in SPLIT["dev"]:
+        for seed in SEEDS:
+            for arm, f1 in (("advanced", 0.9), ("baseline", 0.6)):
+                _write_run(tree, case, arm, seed, _metrics(case, arm, seed, f1, f1 > 0.8),
+                           brain="claude", tokens=(10, 10, 10, 10),
+                           runs="results/.api-check", traces="results/.api-check/traces")
+    runs = tree / "results" / ".api-check"
+
+    metrics, _ = report.build(runs, SPLIT, ["baseline", "advanced"], SEEDS, split="dev")
+
+    assert metrics["brain"] == "claude" and metrics["cost_source"] == "cli_estimate"
+
+
+def test_the_report_and_the_sweep_agree_on_where_traces_are() -> None:
+    """One rule, spelled twice: `run.trace_root` writes them, `_traces_root` reads them."""
+    for out in ("results/runs", "results/.api-check", "/tmp/sweep"):
+        assert report._traces_root(Path(out)) == run.trace_root(out)
+    assert report._traces_root(report.REPO_ROOT / "results" / "runs") == report.TRACES
+
+
+def test_the_traces_flag_overrides_the_root(tree: Path) -> None:
+    _local(tree)
+    moved = tree / "elsewhere"
+    (tree / "traces").rename(moved)
+
+    with pytest.raises(report.Refuse):
+        _build(tree, traces=tree / "traces")
+
+    assert report.build(tree / "results" / "runs", SPLIT, ["baseline", "advanced"], SEEDS,
+                        traces=moved)[0]["brain"] == "claude"
+
+
+def test_the_records_cost_source_wins_over_the_one_run_start_guessed(tree: Path) -> None:
+    """ADR 0008 item 3: `run_start` is written before the CLI names its model, and
+    `pricing.priced(None)` is optimistic there, so an unpriceable run starts out saying
+    `cli_estimate` and prices every step at 0.0. `record.json` carries the verdict."""
+    _local(tree, prov={"brain": "claude", "brain_model": "claude-sonnet-4-6",
+                       "cost_source": "unpriced"})
+
+    metrics = _build(tree)
+
+    assert metrics["cost_source"] == "unpriced"
+    text = report.markdown(metrics)
+    assert "| Cost per task (unpriced model) | n/a | n/a | n/a |" in text
+    assert "| Cost per run | n/a | n/a |" in text
+
+
+def test_the_model_that_answered_is_the_records_and_not_the_pin(tree: Path) -> None:
+    """`metrics.json` asserted the API brain's pinned model on a sweep the CLI chose for."""
+    _local(tree, prov={"brain": "claude", "brain_model": "claude-sonnet-4-6",
+                       "cost_source": "cli_estimate"})
+
+    metrics = _build(tree)
+
+    assert metrics["brain_model"] == "claude-sonnet-4-6"
+    assert metrics["model"] == "claude-sonnet-4-6"
+    assert metrics["arms"]["advanced"]["dev"]["brain_model"] == "claude-sonnet-4-6"
+
+
+def test_two_brain_models_in_one_results_tree_are_refused(tree: Path) -> None:
+    """The drift `prompt_sha` cannot see: the instruction text is a constant of the checkout."""
+    _local(tree, prov={"brain": "claude", "brain_model": "claude-opus-5",
+                       "cost_source": "cli_estimate"})
+    for seed in SEEDS:
+        _write_run(tree, "D1", "baseline", seed,
+                   _metrics("D1", "baseline", seed, 0.6, False, false_safe=1, cost=0.3),
+                   brain="claude", tokens=(8000, 500, 3000, 1500),
+                   prov={"brain": "claude", "brain_model": "claude-sonnet-4-6",
+                         "cost_source": "cli_estimate"})
+
+    with pytest.raises(report.Refuse) as caught:
+        _build(tree)
+
+    assert "do not share one brain_model" in str(caught.value)
