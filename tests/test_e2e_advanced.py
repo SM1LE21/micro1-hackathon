@@ -342,3 +342,27 @@ def test_nothing_is_written_outside_the_temporary_directory(
     assert Path(result.record_path).is_relative_to(tmp_path)
     assert {p for p in (REPO_ROOT / "traces").rglob("*") if p.is_file()} == before
     capsys.readouterr()
+
+
+def test_the_advanced_record_says_the_verifier_ran(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """04-output-schema.md section 5: an advanced record names its rule set and carries the
+    rejected claim with what replaced it; a reader must never see "Verification: none" on
+    a record the verifier accepted."""
+    import json
+    import shutil
+    import subprocess
+    import sys
+    repo = tmp_path / "S10"
+    shutil.copytree(Path("evals/fixtures/synthetic/S10"), repo)
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "tests/test_e2e_advanced.py", "-q", "-k", "dead_helper",
+         "--basetemp", str(tmp_path / "bt")], capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout[-800:]
+    records = list((tmp_path / "bt").rglob("record.json"))
+    assert records, "the scripted S10 run wrote no record.json"
+    ver = json.loads(records[0].read_text())["verification"]
+    assert ver["rule_set_sha"] and len(ver["rule_set_sha"]) == 12
+    assert ver["rejected_history"] and ver["rejected_history"][0]["store"] == "uploads"
+    assert ver["rejected_history"][0]["revised_to"] == "not_erased"
+    md = records[0].with_name("record.md").read_text()
+    assert "Verification: none" not in md and "rule set " in md
