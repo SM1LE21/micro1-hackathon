@@ -11,8 +11,8 @@ import json
 import re
 from pathlib import Path
 
-from art30 import tools
-from art30.web import catalog, runs
+from art30 import settings, tools
+from art30.web import catalog, runs, settings_api
 
 RESULTS = catalog.REPO_ROOT / "results"
 METRICS = RESULTS / "metrics.json"
@@ -83,6 +83,12 @@ def _target(body: dict) -> tuple[Path | None, str, tuple[int, dict] | None]:
     if not path.is_dir():
         return None, "", error(400, f"no case and no directory called {raw}")
     path = path.resolve()
+    if path == root:
+        # The project root holds `.env`, and a run rooted there would make the
+        # secrets file readable through `source`. A scan of the whole checkout was
+        # never a case anyway.
+        return None, "", error(400, "name a case or a repository inside the project,"
+                                    " not the project root")
     if not path.is_relative_to(root):
         return None, "", error(400, f"{raw} is outside {root}; the website runs cases and"
                                     " repositories inside the project")
@@ -97,10 +103,14 @@ def start(body: dict) -> tuple[int, dict]:
         return error(400, "the request body must be a JSON object")
     arm = str(body.get("arm") or "advanced")
     mode = str(body.get("mode") or "replay")
+    brain = str(body.get("brain") or "api")
+    model = str(body.get("model") or "").strip() or None
     if arm not in runs.ARMS:
         return error(400, f"arm must be one of {', '.join(runs.ARMS)}")
     if mode not in runs.MODES:
         return error(400, f"mode must be one of {', '.join(runs.MODES)}")
+    if brain not in settings.BRAINS:
+        return error(400, f"brain must be one of {', '.join(settings.BRAINS)}")
     try:
         seed = int(body.get("seed") or 1)
     except (TypeError, ValueError):
@@ -110,24 +120,59 @@ def start(body: dict) -> tuple[int, dict]:
         return refusal
     if not CASE_ID.fullmatch(case):
         return error(400, "a case id is letters, digits, dot, dash and underscore")
-    if mode == "live" and not catalog.live_enabled():
-        return error(400, "live runs need ANTHROPIC_API_KEY in the environment or in .env;"
-                          " replay a recorded case instead")
     if mode == "live" and case in catalog.test_cases():
         return error(400, f"{case} is in the test split (evals/split.yaml), which is swept"
                           " live at most twice and only through the harness ledger."
                           " Replay is allowed.")
+    refused = _brain_refusal(brain, mode, case, arm)
+    if refused is not None:
+        return refused
+    assert repo is not None
+    run = runs.spawn(repo, arm, case, seed, mode, brain, model)
+    return 201, {"run_id": run.run_id, "status": "running", "brain": brain}
+
+
+def _brain_refusal(brain: str, mode: str, case: str, arm: str) -> tuple[int, dict] | None:
+    """What each brain needs before it can run: a key and a recording, or a login.
+
+    A local brain replays nothing: its run went through somebody's own CLI and no
+    response was recorded, so the page plays the saved trace back (ADR 0008 item 4)."""
+    if brain != "api":
+        if mode != "live":
+            return error(400, f"the {brain} brain has no recorded responses to replay."
+                              " Play back a finished run of it instead.")
+        why = settings_api.refusal(brain)
+        return error(400, why) if why else None
+    if mode == "live" and not catalog.live_enabled():
+        return error(400, "live runs need ANTHROPIC_API_KEY in the environment or in .env;"
+                          " replay a recorded case instead")
     if mode == "replay" and arm not in catalog.replay_arms(case):
         return error(400, f"no recorded responses for {case}/{arm} under"
                           f" {_cache_label()}/{case}/{arm}/s1")
-    assert repo is not None
-    run = runs.spawn(repo, arm, case, seed, mode)
-    return 201, {"run_id": run.run_id, "status": "running"}
+    return None
 
 
 def listing() -> tuple[int, dict]:
+    """The children this process owns, plus every other run directory on disk.
+
+    Read on each call rather than at startup only, so a run finished by another
+    server -- or by the CLI writing into the same place -- is in the list too."""
     runs.reap()
-    return 200, {"runs": [runs.state(run) for run in runs.listing()]}
+    rows = [runs.state(run) for run in runs.listing()]
+    known = {row["run_id"] for row in rows}
+    rows += [row for row in from_disk() if row["run_id"] not in known]
+    rows.sort(key=lambda row: (str(row.get("started_at") or ""), str(row["run_id"])))
+    return 200, {"runs": rows}
+
+
+def from_disk() -> list[dict]:
+    """Every run directory under `results/web/` this process did not start, adopted
+    and then read through the same `state` a live child gets. The directory is the
+    record of what ran here, so a restarted server still lists it."""
+    root = runs.runs_root()
+    found = sorted(root.iterdir()) if root.is_dir() else []
+    adopted = [runs.adopt(directory.name) for directory in found if directory.is_dir()]
+    return [runs.state(run) for run in adopted if run is not None]
 
 
 def one(run_id: str) -> tuple[int, dict]:
@@ -210,6 +255,10 @@ def source(run_id: str, query: dict) -> tuple[int, dict]:
     except (tools.ToolError, ValueError) as exc:
         # ValueError: a NUL byte never reaches `realpath`, so the jail never rules on it.
         return error(403, str(exc))
+    # The belt to `_target`'s braces: the key goes into `.env` through POST
+    # /api/settings and is never read back, and this endpoint is not the way out.
+    if path.name == settings.DOTENV_NAME:
+        return error(403, "the secrets file is not source")
     if not path.is_file():
         return error(404, f"no file at {rel}")
     try:
