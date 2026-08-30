@@ -14,6 +14,20 @@ from pathlib import Path
 from evals.harness.stats import RNG_SEED, bootstrap, case_f1, case_pass
 
 NO_PREV = "n/a (no previous metrics.json)"
+# Section 7.1's cost row, named for what the number is (ADR 0008 item 3). The API brain's
+# figure is the billed arithmetic; a local brain's is its own token counts priced at API list
+# prices, which is an estimate and says so; a model with no price entry has no dollar figure
+# at all and prints tokens and "n/a" rather than a zero that reads as free.
+COST_LABEL = {"measured": "Cost per task (measured)",
+              "cli_estimate": "Cost per task (estimate at list prices)",
+              "unpriced": "Cost per task (unpriced model)"}
+UNPRICED = "unpriced"
+# Four numbers, not three: a cache read prices at 0.1x input and `art30/brains/pricing.py`
+# charges a one-hour cache write at 2x input, so a single folded "cached" column cannot be
+# multiplied back against the price table and the row would promise a check it cannot support.
+TOKENS_ROW = ("Tokens per run (input · output · cache read · cache write)",
+              "{tokens_input_mean:,.0f} · {tokens_output_mean:,.0f} · "
+              "{tokens_cache_read_mean:,.0f} · {tokens_cache_write_mean:,.0f}")
 
 # Section 7.2's rows, one format string per row against an arm's aggregate block.
 SECONDARY = (
@@ -34,7 +48,8 @@ _DEFAULTS = {key: 0 for key in (
     "pass_runs", "n_runs", "pass_cases_majority", "n_cases", "pass3_cases", "false_safe_total",
     "unmatched_reaching_total", "false_safe_in_draft_total", "unverified_mean",
     "invalid_verdict_for_kind_total", "citation_bad_total", "cost_usd_mean", "turns_mean",
-    "tool_calls_mean", "success", "failure")}
+    "tool_calls_mean", "success", "failure", "tokens_input_mean", "tokens_output_mean",
+    "tokens_cached_mean", "tokens_cache_read_mean", "tokens_cache_write_mean")}
 
 
 def _f1_cell(block: dict) -> str:
@@ -57,13 +72,22 @@ def markdown(metrics: dict, prev: dict | None = None) -> str:
                 "| Metric | Simple baseline | Agent solution | Change |", "|---|---|---|---|",
                 f"| Erasure-inventory F1 ({split}, mean of seeds) | {_f1_cell(base)} | {_f1_cell(adv)} | {delta:+.2f} |",
                 f"| Human time per task | {_minutes(manual)} | {_minutes(gate)} | {_delta_minutes(manual, gate)} |",
-                f"| Cost per task | ${base.get('cost_usd_mean', 0.0):.2f} | ${adv.get('cost_usd_mean', 0.0):.2f} |"
-                f" {_signed_usd(adv.get('cost_usd_mean', 0.0) - base.get('cost_usd_mean', 0.0))} |", "",
+                _cost_row(metrics, base, adv), "",
                 f"Spread of the eval (std over cases): baseline {base.get('f1_std_cases', 0.0):.2f}, "
                 f"advanced {adv.get('f1_std_cases', 0.0):.2f}. The ± above is the standard deviation "
                 "over seeds, never over cases.", ""]
         out += _secondary(base, adv, metrics, split, prev)
     return "\n".join(out) + "\n"
+
+
+def _cost_row(metrics: dict, base: dict, adv: dict) -> str:
+    """Section 7.1's third row, labelled by where its number came from (ADR 0008 item 3)."""
+    source = str(metrics.get("cost_source") or "measured")
+    label = COST_LABEL.get(source, COST_LABEL["measured"])
+    if source == UNPRICED:
+        return f"| {label} | n/a | n/a | n/a |"
+    left, right = base.get("cost_usd_mean", 0.0), adv.get("cost_usd_mean", 0.0)
+    return f"| {label} | ${left:.2f} | ${right:.2f} | {_signed_usd(right - left)} |"
 
 
 def _signed_usd(delta: float) -> str:
@@ -102,6 +126,15 @@ def _secondary(base: dict, adv: dict, metrics: dict, split: str, prev: dict | No
     rows.insert(3, ("Regressions",  # section 7.2 puts it under pass^3
                     _regressions(prev, metrics, "baseline", split),
                     _regressions(prev, metrics, "advanced", split)))
+    if "tokens_input_mean" in adv or "tokens_input_mean" in base:
+        # A local brain reports tokens beside the estimate they were priced from, so the
+        # cost row can be checked against the price table (ADR 0008 item 3).
+        label, template = TOKENS_ROW
+        rows.insert(len(rows) - 2, (label, template.format(**{**_DEFAULTS, **base}),
+                                    template.format(**{**_DEFAULTS, **adv})))
+    if str(metrics.get("cost_source") or "") == UNPRICED:
+        rows = [(name, "n/a", "n/a") if name == "Cost per run" else (name, left, right)
+                for name, left, right in rows]
     rows.insert(len(rows) - 1, ("Machine minutes per run",  # section 7.2 keeps the identity last
                                 _minutes(machine.get("baseline") if isinstance(machine, dict) else None),
                                 _minutes(machine.get("advanced") if isinstance(machine, dict) else None)))
