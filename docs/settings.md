@@ -32,7 +32,7 @@ Lowest first. Each layer wins over the one above it.
 | `gate_timeout` | `ART30_GATE_TIMEOUT` | `1800` | seconds |
 | `approve` | `ART30_APPROVE` | `ask` | `ask`, `auto`, `file` |
 | `concurrency` | `ART30_CONCURRENCY` | `4` | a whole number |
-| `codex_prices` | `ART30_CODEX_PRICES` | `{}` | JSON: `{"<model>": [input, output]}`, dollars per million tokens |
+| `codex_prices` | `ART30_CODEX_PRICES` | `{}` | JSON: `{"<model>": [input, cached_input, output]}`, dollars per million tokens |
 | `anthropic_api_key` | `ANTHROPIC_API_KEY` | absent | `.env` only, see below |
 
 `model`, `effort`, `max_tokens`, `tool_budget` and `submit_budget` are hashed into the request or named in the first user message. Moving any of them invalidates the recorded responses in `evals/cache/`, and the run says so: whichever layer moved one off its default value, its `ART30_*` name appears under `overridden:` in the header line, in `run_start.config.overridden` and in `provenance.config` (`docs/spec/07-ui.md` §1). A layer that spells out the default value changes nothing and declares nothing.
