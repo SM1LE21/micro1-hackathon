@@ -157,7 +157,9 @@ input[type="text"]{font-family:var(--mono);font-size:13.5px}
 select{font-size:14px}
 
 /* --- the run strip --- */
-.strip-grid{display:grid;grid-template-columns:minmax(240px,2fr) minmax(190px,1.4fr) auto auto 84px auto;gap:16px 18px;align-items:end}
+.strip-grid{display:grid;grid-template-columns:minmax(240px,2fr) minmax(190px,1.4fr) auto auto;gap:16px 18px;align-items:end}
+.strip-grid + .strip-grid{margin-top:16px}
+.strip-two{grid-template-columns:auto minmax(200px,1fr) 84px auto}
 .strip-grid .actions{display:flex;gap:8px}
 /* the hints live under the grid, so every control sits on one baseline */
 .callout{margin-top:16px;padding:14px 16px;border:1px solid var(--warn);border-left-width:4px;border-radius:10px;background:var(--warn-tint)}
@@ -169,7 +171,7 @@ select{font-size:14px}
 .form-hints{margin-top:14px}
 .form-hints .hint{margin:0}
 .form-hints .hint + .hint{margin-top:4px}
-@media (max-width:1100px){.strip-grid{grid-template-columns:1fr 1fr;align-items:end}}
+@media (max-width:1100px){.strip-grid,.strip-two{grid-template-columns:1fr 1fr;align-items:end}}
 
 /* --- two columns --- */
 /* minmax(0,...): without it a wide record table sets the column's minimum width and
@@ -186,7 +188,7 @@ select{font-size:14px}
 
 /* --- run head --- */
 .runline{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
-.meters{display:grid;grid-template-columns:1fr 1fr auto;gap:20px;margin-top:18px;align-items:start}
+.meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;margin-top:18px;align-items:start}
 @media (max-width:640px){.meters{grid-template-columns:1fr}}
 .meter .value{font-size:14px;font-weight:600}
 .bar{height:6px;border-radius:3px;background:var(--surface);overflow:hidden;margin-top:6px}
@@ -343,6 +345,33 @@ td code{font-size:12px}
 .stats{font-size:13px;color:var(--muted);margin-top:10px}
 .stats div{margin-top:3px}
 
+/* --- settings --- */
+.set-row{
+  display:grid;grid-template-columns:180px minmax(0,1fr) auto auto;gap:8px 14px;
+  align-items:center;padding:14px 0;border-top:1px solid var(--rule);
+}
+.set-row:first-child{border-top:0}
+.set-row .label{margin:0}
+.set-row .desc,.set-row .set-error{grid-column:2/-1;margin:0;font-size:13px}
+.set-row .desc{color:var(--muted)}
+.set-row .set-error{color:var(--danger);font-weight:600}
+.set-control{display:flex;gap:8px;align-items:center;min-width:0}
+.scope{display:flex;align-items:center;gap:10px;margin-left:auto}
+.scope .label{margin:0}
+.scope select{width:auto}
+.brainrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:11px 0;border-top:1px solid var(--rule)}
+.brainrow:first-child{border-top:0}
+.brain-name{font-weight:700;font-size:14.5px;min-width:186px}
+.note{
+  margin:16px 0 0;padding:12px 14px;background:var(--surface);
+  border-left:3px solid var(--accent);border-radius:0 8px 8px 0;font-size:13.5px;
+}
+#brains-refresh{margin-left:auto}
+@media (max-width:700px){
+  .set-row{grid-template-columns:1fr}
+  .set-row .desc,.set-row .set-error{grid-column:1}
+}
+
 /* --- about --- */
 .prose{max-width:66ch}
 .prose h2{font-size:15px;margin:26px 0 8px}
@@ -361,6 +390,7 @@ td code{font-size:12px}
       <a href="#/run" id="nav-run">Run</a>
       <a href="#/runs" id="nav-runs">Runs</a>
       <a href="#/results" id="nav-results">Results</a>
+      <a href="#/settings" id="nav-settings">Settings</a>
       <a href="#/about" id="nav-about">About</a>
     </nav>
   </div>
@@ -377,36 +407,52 @@ td code{font-size:12px}
     </div>
 
     <div class="card">
-      <form id="start-form" class="strip-grid" autocomplete="off">
-        <div class="field">
-          <label class="label" for="case">Case</label>
-          <select id="case"></select>
-        </div>
-        <div class="field">
-          <label class="label" for="repo-path">Or a path inside the project</label>
-          <input id="repo-path" type="text" spellcheck="false" placeholder="evals/fixtures/synthetic/D01">
-        </div>
-        <div class="field">
-          <span class="label" id="arm-label">Arm</span>
-          <div class="toggle" role="radiogroup" aria-labelledby="arm-label" id="arm">
-            <button type="button" role="radio" data-value="baseline" aria-checked="false">baseline</button>
-            <button type="button" role="radio" data-value="advanced" aria-checked="true">advanced</button>
+      <form id="start-form" autocomplete="off">
+        <div class="strip-grid">
+          <div class="field">
+            <label class="label" for="case">Case</label>
+            <select id="case"></select>
+          </div>
+          <div class="field">
+            <label class="label" for="repo-path">Or a path inside the project</label>
+            <input id="repo-path" type="text" spellcheck="false" placeholder="evals/fixtures/synthetic/D01">
+          </div>
+          <div class="field">
+            <span class="label" id="arm-label">Arm</span>
+            <div class="toggle" role="radiogroup" aria-labelledby="arm-label" id="arm">
+              <button type="button" role="radio" data-value="baseline" aria-checked="false">baseline</button>
+              <button type="button" role="radio" data-value="advanced" aria-checked="true">advanced</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="label" id="mode-label">Mode</span>
+            <div class="toggle" role="radiogroup" aria-labelledby="mode-label" id="mode">
+              <button type="button" role="radio" data-value="replay" aria-checked="true">replay</button>
+              <button type="button" role="radio" data-value="live" aria-checked="false">live</button>
+            </div>
           </div>
         </div>
-        <div class="field">
-          <span class="label" id="mode-label">Mode</span>
-          <div class="toggle" role="radiogroup" aria-labelledby="mode-label" id="mode">
-            <button type="button" role="radio" data-value="replay" aria-checked="true">replay</button>
-            <button type="button" role="radio" data-value="live" aria-checked="false">live</button>
+        <div class="strip-grid strip-two">
+          <div class="field">
+            <span class="label" id="brain-label">Brain</span>
+            <div class="toggle" role="radiogroup" aria-labelledby="brain-label" id="brain">
+              <button type="button" role="radio" data-value="api" aria-checked="true">api</button>
+              <button type="button" role="radio" data-value="claude" aria-checked="false">Claude (your login)</button>
+              <button type="button" role="radio" data-value="codex" aria-checked="false">Codex (your login)</button>
+            </div>
           </div>
-        </div>
-        <div class="field">
-          <label class="label" for="seed">Seed</label>
-          <input id="seed" type="number" min="1" max="99" step="1" value="1">
-        </div>
-        <div class="field actions">
-          <button type="submit" class="btn btn-accent" id="start">Start</button>
-          <button type="button" class="btn btn-quiet" id="cancel" hidden>Cancel</button>
+          <div class="field">
+            <label class="label" for="model">Model</label>
+            <input id="model" type="text" spellcheck="false" placeholder="">
+          </div>
+          <div class="field">
+            <label class="label" for="seed">Seed</label>
+            <input id="seed" type="number" min="1" max="99" step="1" value="1">
+          </div>
+          <div class="field actions">
+            <button type="submit" class="btn btn-accent" id="start">Start</button>
+            <button type="button" class="btn btn-quiet" id="cancel" hidden>Cancel</button>
+          </div>
         </div>
       </form>
       <div class="callout" id="blocked" hidden>
@@ -417,6 +463,8 @@ td code{font-size:12px}
       <div class="form-hints">
         <p class="hint" id="case-hint"></p>
         <p class="hint" id="mode-hint"></p>
+        <p class="hint" id="brain-hint"></p>
+        <p class="hint" id="brain-note" hidden></p>
         <p class="hint" id="start-error" role="alert" hidden></p>
       </div>
     </div>
@@ -429,6 +477,7 @@ td code{font-size:12px}
             <div class="runline">
               <span class="chip mono" id="run-id"></span>
               <span class="chip" id="run-status"></span>
+              <span class="chip" id="run-brain"></span>
               <span class="hint" id="run-what"></span>
             </div>
             <div class="meters">
@@ -442,13 +491,19 @@ td code{font-size:12px}
                 <span class="value" id="submit-value">0 / 5</span>
                 <span class="bar" id="submit-track"><span id="submit-bar"></span></span>
               </div>
+              <div class="meter" id="turns-meter" hidden>
+                <span class="label">Turns</span>
+                <span class="value" id="turns-value">0 / 60</span>
+                <span class="bar" id="turns-track"><span id="turns-bar"></span></span>
+              </div>
               <div class="meter">
-                <span class="label">Cost so far</span>
+                <span class="label" id="cost-label">Cost so far</span>
                 <span class="cost" id="cost-value">$0.0000</span>
+                <span class="hint" id="cost-note" hidden></span>
               </div>
             </div>
             <div class="pacing" id="pacing" hidden>
-              <span class="label">Replay pacing</span>
+              <span class="label" id="pacing-label">Replay pacing</span>
               <button type="button" class="btn btn-quiet btn-small" id="pace-play">Pause</button>
               <button type="button" class="btn btn-quiet btn-small" id="pace-step">Step</button>
               <button type="button" class="btn btn-quiet btn-small" id="pace-instant">Instant</button>
@@ -493,6 +548,43 @@ td code{font-size:12px}
          every scored run, so the measured difference is the verifier's.</p>
     </div>
     <div id="results"><p class="placeholder">Loading.</p></div>
+  </section>
+
+  <!-- ---------------------------- Settings ---------------------------- -->
+  <section id="view-settings" class="view" hidden>
+    <div class="view-head">
+      <h1>Settings</h1>
+      <p>One loader answers the terminal, the eval harness and this page, so the model a
+         scan uses here is the model it uses there. Each row shows the layer its value
+         came from; saving writes one line into one file.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Brains</h2>
+        <button type="button" class="btn btn-quiet btn-small" id="brains-refresh">Refresh</button>
+      </div>
+      <div id="brains"><p class="placeholder">Loading.</p></div>
+      <p class="note" id="brains-note"></p>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Keys</h2>
+        <div class="scope">
+          <label class="label" for="scope">Save to</label>
+          <select id="scope">
+            <option value="project">this project</option>
+            <option value="user">this machine</option>
+          </select>
+        </div>
+      </div>
+      <div id="keys"><p class="placeholder">Loading.</p></div>
+      <p class="hint">An empty field removes the line, and the layer below it takes over.
+         The API key is written to <span class="mono">.env</span> and never read back:
+         this page can say whether it is there and nothing else.</p>
+      <p class="hint mono" id="files"></p>
+    </div>
   </section>
 
   <!-- ---------------------------- About ---------------------------- -->
@@ -638,9 +730,14 @@ var state = {
   cases: [],
   byId: {},
   liveEnabled: false,
-  form: { caseId: null, path: "", arm: "advanced", mode: "replay", seed: 1 },
+  brains: {},
+  settings: null,
+  runs: [],
+  form: { caseId: null, path: "", arm: "advanced", mode: "replay", seed: 1,
+          brain: "api", model: "" },
   run: null,
-  budget: { tool: 0, toolMax: 60, submit: 0, submitMax: 5 },
+  brain: "api",
+  budget: { tool: 0, toolMax: 60, submit: 0, submitMax: 5, turns: 0, turnsMax: 0 },
   cost: 0,
   stream: null,
   opened: false,
@@ -669,6 +766,80 @@ var GROUPS = [
   ["reserve", "Reserve"]
 ];
 
+/* ---------- the brains and the settings ---------- */
+
+function brainLabel(name) {
+  var row = state.brains[name];
+  return (row && row.label) ? row.label : (name === "api" ? "api" : name);
+}
+
+function brainReady(name) {
+  var row = state.brains[name];
+  return Boolean(row && row.logged_in === true && row.built !== false);
+}
+
+/* The same four sentences art30/web/settings_api.py answers a refused run with:
+   a disabled toggle has to say what the 400 would have said. A CLI that is here
+   and logged in can still have no driver on this side, which is the last one. */
+function brainReason(name) {
+  var row = state.brains[name];
+  if (!row) { return "The server has not reported the local brains yet."; }
+  if (!row.installed) {
+    return row.label + " is not installed on this machine, so it cannot run anything here.";
+  }
+  if (row.logged_in !== true) {
+    return row.label + " is installed but " + row.detail
+      + ". Log the CLI in from a terminal, then press Refresh.";
+  }
+  if (row.built === false) {
+    return row.label + " is logged in, but art30 has no driver for it yet.";
+  }
+  return "";
+}
+
+function settingRow(key) {
+  var rows = (state.settings && state.settings.keys) || [];
+  for (var i = 0; i < rows.length; i += 1) { if (rows[i].key === key) { return rows[i]; } }
+  return null;
+}
+
+function settingValue(key) {
+  var row = settingRow(key);
+  return row ? row.value : null;
+}
+
+/* The brain's own default, shown as the placeholder: what the run uses if the field
+   is left empty. The API brain always has one; a local CLI may keep its own. */
+function modelPlaceholder(brain) {
+  var value = settingValue(brain === "api" ? "model" : brain + "_model");
+  if (value) { return String(value); }
+  if (brain === "claude") { return "the CLI's own default: an alias or a model id"; }
+  if (brain === "codex") { return "the CLI's own default: a model id"; }
+  return "";
+}
+
+function loadSettings(refresh) {
+  return api("/api/settings" + (refresh ? "?refresh=1" : "")).then(function (data) {
+    state.settings = data;
+    state.brains = data.brains || {};
+    byId("brains-note").textContent = data.note || "";
+    byId("brain-note").textContent = data.note || "";
+    drawBrains();
+    drawKeys();
+    drawFiles(data.files || {});
+    refreshModes();
+    return data;
+  }, function (error) {
+    /* A settings file that will not parse answers 400 and carries no brains. Drop
+       the stale panel rather than leave it standing: `brainReason` then has the
+       sentence for a state nobody has reported yet, and the strip prints it. */
+    state.brains = {};
+    byId("brains").replaceChildren(el("p", { class: "placeholder", text: error.message }));
+    byId("keys").replaceChildren(el("p", { class: "placeholder", text: error.message }));
+    refreshModes();
+  });
+}
+
 function loadCases() {
   return api("/api/cases").then(function (data) {
     state.cases = data.cases || [];
@@ -683,9 +854,13 @@ function loadCases() {
 
 byId("recheck").addEventListener("click", function () {
   byId("recheck-note").textContent = "checking";
-  loadCases().then(function () {
+  Promise.all([loadCases(), loadSettings(true), loadRuns(true)]).then(function () {
     refreshModes();
-    byId("recheck-note").textContent = state.liveEnabled ? "a key is present: live runs are enabled" : "still no key in .env";
+    var ready = ["claude", "codex"].filter(brainReady);
+    byId("recheck-note").textContent = state.liveEnabled
+      ? "a key is present: live runs are enabled"
+      : (ready.length ? brainLabel(ready[0]) + " is logged in: live runs can go there"
+                      : "still no key in .env, and no local brain is logged in");
   });
 });
 
@@ -729,34 +904,101 @@ function selectedCase() {
 }
 
 function refreshModes() {
+  refreshBrains();
   var row = selectedCase();
   var arms = row ? (row.replay_arms || []) : [];
   var replayable = row ? arms.indexOf(state.form.arm) >= 0 : false;
   var held = Boolean(row && row.split === "test");
+  var local = state.form.brain !== "api";
   var reasons = [];
 
-  setToggle("mode", "live", !state.liveEnabled || held);
-  setToggle("mode", "replay", Boolean(row) && !replayable);
+  /* On a local brain "replay" is not one: nothing was recorded, so the mode plays
+     back the trace a finished run of that brain already wrote (ADR 0008 item 4). */
+  byId("mode").querySelector('[data-value="replay"]').textContent = local ? "play back" : "replay";
+  byId("pacing-label").textContent = local ? "Play back pacing" : "Replay pacing";
+  /* A replay answers from the recording, which was made at one model: a different
+     one there is a cache miss, not a run. The field is the brain's, not the run's. */
+  var pinned = !local && state.form.mode === "replay";
+  byId("model").disabled = pinned;
+  byId("model").placeholder = pinned ? "the model the recording was made with"
+    : modelPlaceholder(state.form.brain);
+  byId("brain-note").hidden = !local;
 
-  if (!state.liveEnabled) {
-    reasons.push("Live runs need ANTHROPIC_API_KEY in the environment or in .env; replay a recorded case instead.");
+  if (local) {
+    var ready = brainReady(state.form.brain);
+    var played = playbackRun();
+    setToggle("mode", "live", !ready);
+    setToggle("mode", "replay", !played);
+    if (!ready) { reasons.push(brainReason(state.form.brain)); }
+    if (!played) {
+      reasons.push("Nothing to play back on " + brainLabel(state.form.brain)
+        + " yet: a finished run of this brain is what the mode plays.");
+    }
+    if (state.form.mode === "live" && !ready && played) { setMode("replay"); }
+    if (state.form.mode === "replay" && !played && ready) { setMode("live"); }
+  } else {
+    setToggle("mode", "live", !state.liveEnabled || held);
+    setToggle("mode", "replay", Boolean(row) && !replayable);
+    if (!state.liveEnabled) {
+      reasons.push("Live runs need ANTHROPIC_API_KEY in the environment or in .env; replay a recorded case instead.");
+    }
+    if (held) {
+      reasons.push(row.id + " is in the test split (evals/split.yaml), which is swept live at most"
+        + " twice and only through the harness ledger. Replay is allowed.");
+    }
+    if (row && !replayable) {
+      reasons.push("No responses are recorded for " + row.id + " on the " + state.form.arm
+        + " arm, so replay cannot run it. Record first.");
+    }
+    if (!row && state.form.path) {
+      reasons.push("A path that is not an evaluation case has no recording, so it runs live or not at all.");
+    }
+    if (state.form.mode === "live" && (!state.liveEnabled || held)) { setMode("replay"); }
+    if (state.form.mode === "replay" && row && !replayable && state.liveEnabled && !held) { setMode("live"); }
   }
-  if (held) {
-    reasons.push(row.id + " is in the test split (evals/split.yaml), which is swept live at most"
-      + " twice and only through the harness ledger. Replay is allowed.");
-  }
-  if (row && !replayable) {
-    reasons.push("No responses are recorded for " + row.id + " on the " + state.form.arm
-      + " arm, so replay cannot run it. Record first.");
-  }
-  if (!row && state.form.path) {
-    reasons.push("A path that is not an evaluation case has no recording, so it runs live or not at all.");
-  }
-  if (state.form.mode === "live" && (!state.liveEnabled || held)) { setMode("replay"); }
-  if (state.form.mode === "replay" && row && !replayable && state.liveEnabled && !held) { setMode("live"); }
   byId("mode-hint").textContent = reasons.join(" ");
   byId("start").disabled = isBlocked(row, replayable, held);
   showBlocked(row);
+}
+
+/* A brain that cannot run is not offered. The API brain needs a key or a recording;
+   a local brain needs its own CLI installed and logged in, and the hint under the
+   strip carries the same sentence the server would have refused the run with. */
+function refreshBrains() {
+  var anyReplayable = state.cases.some(function (c) { return (c.replay_arms || []).length > 0; });
+  var open = [];
+  ["api", "claude", "codex"].forEach(function (name) {
+    var button = byId("brain").querySelector('[data-value="' + name + '"]');
+    if (name !== "api") { button.textContent = brainLabel(name); }
+    var ready = name === "api" ? (state.liveEnabled || anyReplayable) : brainReady(name);
+    button.disabled = !ready;
+    if (ready) { open.push(name); }
+  });
+  if (open.indexOf(state.form.brain) < 0 && open.length) {
+    setRadio("brain", open[0]);
+    state.form.brain = open[0];
+  }
+  var blocked = [];
+  ["claude", "codex"].forEach(function (name) {
+    if (brainReady(name)) { return; }
+    var why = brainReason(name);
+    if (why && blocked.indexOf(why) < 0) { blocked.push(why); }
+  });
+  byId("brain-hint").textContent = blocked.join(" ");
+}
+
+/* The newest finished run on the selected brain, and on the selected case when one
+   is selected. `state.runs` is oldest first, so the last match is the newest. */
+function playbackRun() {
+  var caseId = state.form.path ? null : state.form.caseId;
+  var found = null;
+  (state.runs || []).forEach(function (row) {
+    if ((row.brain || "api") !== state.form.brain) { return; }
+    if (row.status === "running" || row.status === "gate_waiting") { return; }
+    if (caseId && row.case && row.case !== caseId) { return; }
+    found = row;
+  });
+  return found;
 }
 
 /* Nothing can run on a fresh checkout: no key means no live run, and no recorded
@@ -766,12 +1008,25 @@ function showBlocked(row) {
   var box = byId("blocked");
   if (state.liveEnabled || anyReplayable) { box.hidden = true; return; }
   var caseId = row ? row.id : "D02";
-  byId("blocked-title").textContent = "Nothing can run yet: there is no API key for a live run and no recorded run to replay.";
+  var ready = ["claude", "codex"].filter(brainReady);
   var steps = byId("blocked-steps");
   steps.replaceChildren();
+  if (ready.length) {
+    /* A local brain bills no dollars, so nothing here asks for a key or a ceiling. */
+    byId("blocked-title").textContent = "The api brain has no key and nothing recorded to"
+      + " replay, but " + brainLabel(ready[0]) + " is logged in on this machine: live runs"
+      + " are available on that brain.";
+    steps.appendChild(el("li", { text: "Pick " + brainLabel(ready[0]) + " under Brain, leave"
+      + " Mode on live, and press Start. The run goes through the CLI already logged in"
+      + " here, and spends no API credits." }));
+    box.hidden = false;
+    return;
+  }
+  byId("blocked-title").textContent = "Nothing can run yet: there is no API key for a live run and no recorded run to replay.";
   [
     ["Put the key in ", ".env", " at the project root (the file is git-ignored): ", "ANTHROPIC_API_KEY=... and ART30_MAX_USD=6", ". Then press Check again; the server reads the file on every request."],
-    ["Record a first run from a terminal, so replay has something to play: ", "ART30_RECORD=1 uv run art30 scan evals/fixtures/synthetic/" + caseId + " --arm advanced --case " + caseId + " --seed 1 --mode live --approve auto", ". After that this page can replay it without a key, or start live runs directly."]
+    ["Record a first run from a terminal, so replay has something to play: ", "ART30_RECORD=1 uv run art30 scan evals/fixtures/synthetic/" + caseId + " --arm advanced --case " + caseId + " --seed 1 --mode live --approve auto", ". After that this page can replay it without a key, or start live runs directly."],
+    ["Or log in to a local brain from a terminal and run on it: ", "claude", " or ", "codex", ", then press Check again."]
   ].forEach(function (parts) {
     var li = document.createElement("li");
     parts.forEach(function (part, i) {
@@ -786,6 +1041,9 @@ function showBlocked(row) {
 /* The server answers each of these with a 400; the page refuses first, so a
    disabled Start and the hint above it say what api.start would have said. */
 function isBlocked(row, replayable, held) {
+  if (state.form.brain !== "api") {
+    return state.form.mode === "live" ? !brainReady(state.form.brain) : !playbackRun();
+  }
   if (state.form.mode === "live") { return !state.liveEnabled || Boolean(held); }
   if (!row) { return true; }
   return !replayable;
@@ -835,7 +1093,10 @@ function wireStrip() {
   byId("seed").addEventListener("input", function (event) {
     state.form.seed = parseInt(event.target.value, 10) || 1;
   });
-  ["arm", "mode"].forEach(function (groupId) {
+  byId("model").addEventListener("input", function (event) {
+    state.form.model = event.target.value.trim();
+  });
+  ["arm", "mode", "brain"].forEach(function (groupId) {
     wireArrows(groupId);
     byId(groupId).addEventListener("click", function (event) {
       var button = event.target.closest("button[data-value]");
@@ -862,17 +1123,32 @@ function showStartError(error) {
 
 function startRun() {
   byId("start-error").hidden = true;
+  /* Play back is not a run: the trace of a finished run of this brain is streamed
+     out of its own directory, and nothing is spawned (ADR 0008 item 4). */
+  if (state.form.brain !== "api" && state.form.mode === "replay") {
+    var finished = playbackRun();
+    if (!finished) {
+      showStartError(new Error("There is no finished " + brainLabel(state.form.brain)
+        + " run to play back yet."));
+      return;
+    }
+    openRun(finished, true);
+    return;
+  }
   var body = {
     repo: state.form.path || state.form.caseId,
     arm: state.form.arm,
     mode: state.form.mode,
-    seed: state.form.seed
+    seed: state.form.seed,
+    brain: state.form.brain,
+    model: (state.form.brain === "api" && state.form.mode === "replay") ? "" : state.form.model
   };
   byId("start").disabled = true;
   post("/api/runs", body).then(function (data) {
     openRun({
       run_id: data.run_id, case: state.form.caseId, arm: state.form.arm,
-      mode: state.form.mode, seed: state.form.seed, status: "running"
+      mode: state.form.mode, seed: state.form.seed, status: "running",
+      brain: state.form.brain
     }, state.form.mode === "replay");
   }, function (error) {
     byId("start").disabled = false;
@@ -894,7 +1170,8 @@ function layout() {
 function openRun(run, paced) {
   closeStream();
   state.run = run;
-  state.budget = { tool: 0, toolMax: 60, submit: 0, submitMax: 5 };
+  state.brain = run.brain || "api";
+  state.budget = { tool: 0, toolMax: 60, submit: 0, submitMax: 5, turns: 0, turnsMax: 0 };
   state.cost = 0;
   state.queue = [];
   state.paced = !!paced;
@@ -911,10 +1188,18 @@ function openRun(run, paced) {
   byId("run-idle").hidden = true;
   byId("run-live").hidden = false;
   byId("run-id").textContent = run.run_id;
-  byId("run-what").textContent = [run.case || "", run.arm, run.mode, "seed " + run.seed]
-    .filter(Boolean).join(" \u00b7 ");
+  byId("run-brain").textContent = brainLabel(state.brain);
+  byId("run-what").textContent = [run.case || "", run.arm, modeWord(run.mode, state.brain),
+    "seed " + run.seed].filter(Boolean).join(" \u00b7 ");
+  byId("turns-meter").hidden = true;
+  byId("cost-label").textContent = state.brain === "api" ? "Cost so far" : "Cost, estimated";
+  byId("cost-note").hidden = state.brain === "api";
+  byId("cost-note").textContent = state.brain === "api" ? ""
+    : "priced at API list prices from the tokens the CLI reported. This brain bills no"
+      + " dollars, so no ceiling stops it; the turn budget does.";
   byId("cancel").hidden = false;
   byId("pacing").hidden = !state.paced;
+  byId("pacing-label").textContent = state.brain === "api" ? "Replay pacing" : "Play back pacing";
   byId("pace-play").textContent = "Pause";
   clear(byId("steps"));
   clear(byId("record"));
@@ -953,7 +1238,12 @@ function toneOfStatus(status) {
 function drawMeters() {
   meter("tool", state.budget.tool, state.budget.toolMax);
   meter("submit", state.budget.submit, state.budget.submitMax);
+  if (state.budget.turnsMax) { meter("turns", state.budget.turns, state.budget.turnsMax); }
   byId("cost-value").textContent = money(state.cost);
+}
+
+function modeWord(mode, brain) {
+  return (mode === "replay" && brain && brain !== "api") ? "play back" : mode;
 }
 
 function meter(name, used, budget) {
@@ -981,6 +1271,7 @@ function resetPanels() {
   state.gate = null;
   state.budget.tool = 0;
   state.budget.submit = 0;
+  state.budget.turns = 0;
   state.cost = 0;
   drawMeters();
 }
@@ -1063,6 +1354,15 @@ function onRunStart(line) {
   var config = line.config || {};
   state.budget.toolMax = config.tool_budget || 60;
   state.budget.submitMax = config.submit_budget || 5;
+  /* A local brain has no dollar ceiling; what bounds it is the turn budget, and the
+     trace carries it only when the run had one (ADR 0008 item 3). */
+  state.budget.turnsMax = Number(config.max_turns || line.max_turns || 0) || 0;
+  byId("turns-meter").hidden = !state.budget.turnsMax;
+  var brain = line.brain || config.brain;
+  if (brain) {
+    state.brain = String(brain);
+    byId("run-brain").textContent = brainLabel(state.brain);
+  }
   drawMeters();
 }
 
@@ -1071,6 +1371,7 @@ function onStep(line) {
   var results = {};
   (line.tool_results || []).forEach(function (item) { results[item.call_id] = item; });
   state.budget.tool += calls.length;
+  state.budget.turns += 1;
   calls.forEach(function (call) { if (call.name === "submit_record") { state.budget.submit += 1; } });
   state.cost = Number(line.cost_cum_usd) || state.cost;
   drawMeters();
@@ -1421,6 +1722,7 @@ function onDone(done) {
     ]));
   }
   if ((done.status || "") === "accepted") { pollRecord(); }
+  loadRuns(true);          /* a finished run is one a local brain can play back */
 }
 
 function scrollIntoRun(node) {
@@ -2014,11 +2316,13 @@ function closeDrawer() {
 
 /* ---------- the runs list ---------- */
 
-function loadRuns() {
+function loadRuns(quiet) {
   var host = byId("runs-list");
-  api("/api/runs").then(function (data) {
-    clear(host);
+  return api("/api/runs").then(function (data) {
     var rows = data.runs || [];
+    state.runs = rows;
+    refreshModes();          /* a finished run is what "play back" plays */
+    clear(host);
     if (!rows.length) {
       host.appendChild(el("p", {
         class: "placeholder",
@@ -2028,19 +2332,24 @@ function loadRuns() {
       return;
     }
     rows.slice().reverse().forEach(function (row) {
+      var brain = row.brain || "api";
       var button = el("button", { class: "rowbtn", type: "button" }, [
         el("div", { class: "top" }, [
           el("span", { class: "id", text: row.run_id }),
-          el("span", { class: "chip " + toneOfStatus(row.status), text: row.status })
+          el("span", { class: "chip " + toneOfStatus(row.status), text: row.status }),
+          el("span", { class: "chip", text: brainLabel(brain) }),
+          el("span", { class: "chip", text: words(row.cost_source || "measured") })
         ]),
         el("div", { class: "hint" }, [
-          [row.case, row.arm, row.mode, "seed " + row.seed, stamp(row.started_at)].join(" \u00b7 ")
+          [row.case, row.arm, modeWord(row.mode, brain), "seed " + row.seed,
+            stamp(row.started_at)].join(" \u00b7 ")
         ])
       ]);
       button.addEventListener("click", function () { openRun(row, false); });
       host.appendChild(button);
     });
   }, function (error) {
+    if (quiet) { return; }
     clear(host);
     host.appendChild(el("p", { class: "placeholder", text: error.message }));
   });
@@ -2237,9 +2546,152 @@ function chart(metrics, split) {
   return host;
 }
 
+/* ---------- the settings view ---------- */
+
+/* One row per key, in the order art30/settings.py declares them. The control follows
+   the key's type; the chip names the layer the value came from; Save writes one line
+   into one file and an empty field removes it. The API key is the exception: it is
+   written and never read, so its row carries a state and a Replace, not a value. */
+
+var SECRET_KEY = "anthropic_api_key";
+
+function del(path) { return api(path, { method: "DELETE" }); }
+
+function drawBrains() {
+  var host = byId("brains");
+  clear(host);
+  ["claude", "codex"].forEach(function (name) {
+    var row = state.brains[name];
+    if (!row) { return; }
+    var line = el("div", { class: "brainrow" }, [
+      el("span", { class: "brain-name", text: row.label || name })
+    ]);
+    if (!row.installed) {
+      append(line, [
+        el("span", { class: "chip", text: "not installed" }),
+        el("span", { class: "hint", text: "no command called " + name + " on this PATH" })
+      ]);
+    } else {
+      append(line, [
+        el("span", { class: "chip mono", text: versionText(row.version) }),
+        el("span", { class: "chip " + loginTone(row.logged_in), text: row.detail })
+      ]);
+      if (row.built === false) {
+        append(line, [el("span", { class: "chip warn", text: "no driver yet" })]);
+      }
+      append(line, [el("span", { class: "hint mono", text: row.path || "" })]);
+    }
+    host.appendChild(line);
+  });
+  if (!host.firstChild) {
+    host.appendChild(el("p", { class: "placeholder", text: "No local brain was reported." }));
+  }
+}
+
+/* The chip carries the version number and not the CLI's own trailing parenthetical,
+   which on `claude --version` is the product name ADR 0008 item 6 forbids on this
+   page. Stripped where the chip is built, so nothing upstream has to know the rule. */
+function versionText(version) {
+  if (!version) { return "version not reported"; }
+  return String(version).replace(/\s*\([^)]*\)\s*$/, "") || "version not reported";
+}
+
+function loginTone(loggedIn) {
+  if (loggedIn === true) { return "ok"; }
+  return loggedIn === false ? "danger" : "warn";
+}
+
+function drawKeys() {
+  var host = byId("keys");
+  clear(host);
+  var rows = (state.settings && state.settings.keys) || [];
+  rows.forEach(function (row) { host.appendChild(keyRow(row)); });
+}
+
+function drawFiles(files) {
+  byId("files").textContent = ["user " + (files.user || ""),
+    "project " + (files.project || ""), ".env " + (files.dotenv || "")].join("   \u00b7   ");
+}
+
+function valueText(row) {
+  if (row.value === null || row.value === undefined) { return ""; }
+  if (typeof row.value === "object") { return JSON.stringify(row.value); }
+  return String(row.value);
+}
+
+function keyRow(row) {
+  var id = "set-" + row.key;
+  var save = el("button", { class: "btn btn-quiet btn-small", type: "button" }, "Save");
+  var control = row.key === SECRET_KEY ? secretControl(row, id, save) : plainControl(row, id);
+  var error = el("p", { class: "set-error", role: "alert", hidden: true });
+  var note = row.description + (row.source === "env"
+    ? " The environment sets this one, and it wins over both files." : "");
+  save.addEventListener("click", function () {
+    error.hidden = true;
+    save.disabled = true;
+    var value = control.read();
+    var scope = byId("scope").value;
+    var sent = value === ""
+      ? del("/api/settings/" + encodeURIComponent(row.key) + "?scope=" + scope)
+      : post("/api/settings", { key: row.key, value: value, scope: scope });
+    sent.then(function () { loadSettings(false); }, function (failed) {
+      save.disabled = false;
+      error.textContent = failed.message;
+      error.hidden = false;
+    });
+  });
+  return el("div", { class: "set-row" }, [
+    el("label", { class: "label", for: id, text: row.key }),
+    control.node,
+    el("span", { class: "chip " + (row.source === "default" ? "" : "accent"), text: row.source }),
+    save,
+    el("p", { class: "desc", text: note }),
+    error
+  ]);
+}
+
+function plainControl(row, id) {
+  var value = valueText(row);
+  var node;
+  if ((row.allowed || []).length) {
+    node = el("select", { id: id });
+    row.allowed.forEach(function (option) {
+      node.appendChild(el("option", { value: option, text: option, selected: option === value }));
+    });
+  } else if (typeof row.default === "number" || typeof row.value === "number") {
+    node = el("input", { id: id, type: "number", step: "any", value: value });
+  } else {
+    node = el("input", { id: id, type: "text", spellcheck: "false", value: value });
+  }
+  return { node: el("div", { class: "set-control" }, node),
+           read: function () { return node.value.trim(); } };
+}
+
+/* The key is a state, not a value: the field starts empty and disabled, Replace opens
+   it, and what comes back from the server is `present` or `absent` either way. */
+function secretControl(row, id, save) {
+  var present = row.value === "present";
+  var input = el("input", { id: id, type: "password", autocomplete: "off", disabled: true,
+                            placeholder: present ? "present, and not shown" : "not set" });
+  var open = el("button", { class: "btn btn-quiet btn-small", type: "button" },
+                present ? "Replace" : "Set");
+  save.disabled = true;
+  open.addEventListener("click", function () {
+    input.disabled = false;
+    save.disabled = false;
+    input.focus();
+  });
+  return { node: el("div", { class: "set-control" }, [input, open]),
+           read: function () { return input.value; } };
+}
+
+function wireSettings() {
+  byId("brains-refresh").addEventListener("click", function () { loadSettings(true); });
+}
+
 /* ---------- routing ---------- */
 
-var VIEWS = ["run", "runs", "results", "about"];
+var VIEWS = ["run", "runs", "results", "settings", "about"];
 
 function go(name) {
   if (VIEWS.indexOf(name) < 0) { name = "run"; }
@@ -2252,6 +2704,7 @@ function go(name) {
   if (window.location.hash !== "#/" + name) { window.location.hash = "#/" + name; }
   if (name === "runs") { loadRuns(); }
   if (name === "results") { loadResults(); }
+  if (name === "settings") { loadSettings(false); }
 }
 
 function fromHash() {
@@ -2264,7 +2717,8 @@ function fromHash() {
 function boot() {
   wireStrip();
   wirePacing();
-  byId("runs-refresh").addEventListener("click", loadRuns);
+  wireSettings();
+  byId("runs-refresh").addEventListener("click", function () { loadRuns(); });
   byId("drawer-close").addEventListener("click", closeDrawer);
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape" && !byId("drawer").hidden) { closeDrawer(); }
@@ -2272,6 +2726,8 @@ function boot() {
   window.addEventListener("hashchange", fromHash);
   fromHash();
   loadCases();
+  loadSettings(false);     /* the Run view's brain toggle is drawn from this answer */
+  loadRuns(true);
 }
 
 boot();
