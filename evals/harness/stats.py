@@ -3,13 +3,14 @@
 Split out of `report.py` so neither file passes AGENTS.md's ~300 lines. Recomputes nothing from a
 record: every number is an aggregate of the per-run `metrics.json` the runner already wrote. Both
 statistics are deterministic — an exact McNemar over `math.comb`, and a paired bootstrap whose rng
-seed is committed — so two machines reading the same tree print the same interval. `human_time` is
-the one reader of a file here, and the two directories it reads are passed in by `report.py`, so a
-sandboxed report stays sandboxed.
+seed is committed — so two machines reading the same tree print the same interval. `human_time` and
+`recorded_windows` are the two readers of a file here, and every directory they read is passed in
+by `report.py`, so a sandboxed report stays sandboxed.
 """
 
 from __future__ import annotations
 
+import json
 import math
 import random
 import statistics
@@ -19,6 +20,10 @@ import yaml
 
 from evals.harness.plan import ARMS
 
+API_BRAIN = "api"
+MEASURED = "measured"          # the API brain: the cost the request was billed at
+CLI_ESTIMATE = "cli_estimate"  # a local CLI's own token counts, priced at API list prices
+UNPRICED = "unpriced"          # a model with no price entry: tokens only, never a dollar figure
 RNG_SEED = 20260830  # committed, controls the resampling only; the model takes no seed (ADR 0003)
 RESAMPLES = 10000
 PROTOCOL = "evals/CASES.md#labelling-protocol"
@@ -78,7 +83,63 @@ def aggregate(rows: list[dict], n_cases: int) -> dict:
         "cost_usd_total": round(sum(float(r["run"].get("cost_usd") or 0.0) for r in rows), 6),
         "turns_mean": mean([float(r["run"].get("steps") or 0) for r in rows]),
         "tool_calls_mean": mean([float(r["run"].get("tool_calls") or 0) for r in rows]),
+        **engine(rows),
     }
+
+
+def engine(rows: list[dict]) -> dict:
+    """Which brain and model produced these runs and what their cost column means (ADR 0008).
+
+    A local brain adds the token means its estimate was computed from, so a reader can check
+    the arithmetic against the price table without opening a trace. Cache reads and cache
+    writes are separate means as well as a summed `cached`: a read is 0.1x input and a
+    one-hour write is 2x it, so the folded number alone cannot reproduce the estimate.
+    `brain_model` is the model that actually answered, off each run's record; on a local
+    brain the configured model is usually null because the CLI chose.
+    """
+    named = {str(r.get("brain") or API_BRAIN) for r in rows} - {API_BRAIN}
+    brain = sorted(named)[0] if named else API_BRAIN
+    models = sorted({str(r["brain_model"]) for r in rows if r.get("brain_model")})
+    block = {"brain": brain, "brain_model": models[0] if models else None,
+             "cost_source": cost_source(rows, brain)}
+    if brain != API_BRAIN:
+        for key in ("input", "output", "cached", "cache_read", "cache_write"):
+            block[f"tokens_{key}_mean"] = mean(
+                [float((r.get("tokens") or {}).get(key) or 0) for r in rows])
+    return block
+
+
+def recorded_windows(cases: list[str], arms: list[str], seeds: list[int],
+                     facts: dict, brain: str, cache: Path) -> dict[str, tuple[str, str]]:
+    """When each arm was run: `recorded_at` off the response cache for the API brain, and
+    `run_start.ts` for a local brain, which records no response (ADR 0008 item 4). The
+    question 01 section 4.2 asks is the same either way — do the two arms' windows overlap,
+    or does any drift between them sit on one arm alone."""
+    spans: dict[str, list[str]] = {}
+    if brain != API_BRAIN:
+        for (arm, case, _seed), fact in facts.items():
+            if arm in arms and case in cases and isinstance(fact.get("started"), str):
+                spans.setdefault(arm, []).append(fact["started"])
+        return {arm: (min(v), max(v)) for arm, v in spans.items() if v}
+    for arm in arms:
+        for case in cases:
+            for seed in seeds:
+                for entry in sorted((cache / case / arm / f"s{seed}").glob("*.json")):
+                    try:
+                        stamp = json.loads(entry.read_text(encoding="utf-8")).get("recorded_at")
+                    except (OSError, json.JSONDecodeError):
+                        continue
+                    if isinstance(stamp, str):
+                        spans.setdefault(arm, []).append(stamp)
+    return {arm: (min(values), max(values)) for arm, values in spans.items() if values}
+
+
+def cost_source(rows: list[dict], brain: str) -> str:
+    """The weakest source among the runs: one unpriced model makes the column unpriceable."""
+    if brain == API_BRAIN:
+        return MEASURED
+    sources = {str(r.get("cost_source") or CLI_ESTIMATE) for r in rows if r.get("cost_source")}
+    return UNPRICED if UNPRICED in sources else CLI_ESTIMATE
 
 
 # --- the two statistics (section 7.3) ----------------------------------------------------------
