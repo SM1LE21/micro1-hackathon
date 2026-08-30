@@ -114,6 +114,35 @@ def _where(gate: dict, prov: dict) -> str:
     return "on the website" if approve == "file" else "at the terminal"
 
 
+def _model(prov: dict) -> str:
+    """Which model answered, named as the brain that ran it (ADR 0008 items 1 and 6).
+
+    `provenance.model` is the *configured API* model on every run, because the trace
+    contract reads it there. On a local brain it is not what answered: a `codex`
+    record signed `claude-opus-5` names a model that never saw the repository. So the
+    row becomes the brain's own label and the model it was given, which is null
+    whenever the CLI chose its own and never said which.
+    """
+    brain = prov.get("brain") or "api"
+    if brain == "api":
+        return f"{prov.get('model')}, effort {prov.get('effort')}"
+    return (f"{prov.get('brain_label') or brain}"
+            f" — {prov.get('brain_model') or 'the CLI default model'},"
+            f" effort {prov.get('effort')}")
+
+
+def _cost(prov: dict) -> str:
+    """The three answers `art30/cli.py:_money` prints, so the signed document does not
+    say something softer than the terminal did: a measured figure, a labelled estimate,
+    or "n/a" where no price exists. `USD 0.0` would read as free on a run whose cost is
+    unknown (ADR 0008 item 3)."""
+    source = prov.get("cost_source")
+    if source == "unpriced":
+        return "n/a (no list price for this model)"
+    return f"USD {prov.get('cost_usd')}" + (
+        " (estimate at list prices)" if source == "cli_estimate" else "")
+
+
 def _title(record: dict) -> list[str]:
     prov, ver = record.get("provenance") or {}, record.get("verification") or {}
     fixture = prov.get("fixture") or {}
@@ -129,7 +158,7 @@ def _title(record: dict) -> list[str]:
     rows = [
         ("Case", f"{prov.get('case')} ({kind})" if kind else str(prov.get("case"))),
         ("Arm", str(prov.get("arm"))),
-        ("Model", f"{prov.get('model')}, effort {prov.get('effort')}"),
+        ("Model", _model(prov)),
         ("Run", f"`{prov.get('run_id')}`"),
         ("Code read", f"`{fixture.get('path')}`, sha256 `{fixture.get('sha256')}`"),
         ("Instructions", f"sha256 `{prov.get('instruction_sha256')}`"),
@@ -144,7 +173,7 @@ def _title(record: dict) -> list[str]:
             f"{_stamp(gate.get('at'))} {_where(gate, prov)}, {round(gate.get('wait_s') or 0)} s at the"
             f" checkpoint, risk {str(gate.get('risk', '')).upper()}",
         ))
-    rows.append(("Cost", f"USD {prov.get('cost_usd')}, {prov.get('tool_calls')} tool calls"))
+    rows.append(("Cost", f"{_cost(prov)}, {prov.get('tool_calls')} tool calls"))
     head = [f"# Record of processing — {record.get('repository')}", ""]
     return head + table(("", ""), rows) + ["", BOUNDARY, ""]
 
