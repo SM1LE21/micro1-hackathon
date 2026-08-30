@@ -95,6 +95,8 @@ def environment(directory: Path, mode: str) -> dict[str, str]:
         # A recorded test case replays without spending a live sweep: the same
         # reading of the lock evals/split.yaml records (policy, replay_counts…).
         env["ART30_UNLOCK_TEST"] = "1"
+        # and it replays at the recorded settings, not the user's files (ADR 0008 item 5)
+        env["ART30_IGNORE_SETTINGS_FILES"] = "1"
     return env
 
 
