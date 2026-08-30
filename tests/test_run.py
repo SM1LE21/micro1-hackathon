@@ -397,6 +397,15 @@ def test_the_child_is_told_where_to_write_its_trace(monkeypatch: pytest.MonkeyPa
     assert calls[0]["env"]["ART30_TRACE_DIR"] == "results/.gate-timing/traces"
 
 
+def test_no_settings_file_of_the_users_reaches_a_cell(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ADR 0008 item 5: the sweep runs at art30's defaults plus what the sweep itself set.
+    `~/.config/art30/config.toml` is not a checkout artefact, so `make eval-replay` from a
+    clean checkout does not exclude it; the switch the child is handed does."""
+    calls = _spy_subprocess(monkeypatch)
+    run._launch(_cell())
+    assert calls[0]["env"]["ART30_IGNORE_SETTINGS_FILES"] == "1"
+
+
 def test_the_trace_root_follows_out(sandbox: Path) -> None:
     assert run.trace_root(run.DEFAULT_OUT) == run.TRACES
     assert run.trace_root("results/.gate-timing") == Path("results/.gate-timing") / "traces"
