@@ -232,7 +232,9 @@ def _run(ctx: RunCtx, case: CaseRef, arm: Arm, cfg: Config, state: dict) -> RunR
             feedback = arm.handle_submit(record, ctx)
             if not feedback.accepted:
                 ctx.verify_rounds += 1
-                ctx.rejections.append({"attempt": ctx.submits, "schema_errors": feedback.schema_errors})
+                ctx.rejections.append({"attempt": ctx.submits, **_feedback_dict(feedback)})
+            else:
+                ctx.final_feedback = _feedback_dict(feedback)   # the accepted attempt's own lists
             results.append(_tool_result(call["id"], feedback.to_tool_result(), not feedback.accepted))
             say("verify", {"arm": arm, "feedback": feedback})
             if feedback.accepted:
@@ -385,6 +387,39 @@ def _blocks(resp: llm.Response, kind: str) -> str:
     return "\n".join(str(b.get(kind, "")) for b in resp.content if b.get("type") == kind).strip()
 
 
+def _feedback_dict(feedback: Feedback) -> dict:
+    """Every list the feedback object carries, for record.json's verification block."""
+    return {
+        "schema_errors": list(feedback.schema_errors),
+        "rejected_claims": list(feedback.rejected_claims),
+        "missing_stores": list(feedback.missing_stores),
+        "missing_entry_points": list(feedback.missing_entry_points),
+        "bad_citations": list(feedback.bad_citations),
+        "unverified": list(feedback.unverified),
+        "conservative_divergences": list(feedback.conservative_divergences),
+    }
+
+
+def _resolved_history(rejections: list[dict], accepted: dict) -> dict:
+    """04-output-schema.md section 5: each rejected claim with what the accepted record
+    rendered instead; each missing store with the attempt it was added on; bad citations."""
+    stores = {s.get("name"): s for s in accepted.get("stores") or []}
+    claims, missing, bad = [], [], []
+    for rejection in rejections:
+        attempt = rejection.get("attempt")
+        for claim in rejection.get("rejected_claims") or []:
+            store = stores.get(claim.get("store")) or {}
+            revised = (store.get("erasure") or {}).get("verdict")
+            claims.append({**claim, "attempt": attempt, "revised_to": revised})
+        for item in rejection.get("missing_stores") or []:
+            added = item.get("store") in stores
+            missing.append({**item, "attempt": attempt,
+                            "added_on_attempt": (attempt + 1) if added and attempt else None})
+        for item in rejection.get("bad_citations") or []:
+            bad.append({**item, "attempt": attempt})
+    return {"claims": claims, "missing_stores": missing, "bad_citations": bad}
+
+
 def _finalise(
     record: dict, ctx: RunCtx, case: CaseRef, cfg: Config, arm: Arm, state: dict, gate: dict | None
 ) -> dict:
@@ -395,10 +430,16 @@ def _finalise(
             store["recipient_kind"] = "unknown"
     # The baseline writes the same keys with its own counters: no reader of
     # record.json branches on the arm (04 section 5, decision 8).
+    final = getattr(ctx, "final_feedback", None) or {}
+    history = _resolved_history(ctx.rejections, record)
     out["verification"] = {
         "submits": ctx.submits, "accepted_on_attempt": ctx.submits,
-        "rejected_history": ctx.rejections, "missing_stores_resolved": [],
-        "bad_citations_resolved": [], "unverified": [], "rule_set_sha": None,
+        "rejected_history": history["claims"],
+        "missing_stores_resolved": history["missing_stores"],
+        "bad_citations_resolved": history["bad_citations"],
+        "unverified": final.get("unverified", []),
+        "conservative_divergences": final.get("conservative_divergences", []),
+        "rule_set_sha": getattr(arm, "rule_set_sha", None),   # None on the baseline: no verifier ran
     }
     out["provenance"] = {
         "arm": arm.name, "model": cfg.model, "effort": cfg.effort, "config": cfg.trace_config(),
