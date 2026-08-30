@@ -288,3 +288,15 @@ def split_camel(name: str) -> str:
     case and 00-contract.md's normalisation does not split it, so the vocabulary
     would never see the words inside one."""
     return re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name or "")
+
+
+def rules_sha(directory: str | None = None) -> str:
+    """Twelve hex of the sha256 over the five rule files, in name order: the record's
+    `verification.rule_set_sha` (04-output-schema.md section 5), so a reader can tell which
+    rule set accepted the claims."""
+    import hashlib
+    base = Path(directory) if directory else Path(__file__).with_name("rules")
+    digest = hashlib.sha256()
+    for path in sorted(base.glob("*.yaml")):
+        digest.update(path.name.encode()); digest.update(path.read_bytes())
+    return digest.hexdigest()[:12]
