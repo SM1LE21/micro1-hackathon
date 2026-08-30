@@ -91,7 +91,7 @@ That last one is the pin ADR 0008 item 5 asks for, and it covers every key at on
 
 `.env` and the process environment are **not** dropped — they are how a sweep is deliberately configured, and the parent's environment is what the child inherits. And the declaration stays: any of the five request variables whose value is not the default is named in `overridden`, in the trace and in `provenance.config`, so a sweep at settings nobody reported cannot pass for a reported one. The comparison is on the value, so copying `art30.toml.example` verbatim declares nothing: every line in it is already the default.
 
-The website's replay child (`art30/web/runs.py`, `environment`) does not pin the switch yet, so a stray `~/.config/art30/config.toml` still reaches a run started from the page. That is a page, not a scored sweep; it is the next thing to close.
+The website pins the same switch where it means the same thing. A replay child (`art30/web/runs.py`, `environment`) is spawned with `ART30_IGNORE_SETTINGS_FILES=1`, so it replays at the recorded settings and no user file reaches it. A live run started from the page does read the two files, which is what the Settings view is for: it is the surface where a person sets them.
 
 ## What is not a setting
 
