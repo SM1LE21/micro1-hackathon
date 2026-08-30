@@ -13,10 +13,12 @@ from pathlib import Path
 
 import pytest
 
-from art30 import cli, config, settings
+from art30 import brains, cli, config, settings
+from art30.loop import RunResult
 
 KEY = settings.SECRET_ENV
 EXAMPLE = Path(__file__).resolve().parents[1] / "art30.toml.example"
+DOCS = Path(__file__).resolve().parents[1] / "docs" / "settings.md"
 
 
 @pytest.fixture()
@@ -199,6 +201,19 @@ def test_a_json_key_survives_a_write_and_a_read(root: Path, home: Path) -> None:
     }
     with pytest.raises(ValueError, match="must be a JSON object"):
         settings.write("codex_prices", "1.25", project_root=root)
+
+
+def test_both_surfaces_spell_codex_prices_the_way_the_code_reads_it() -> None:
+    """The key's own description and `docs/settings.md` documented `[input, output]`
+    while `pricing._triple` reads three numbers. A user who followed the documentation
+    wrote two, cached input priced at the full input rate, and the cost-per-task row --
+    a scored one -- came out several times too high with nothing saying so."""
+    key = settings.key_for("codex_prices")
+    row = next(line for line in DOCS.read_text(encoding="utf-8").splitlines()
+               if line.startswith("| `codex_prices` |"))
+
+    assert "cached_input" in key.description and "cached_input" in row
+    assert "[input, output]" not in row
 
 
 def test_the_secret_is_written_to_dotenv_at_0600_and_nowhere_else(root: Path) -> None:
@@ -430,6 +445,16 @@ def test_config_set_of_the_key_writes_dotenv_without_echoing_it(tmp_path: Path, 
                          if line.startswith("anthropic_api_key")][0]
 
 
+def _stub(seen: list, pick):
+    """A `run_brain` that spawns nothing: the dispatch is what these tests are about."""
+    def _run(cfg, case, arm, seed, report=None):
+        seen.append(pick(cfg, arm))
+        return RunResult(run_id="base-fx-s1-0000000", stop_condition="no_submission", steps=0,
+                         tool_calls_total=0, submits=0, verify_rounds=0, wall_s=0.0,
+                         cost_usd=0.0, record_path=None, note="stub")
+    return _run
+
+
 def test_the_model_flag_follows_the_brain_the_loader_resolved(tmp_path: Path, monkeypatch, capsys, settings_files) -> None:
     """`--model` used to be routed by the `--brain` flag, so a brain that came from
     `art30.toml` moved the API model and left the CLI that would run with nothing."""
@@ -443,10 +468,13 @@ def test_the_model_flag_follows_the_brain_the_loader_resolved(tmp_path: Path, mo
                         lambda over=None: (seen.append(dict(over or {})), loader(over))[1])
 
     (tmp_path / "art30.toml").write_text("brain = 'claude'\n", encoding="utf-8")
-    with pytest.raises(SystemExit) as exit_code:
-        cli.main(["scan", "fx", "--arm", "baseline", "--model", "opus-x"])
-    assert exit_code.value.code == 2 and capsys.readouterr().err.startswith("brain claude")
+    ran: list = []
+    monkeypatch.setattr("art30.brains.run_brain", _stub(ran, lambda cfg, arm: cfg))
+    cli.main(["scan", "fx", "--arm", "baseline", "--model", "opus-x"])
+    capsys.readouterr()
     assert seen[-1] == {}   # the API model is not what a `claude` run's --model names
+    assert (ran[-1].brain, ran[-1].brain_model) == ("claude", "opus-x")
+    assert ran[-1].model == config.DEFAULT_MODEL   # the API model did not move
 
     (tmp_path / "art30.toml").unlink()
     code, out, _ = _run(["scan", "fx", "--arm", "baseline", "--mode", "replay",
@@ -455,16 +483,24 @@ def test_the_model_flag_follows_the_brain_the_loader_resolved(tmp_path: Path, mo
     assert "overridden: ART30_MODEL" in out
 
 
-def test_scan_refuses_a_brain_that_is_not_built_yet(tmp_path: Path, monkeypatch, capsys) -> None:
-    """The flag parses now so the settings and the docs can name it; the two local
-    brains land with `art30/brains/` (ADR 0008 item 1)."""
+def test_every_brain_the_flag_offers_reaches_the_driver(tmp_path: Path, monkeypatch,
+                                                       capsys) -> None:
+    """Both local brains are built now (ADR 0008 item 1), so `--brain` reaches the
+    driver rather than the "not built yet" exit the flag used to take.
+
+    The exit is still in `art30/cli.py`: it is what a brain named in the settings
+    but missing from `art30/brains/driver.py` would take, and the assertion below is
+    that neither of the two is in that state. Nothing is spawned here -- the driver
+    is stubbed -- so no test on this machine starts a real CLI."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     (tmp_path / "fx").mkdir()
     (tmp_path / "fx" / "a.py").write_text("A = 1\n", encoding="utf-8")
+    assert set(brains.built()) == {"claude", "codex"} == set(settings.BRAINS) - {"api"}
 
+    ran: list = []
+    monkeypatch.setattr("art30.brains.run_brain", _stub(ran, lambda cfg, arm: arm.name))
     for brain in ("claude", "codex"):
-        with pytest.raises(SystemExit) as exit_code:
-            cli.main(["scan", "fx", "--arm", "baseline", "--brain", brain])
-        assert exit_code.value.code == 2
-        assert capsys.readouterr().err == f"brain {brain} is not built yet\n"
+        assert cli.main(["scan", "fx", "--arm", "baseline", "--brain", brain]) == 1
+        capsys.readouterr()
+    assert ran == ["baseline", "baseline"]
