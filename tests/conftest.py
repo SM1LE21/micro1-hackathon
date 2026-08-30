@@ -49,6 +49,9 @@ def restore_environ() -> Iterator[None]:
     accidentally provided by whichever test happens to monkeypatch first.
     """
     snapshot = dict(os.environ)
+    # AGENTS.md: the suite runs the same from any clean environment. Neither the author's
+    # ~/.config/art30/config.toml nor a project art30.toml may answer a test (ADR 0008).
+    os.environ["ART30_IGNORE_SETTINGS_FILES"] = "1"
     yield
     os.environ.clear()
     os.environ.update(snapshot)
@@ -62,3 +65,13 @@ def repo(tmp_path: Path) -> Path:
 @pytest.fixture()
 def ctx(repo: Path) -> ToolCtx:
     return ToolCtx(root=repo.resolve())
+
+
+@pytest.fixture()
+def settings_files(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Re-enable the two settings-file layers for a test that writes them under tmp_path.
+
+    The autouse isolation switches them off so the author's own files never answer a
+    test; a test that is about those files opts back in with this fixture.
+    """
+    monkeypatch.delenv("ART30_IGNORE_SETTINGS_FILES", raising=False)
