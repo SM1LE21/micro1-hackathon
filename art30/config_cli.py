@@ -12,6 +12,8 @@ import sys
 
 from art30 import settings
 
+USAGE_EXIT = 2   # the same code art30/cli.py uses for a usage error
+
 
 def config_parser(subs) -> None:
     """`art30 config ...`: the same settings the harness and the website read (ADR 0008)."""
