@@ -21,7 +21,24 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 TIMEOUTS = {"synthetic": 900, "real": 1800}  # section 5.3
+TOOL_BUDGETS = {"synthetic": 60, "real": 120}  # contract, Budgets; pinned into the cell's env
 ARMS = ("baseline", "advanced")
+BRAINS = ("api", "claude", "codex")  # ADR 0008 item 1; `api` is the loop as built
+DEFAULT_BRAIN = "api"
+# The request settings a sweep pins per cell (ADR 0008 item 5). They are the harness's own
+# numbers, spelled here rather than read from `art30.config`, because a cell that inherited
+# the runtime's defaults would change silently when a default changed and the sweep would
+# have no record of it. `cells.cell_env` writes each one into the child's environment.
+# The three local-brain settings are pinned to the empty string, which `art30/settings.py`
+# reads as "no value" (`_env_layer` skips a falsy one), so a cell runs at the CLI's own
+# default whatever the operator exported. Unpinned, an exported `ART30_CLAUDE_MODEL` moved
+# every cell of a sweep and `ART30_CODEX_PRICES` moved every dollar in the cost column,
+# and neither shows up in `provenance.config.overridden`, which is computed from
+# `art30/config.py`'s five request variables. What the CLI then chose is not a pin but an
+# observation, and the report reads it back off each record's `provenance.brain_model`.
+PINS = {"ART30_MODEL": "claude-opus-5", "ART30_EFFORT": "high", "ART30_MAX_TOKENS": "32000",
+        "ART30_SUBMIT_BUDGET": "5", "ART30_MAX_TURNS": "60",
+        "ART30_CLAUDE_MODEL": "", "ART30_CODEX_MODEL": "", "ART30_CODEX_PRICES": ""}
 # CASES.md, Real cases: the vendored directory each real case reads. A hand-written real manifest
 # may name its own with a `repo` key; none exists yet, so the mapping lives here.
 REAL_DIRS = {"R01": "full-stack-fastapi-template", "R02": "flaskbb", "R03": "pinry",
@@ -51,6 +68,11 @@ class Cell:
     approve: str
     timeout: int
     unlock: bool
+    # ADR 0008 items 4 and 5. `brain` reaches the child as `--brain`; `tool_budget` is the
+    # kind's budget, pinned into the child's environment rather than left to the runtime to
+    # infer, so what a sweep bought is on the cell and not in a default two files away.
+    brain: str = DEFAULT_BRAIN
+    tool_budget: int = TOOL_BUDGETS["synthetic"]
 
 
 # --- selection and the two pre-flight gates -------------------------------------------------
@@ -169,7 +191,9 @@ def build_cells(args: argparse.Namespace, cases: list[str], manifests: dict[str,
                     out=str(Path(args.out) / arm / case / f"s{seed}"),
                     trace=str(traces / arm / f"{case}-s{seed}.jsonl"), trace_dir=str(traces),
                     mode=args.mode, approve=args.approve,
-                    timeout=args.timeout or TIMEOUTS[kind], unlock=bool(args.unlock_test)))
+                    timeout=args.timeout or TIMEOUTS[kind], unlock=bool(args.unlock_test),
+                    brain=str(getattr(args, "brain", None) or DEFAULT_BRAIN),
+                    tool_budget=TOOL_BUDGETS[kind]))
     return cells
 
 
