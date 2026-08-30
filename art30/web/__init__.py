@@ -8,5 +8,6 @@ gate through `<out>/gate/request.json` and `decision.json`.
 
 `server.py` is the socket and the routing table, `api.py` the JSON handlers,
 `runs.py` the child processes and their directories, `sse.py` the event stream,
-`catalog.py` the case list. `index.html` is the page.
+`catalog.py` the case list, `settings_api.py` the settings layer and the two
+local brains over HTTP. `index.html` is the page.
 """
