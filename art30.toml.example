@@ -1,0 +1,53 @@
+# art30 settings for this project. Copy to art30.toml (gitignored) and delete
+# what you do not need: every line below is the default, so a file that sets
+# nothing changes nothing. `art30 config set <key> <value>` writes the same file.
+#
+# Precedence, lowest first: these defaults, ~/.config/art30/config.toml,
+# ./art30.toml, .env, the process environment, a CLI flag. `art30 config list`
+# prints the layer each value came from. docs/settings.md is the full page.
+#
+# The API key is not here. It lives in .env, and art30 reports only whether it
+# is present: `art30 config set ANTHROPIC_API_KEY <value>`.
+#
+# An eval sweep ignores this file and ~/.config/art30/config.toml: the harness
+# hands every cell ART30_IGNORE_SETTINGS_FILES=1, so nothing set here can move a
+# scored number (ADR 0008 item 5).
+
+# api | claude | codex. The local brains run the CLI you already have installed
+# and logged in; art30 never stores or asks for those credentials.
+brain = "api"
+
+# The api brain's model. It is hashed into every request, so changing it
+# invalidates every recorded response in evals/cache.
+model = "claude-opus-5"
+
+# What each local brain passes to its own CLI. Leave them out to let the CLI
+# choose, which is usually what you want.
+# claude_model = "opus"
+# codex_model = "gpt-5-codex"
+
+# low | medium | high | xhigh | max
+effort = "high"
+max_tokens = 32000
+
+# Turns bound a local-brain run the way the dollar ceiling bounds an api one.
+max_turns = 60
+
+# Tool calls and submit_record attempts per run. Leave tool_budget out and the
+# case kind picks it: 60 for a synthetic repository, 120 for a real one.
+# tool_budget = 60
+submit_budget = 5
+
+# A cumulative dollar ceiling for one api run. Local brains bill no dollars.
+# max_usd = 2.5
+
+# ask | auto | file, and how long `file` waits for a decision.
+approve = "ask"
+gate_timeout = 1800
+
+# Eval cells at once.
+concurrency = 4
+
+# Dollars per million tokens, [input, output], for pricing a codex run. A model
+# with no entry here is reported as a token count and no dollars.
+# codex_prices = '{"gpt-5-codex": [1.25, 10.0]}'
