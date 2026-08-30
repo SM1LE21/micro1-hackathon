@@ -107,6 +107,8 @@ class Handler(BaseHTTPRequestHandler):
     def _get(self, parts: list[str], query: dict) -> None:
         if parts in ([], [PAGE]):
             return self._send(200, page_bytes(), "text/html; charset=utf-8")
+        if parts == ["favicon.ico"]:                     # the page carries its icon inline
+            return self._send(204, b"", "image/x-icon")
         if parts == ["api", "cases"]:
             return self._json(*api.cases())
         if parts == ["api", "results"]:
