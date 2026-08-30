@@ -43,11 +43,21 @@ NO_KEY = (
     "no ANTHROPIC_API_KEY: put it in .env (see .env.example) or export it;"
     " --mode replay needs no key"
 )
+NO_REPLAY = (
+    "brain {brain} has no replay: a local CLI records no response to play back."
+    " Use --mode live, or --brain api with the recorded cache."
+)
+# ADR 0008 item 6: what a local brain is called wherever it is named.
+BRAIN_LABELS = {"claude": "Claude (your login)", "codex": "Codex (your login)"}
 EXIT = {"accepted": 0, "gate_rejected": 3, "replay_miss": 4}
 USAGE_EXIT = 2
 
 STOP_LINES = {
-    "budget_exhausted": "[agent] tool-call budget exhausted at {calls}/{budget} without submit_record.",
+    # `{note}` is what tells a turn ceiling apart from a tool-call ceiling: both stop
+    # conditions are `budget_exhausted` (the contract has twelve values and no
+    # thirteenth), and only the note says which budget ran out.
+    "budget_exhausted": ("[agent] tool-call budget exhausted at {calls}/{budget}"
+                         " without submit_record. {note}"),
     "no_submission": "[agent] turn ended with no tool call, three times. No record was submitted.",
     "max_tokens": "[agent] output truncated at max_tokens={max_tokens} on step {steps}.",
     "max_submits": "[verify] attempt {submits} · rejected · no attempts left.",
@@ -188,10 +198,16 @@ def main(argv: list[str] | None = None) -> int:
         cfg = replace(cfg, **({"model": args.model} if cfg.brain == "api"
                               else {"brain_model": args.model}))
     if cfg.brain != "api":
-        # The two local brains land with art30/brains/; until then the flag parses,
-        # says so and spends nothing (ADR 0008 item 1).
-        print(f"brain {cfg.brain} is not built yet", file=sys.stderr)
-        raise SystemExit(USAGE_EXIT)
+        from art30 import brains   # lazy: the subprocess driver is not the API path
+
+        if cfg.brain not in brains.built():
+            print(f"brain {cfg.brain} is not built yet", file=sys.stderr)
+            raise SystemExit(USAGE_EXIT)
+        if cfg.mode != "live":
+            # Replay plays a recorded API response back through the loop. A local brain
+            # records no response to play back, only its trace (ADR 0008 item 4).
+            print(NO_REPLAY.format(brain=cfg.brain), file=sys.stderr)
+            return USAGE_EXIT
     if cfg.model != config.DEFAULT_MODEL and "ART30_MODEL" not in cfg.overridden:
         # A run at a model nobody configured is a run at non-default settings, and the
         # header and provenance.config are where that has to show (07-ui.md section 1).
@@ -210,7 +226,9 @@ def main(argv: list[str] | None = None) -> int:
         return USAGE_EXIT
     # `config.load` has read `.env` by now, so this is the last word on the key
     # and it is spoken before `llm` imports the SDK or builds a client.
-    if cfg.mode == "live" and not os.environ.get("ANTHROPIC_API_KEY"):
+    if cfg.brain == "api" and cfg.mode == "live" and not os.environ.get("ANTHROPIC_API_KEY"):
+        # A local brain needs no key: it runs the CLI the user is already logged into,
+        # and art30 never reads those credentials (ADR 0008 item 6).
         print(NO_KEY, file=sys.stderr)
         return USAGE_EXIT
     arm = load_arm(args.arm)
@@ -224,7 +242,12 @@ def main(argv: list[str] | None = None) -> int:
     case = CaseRef(id=case_id, name=root.name, root=root, kind=kind)
     cfg = replace(cfg, **_paths(cfg, args, arm, case, root))
     _header(cfg, args, case, files)
-    result = run(case, arm, args.seed, cfg, report)
+    if cfg.brain == "api":
+        result = run(case, arm, args.seed, cfg, report)
+    else:
+        from art30 import brains   # lazy: the subprocess driver is not the API path
+
+        result = brains.run_brain(cfg, case, arm, args.seed, report)
     _tail(cfg, args, result)
     return EXIT.get(result.stop_condition, 1)
 
@@ -337,7 +360,16 @@ def _header(cfg: config.Config, args: argparse.Namespace, case: CaseRef, files: 
         f" · mode {cfg.mode}"
     )
     print(f"model {cfg.model} · effort {cfg.effort} · max_tokens {cfg.max_tokens}")
-    ceiling = f" · ceiling ${cfg.max_usd}" if cfg.max_usd else ""
+    if cfg.brain != "api":
+        # ADR 0008 item 6: the brand is "Claude (your login)", and the line above stays
+        # as it is because `model` is still what the trace and the price table carry.
+        print(f"brain {BRAIN_LABELS.get(cfg.brain, cfg.brain)}"
+              f" · model {cfg.brain_model or 'the CLI default'}"
+              f" · max_turns {cfg.max_turns} · cost is an estimate at list prices")
+    # ADR 0008 item 3: local brains have no dollar ceiling, and nothing in the driver
+    # enforces one. A `max_usd` in art30.toml must not print as a limit that is not there.
+    ceiling = (f" · ceiling ${cfg.max_usd}" if cfg.max_usd and cfg.brain == "api"
+               else " · no dollar ceiling (local brain)" if cfg.brain != "api" else "")
     print(
         f"budget {cfg.tool_budget} tool calls · {cfg.max_submits} submit attempts"
         f" · repo {args.repo} ({files} files){ceiling}"
@@ -356,7 +388,7 @@ def _tail(cfg: config.Config, args: argparse.Namespace, result: RunResult) -> No
                 calls=result.tool_calls_total, budget=cfg.tool_budget, max_tokens=cfg.max_tokens,
                 steps=result.steps, submits=result.submits, wall=result.wall_s,
                 note=result.note or "", record_path=result.record_path or "",
-            )
+            ).rstrip()
         )
     if result.stop_condition == "gate_rejected":
         print(f"  record kept at {Path(cfg.out_dir) / 'record.draft.json'}")
@@ -372,7 +404,21 @@ def _tail(cfg: config.Config, args: argparse.Namespace, result: RunResult) -> No
     written = ""
     if result.stop_condition == "accepted":
         written = f"{Path(cfg.out_dir) / 'record.json'} · record.md · record.html · "
-    print(f"${result.cost_usd:.2f} · {result.wall_s}s · {written}{trace}")
+    print(f"{_money(cfg, result)} · {result.wall_s}s · {written}{trace}")
+
+
+def _money(cfg: config.Config, result: RunResult) -> str:
+    """What the run cost, and what kind of number that is (ADR 0008 item 3).
+
+    The API brain's is measured. A local brain's is an estimate at list prices
+    against a subscription that billed nothing, so it carries `est`. A local brain
+    on a model with no price has no dollar figure at all: it reports its tokens and
+    `n/a`, because `$0.00` would say "free" where the truth is "unknown"."""
+    if cfg.brain == "api":
+        return f"${result.cost_usd:.2f}"
+    if getattr(result, "cost_source", "") == "unpriced":
+        return f"tokens {getattr(result, 'tokens', 0)} · n/a (no list price for this model)"
+    return f"${result.cost_usd:.2f} est"
 
 
 def _cost_ceiling(result: RunResult) -> bool:
