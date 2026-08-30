@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-30 07:05 UTC — Three brains and one settings layer (ADR 0008)
+
+- `--brain api|claude|codex`: local brains run the user's own logged-in CLI with the arms served as an MCP `submit_record` tool; isolation flags (no Bash, jailed reads, no user memory, our MCP only); traces converted line by line; cost as a labelled estimate reproducing Claude's own `total_cost_usd`
+- Settings shared by CLI, harness and website: `art30 config`, `art30.toml`, key written to `.env` write-only; harness cells pin every request setting; `make eval-replay-local` re-verifies every recorded submission and re-scores every record
+- Website: Settings view, brains panel with login detection, brain and model selectors, play back of saved runs, runs listed from disk
+- Acceptance: real D02 runs on this machine's Claude and Codex logins; both brains read the D02 helper/call mismatch correctly, which is now fixed in the generator; 887 tests green
+
 ## 2026-08-30 00:22 UTC — Three surfaces: skill, CLI, local website
 
 - ADR 0007: one core, three surfaces; the website drives the CLI as a subprocess (same seam as the harness), never a second loop
