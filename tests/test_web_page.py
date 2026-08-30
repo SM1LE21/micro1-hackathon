@@ -12,6 +12,7 @@ so the page is compared to it rather than to a copy of it.
 
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import subprocess
@@ -27,7 +28,7 @@ from art30.web import server as server_mod
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PAGE = REPO_ROOT / "art30" / "web" / "index.html"
 RENDER = REPO_ROOT / "art30" / "render"
-VIEWS = ("run", "runs", "results", "about")
+VIEWS = ("run", "runs", "results", "settings", "about")
 
 # The `latin` subset is base64, which cannot contain a colon, so the font block is
 # excluded from the scans below by span rather than by hoping it stays quiet.
@@ -149,7 +150,7 @@ def test_the_page_has_one_style_block_and_one_script_block(page: str) -> None:
     assert page.count("<script") == 1 and page.count("</script>") == 1
 
 
-# --- the four views ----------------------------------------------------------------------
+# --- the views ---------------------------------------------------------------------------
 
 
 def test_every_view_has_its_anchor_and_its_section(page: str) -> None:
@@ -295,3 +296,103 @@ def test_the_page_pre_empts_the_missing_recording_refusal(page: str) -> None:
     found = re.search(r"function isBlocked\(row, replayable, held\) \{(.*?)\n\}", page, re.S)
     assert found is not None, "isBlocked has changed shape"
     assert "if (!row) { return true; }" in found.group(1)
+
+
+# --- the brains, the settings view, and the one brand rule ------------------------------------
+
+
+def test_the_brand_is_the_login_and_never_the_product_name(page: str) -> None:
+    """ADR 0008 item 6: "Claude (your login)", never "Claude Code". The page is where
+    that rule is visible, so the page is where it is checked."""
+    assert "Claude Code" not in page
+    assert "Claude (your login)" in page and "Codex (your login)" in page
+    for path in sorted((REPO_ROOT / "art30" / "web").glob("*.py")):
+        assert "Claude Code" not in path.read_text(encoding="utf-8"), path.name
+
+
+def test_the_version_chip_drops_the_clis_own_parenthetical(page: str, tmp_path: Path) -> None:
+    """`claude --version` prints "2.1.251 (Claude Code)". The grep above only ever sees
+    the page's source, so the rule is checked on what the page draws as well: the
+    helper that builds the chip is lifted out of the page and run."""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not on PATH, so the page's own helper cannot be run here")
+    found = re.search(r"function versionText\(version\) \{.*?\n\}", page, re.S)
+    assert found is not None, "versionText has changed shape"
+    cases = ["2.1.251 (Claude Code)", "codex-cli 0.148.0", "1.0 (x) (y)", "", None]
+    target = tmp_path / "version.js"
+    target.write_text(found.group(0) + "\nconsole.log(JSON.stringify("
+                      + json.dumps(cases) + ".map(versionText)));\n", encoding="utf-8")
+    done = subprocess.run([node, str(target)], capture_output=True, text=True)
+    assert done.returncode == 0, done.stderr
+    assert json.loads(done.stdout) == ["2.1.251", "codex-cli 0.148.0", "1.0 (x)",
+                                       "version not reported", "version not reported"]
+
+
+def test_the_settings_view_has_the_brains_panel_and_the_key_form(page: str) -> None:
+    for marker in ('id="view-settings"', 'id="brains"', 'id="brains-refresh"',
+                   'id="brains-note"', 'id="keys"', 'id="scope"', 'id="files"'):
+        assert marker in page, marker
+    assert "function drawKeys()" in page and "function drawBrains()" in page
+    assert 'var SECRET_KEY = "anthropic_api_key";' in page
+
+
+def test_the_user_note_is_rendered_from_the_server_and_not_copied(page: str) -> None:
+    """ADR 0008 item 6 is one string, in `art30/web/settings_api.py`. A second copy on
+    the page is a second thing to keep in step, and it would drift."""
+    note = (REPO_ROOT / "art30" / "web" / "settings_api.py").read_text(encoding="utf-8")
+    assert "art30 never stores or asks for those credentials" in note
+    assert "art30 never stores or asks for those credentials" not in page
+    assert 'byId("brains-note").textContent = data.note' in page
+    assert 'byId("brain-note").textContent = data.note' in page
+
+
+def test_the_secret_row_shows_a_state_and_offers_a_replace(page: str) -> None:
+    """`settings.describe()` answers `present` or `absent`; the row may show no more."""
+    found = re.search(r"function secretControl\(row, id, save\) \{(.*?)\n\}", page, re.S)
+    assert found is not None, "secretControl has changed shape"
+    body = found.group(1)
+    assert 'type: "password"' in body and "disabled: true" in body
+    assert '"Replace"' in body and '"Set"' in body
+    assert 'row.value === "present"' in body
+
+
+def test_a_local_brain_plays_back_and_never_replays(page: str) -> None:
+    """ADR 0008: a local brain records no response, so its finished trace is played
+    back. The word on the toggle changes with the brain, and so does the pacing strip."""
+    assert 'local ? "play back" : "replay"' in page
+    assert 'byId("pacing-label").textContent = local ? "Play back pacing" : "Replay pacing"' \
+        in page
+    assert "function playbackRun()" in page
+
+
+def test_the_page_gives_the_reason_the_server_would_have_refused_with(page: str) -> None:
+    """A disabled brain toggle has to say what the 400 says (`settings_api.refusal`)."""
+    api = (REPO_ROOT / "art30" / "web" / "settings_api.py").read_text(encoding="utf-8")
+    for sentence in (" is not installed on this machine, so it cannot run anything here.",
+                     " Log the CLI in from a terminal, then press Refresh.",
+                     " is logged in, but art30 has no driver for it yet."):
+        assert sentence in page and sentence.strip() in api, sentence
+    # and readiness asks the same three questions the server does, not one of them
+    found = re.search(r"function brainReady\(name\) \{(.*?)\n\}", page, re.S)
+    assert found is not None, "brainReady has changed shape"
+    assert "row.logged_in === true" in found.group(1)
+    assert "row.built !== false" in found.group(1)
+
+
+def test_the_dollar_ceiling_is_named_only_where_dollars_are_spent(page: str) -> None:
+    """A local brain bills none, so the callout that offers one names no ceiling."""
+    assert page.count("ART30_MAX_USD") == 1, "the key setup step is the only place for it"
+    assert "spends no API credits" in page
+    assert "This brain bills no" in page and "no ceiling stops it; the turn budget does" in page
+
+
+def test_the_turn_budget_is_drawn_only_when_the_trace_carries_one(page: str) -> None:
+    assert 'id="turns-meter"' in page
+    assert "state.budget.turnsMax = Number(config.max_turns || line.max_turns || 0) || 0;" in page
+    assert 'byId("turns-meter").hidden = !state.budget.turnsMax;' in page
+
+
+def test_the_runs_view_says_which_brain_ran_and_what_the_cost_is(page: str) -> None:
+    assert 'text: brainLabel(brain)' in page
+    assert 'text: words(row.cost_source || "measured")' in page
