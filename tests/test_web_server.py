@@ -277,7 +277,7 @@ def test_the_gate_is_answered_mid_stream_and_the_decision_reaches_the_child(web)
 def test_cancel_kills_a_child_that_is_waiting_and_the_gate_refuses_before_the_request(
     web, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(runs, "command", lambda repo, arm, case, seed, mode, out: [
+    monkeypatch.setattr(runs, "command", lambda *argv, **named: [
         sys.executable, "-c", BLOCKING_CHILD])
     status, started = call(web + "/api/runs", {"repo": CASE, "arm": "advanced",
                                                "mode": "replay"})
@@ -311,11 +311,41 @@ def test_a_directory_outside_the_project_is_refused_and_a_fixture_keeps_its_own_
     status, payload = call(web + "/api/runs", {"repo": "/etc", "case": CASE,
                                                "arm": "baseline", "mode": "replay"})
     assert status == 400 and "outside" in payload["error"]
+    for inside in (".", str(REPO_ROOT), "evals/.."):
+        status, payload = call(web + "/api/runs", {"repo": inside, "arm": "baseline",
+                                                   "mode": "replay"})
+        assert status == 400, inside
+        assert payload["error"] == ("name a case or a repository inside the project,"
+                                    " not the project root"), inside
     monkeypatch.setenv("ANTHROPIC_API_KEY", "not-a-key-and-never-read")
     status, payload = call(web + "/api/runs", {"repo": "evals/fixtures/synthetic/S10",
                                                "case": "sneaky", "arm": "advanced",
                                                "mode": "live"})
     assert status == 400 and "test split" in payload["error"]
+
+
+def test_the_secrets_file_is_not_readable_as_source(web, tmp_path: Path) -> None:
+    """`.env` holds the API key the Settings view writes, and `source` is not the way
+    back out: refused under any root, before the file is opened."""
+    canary = "sk-ant-api03-CANARY-not-a-real-key-0123456789"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".env").write_text(f"ANTHROPIC_API_KEY={canary}\n", encoding="utf-8")
+    (repo / "README.md").write_text("a line\n", encoding="utf-8")
+    run_id = "baseline-D01-s1-abcdef"
+    directory = tmp_path / "web" / run_id
+    directory.mkdir(parents=True)
+    (directory / "run.json").write_text(json.dumps(
+        {"run_id": run_id, "case": CASE, "arm": ARM, "mode": "replay", "seed": SEED,
+         "repo": str(repo), "started_at": "2026-08-30T09:00:00Z"}), encoding="utf-8")
+
+    ok, _type, body = raw(f"{web}/api/runs/{run_id}/source?path=README.md&line=1")
+    assert ok == 200 and "a line" in body, "an ordinary file in the same root still opens"
+    for path in (".env", "./.env", "sub/../.env"):
+        status, _type, body = raw(f"{web}/api/runs/{run_id}/source?path={path}&line=1&context=3")
+        assert status == 403, path
+        assert canary not in body, path
+        assert json.loads(body)["error"] == "the secrets file is not source", path
 
 
 def test_another_host_and_another_origin_are_both_refused(web) -> None:
