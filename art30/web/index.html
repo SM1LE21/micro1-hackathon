@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>art30</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230B1220'/%3E%3Cpath d='M8 22 L14 9 L20 22 M10.5 17 H17.5' stroke='%230FA3B1' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAOklEQVR42mP4T2PAMGoBSRZwCylQBY1aMGrBqAWDyAL+xRuJRKMW0MqC0WQ6asGoBUPSgtGm44BYAAAGTASrKjZJGQAAAABJRU5ErkJggg==">
 
 <!-- =====================================================================
      art30 - the local website (ADR 0007).
@@ -160,11 +160,11 @@ select{font-size:14px}
 .strip-grid{display:grid;grid-template-columns:minmax(240px,2fr) minmax(190px,1.4fr) auto auto 84px auto;gap:16px 18px;align-items:end}
 .strip-grid .actions{display:flex;gap:8px}
 /* the hints live under the grid, so every control sits on one baseline */
-.callout{margin-top:16px;padding:14px 16px;border:1px solid var(--warn);border-left-width:4px;border-radius:10px;background:var(--warn-soft, #FAF1E1)}
+.callout{margin-top:16px;padding:14px 16px;border:1px solid var(--warn);border-left-width:4px;border-radius:10px;background:var(--warn-tint)}
 .callout-title{margin:0 0 6px;font-weight:700}
 .callout ol{margin:0;padding-left:20px}
 .callout li{margin:4px 0}
-.callout code{font-family:var(--mono);font-size:.9em;background:rgba(11,18,32,.06);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.callout code{font-family:var(--mono);font-size:.9em;background:var(--surface);padding:1px 5px;border-radius:4px;white-space:nowrap}
 .callout-foot{margin:10px 0 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .form-hints{margin-top:14px}
 .form-hints .hint{margin:0}
