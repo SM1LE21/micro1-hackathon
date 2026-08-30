@@ -96,8 +96,12 @@ def test_no_http_url_outside_a_comment(page: str) -> None:
 
 
 def test_no_external_subresource(page: str) -> None:
-    for tag in ("<link", "<img", "<iframe", "<script src", "@import"):
+    for tag in ("<img", "<iframe", "<script src", "@import"):
         assert tag not in page, f"{tag} would be fetched from somewhere"
+    # the one <link> is the favicon, carried inline as a data URI so the browser never asks
+    # the server for /favicon.ico (the 404 a fresh checkout used to show in the console)
+    links = re.findall(r"<link[^>]*>", page)
+    assert len(links) == 1 and 'rel="icon"' in links[0] and 'href="data:image/png;base64,' in links[0], links
 
 
 def test_the_inlined_font_is_the_file_in_assets() -> None:
