@@ -19,6 +19,7 @@ What we deliberately do not build, so scope stays fixed. Additions allowed; remo
 - No fixing the code. The tool reports the missing `storage.delete`; the human adds it. Opening a PR is a consequential action and out.
 - No AI Act rule set in the core. Gated extension: only after the GDPR test-set number is locked (target Saturday 2026-08-29 ~22:00 UTC), as one changelog iteration using the same `path_exists(..., must_pass_through=approval)` verifier. If it cannot be evaluated on planted cases or does not move a metric, it is removed and the row stays.
 - No subject-access (Art. 15) export generator. Same machinery, separate scope.
+- No credentials of any kind stored by the tool beyond `ANTHROPIC_API_KEY` in the user's own `.env`; local brains use the user's already-logged-in `claude`/`codex` and never touch their credentials (ADR 0008).
 - No live web or GitHub API at eval time. Real repos are vendored at a pinned SHA under `evals/fixtures/real/` with their LICENSE files.
 - No more than 5 real repos, none over ~150 non-test Python files, none without an OSI licence (MIT/BSD/Apache). Labelling cap 2 h each.
 - No LLM-as-judge anywhere in the primary metric.
