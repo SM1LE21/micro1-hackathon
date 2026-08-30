@@ -71,6 +71,16 @@ submission attempts, with the verifier and the gate removed. That is a good SKIL
 (ADR 0003 §4). The comparison below is therefore the closed loop and nothing else, and the harness
 refuses to write a report when the two arms' `prompt_sha` differ (`05-eval-harness.md` §7).
 
+## Three ways to run it
+
+One core, three surfaces (`.vault/adr/0007-three-surfaces-one-core.md`). The CLI is the only thing that runs the agent loop, the verifier and the renderer; the other two package it.
+
+| Surface | Start | Needs a key | What it is |
+|---|---|---|---|
+| Claude Code skill | copy `skill/art30/` into your skills directory; `skill/art30/README.md` | no — your own session; the verifier is offline Python | the eval's baseline instruction text, generated from the same prompt files, plus `scripts/verify.py` (the same verifier, same strings) and a Stop hook that turns it into a gate |
+| CLI | `uv run art30 scan <repo> --arm advanced --approve ask`; reference in `docs/cli.md` | live yes, replay no | the measured tool: the loop, both arms, the gate, traces, record/replay |
+| Local website | `make serve` (or `uv run art30 serve --open`); `docs/web.md` | live yes, replay no | drives `art30 scan` as a subprocess and shows the run as it happens: tool calls, the verifier's rejections, the checkpoint, the record with every citation opening its source line; a results view over `results/metrics.json` |
+
 ## Can another person reproduce the result?
 
 `make setup && make smoke && make eval-replay` regenerates `results/metrics.json` from recorded API
