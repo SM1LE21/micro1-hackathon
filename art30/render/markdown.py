@@ -106,6 +106,14 @@ def _stamp(value: object) -> str:
     return str(value).replace("T", " ").replace("Z", " UTC")
 
 
+def _where(gate: dict, prov: dict) -> str:
+    """Who answered the checkpoint, and through which surface (ADR 0007)."""
+    if gate.get("by") == "simulated":
+        return "without a person (--approve auto)"
+    approve = ((prov.get("config") or {}).get("approve")) or ""
+    return "on the website" if approve == "file" else "at the terminal"
+
+
 def _title(record: dict) -> list[str]:
     prov, ver = record.get("provenance") or {}, record.get("verification") or {}
     fixture = prov.get("fixture") or {}
@@ -133,7 +141,7 @@ def _title(record: dict) -> list[str]:
     if gate:
         rows.append((
             "Approved",
-            f"{_stamp(gate.get('at'))} at the terminal, {round(gate.get('wait_s') or 0)} s at the"
+            f"{_stamp(gate.get('at'))} {_where(gate, prov)}, {round(gate.get('wait_s') or 0)} s at the"
             f" checkpoint, risk {str(gate.get('risk', '')).upper()}",
         ))
     rows.append(("Cost", f"USD {prov.get('cost_usd')}, {prov.get('tool_calls')} tool calls"))
