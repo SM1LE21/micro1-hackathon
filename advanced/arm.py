@@ -20,6 +20,7 @@ from advanced import gate as terminal
 from art30 import tools
 from art30.arm import REACHING, Decision, Feedback, RunCtx, validate
 from art30.verify import build_graph, load_rules
+from art30.verify.rules import rules_sha
 from art30.verify.check import check
 from art30.verify.completeness import matched
 from art30.verify.findings import Graph
@@ -89,6 +90,7 @@ class AdvancedArm:
 
     def __init__(self, rules=None) -> None:
         self.rules = rules or load_rules()
+        self.rule_set_sha = rules_sha()   # verification.rule_set_sha in record.json
         self._graphs: dict[str, Graph] = {}
 
     def graph(self, root: Path) -> Graph:
