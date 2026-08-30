@@ -101,7 +101,7 @@ One key straddles the line. `gate_timeout` is a setting the CLI and the website 
 
 ## Local brains
 
-`brain = "claude"` and `brain = "codex"` select a CLI on your machine instead of the API. `art30 scan --brain claude` parses today and stops with `brain claude is not built yet`; `art30/brains/` is where they land. `art30.brains.detect()` already reports what is installed: the binary's path, its `--version` line, and whether the CLI says it is logged in. Nothing else from those answers is kept. `claude auth status` returns an email, an organisation and a plan, and `tests/test_brains_detect.py::test_nothing_of_the_account_survives_the_detection` is the check that none of it reaches a page, a trace or a log line.
+`brain = "claude"` and `brain = "codex"` select a CLI on your machine instead of the API. `art30 scan --brain claude` runs your own logged-in `claude` (docs/brains.md); `art30/brains/` is where they land. `art30.brains.detect()` already reports what is installed: the binary's path, its `--version` line, and whether the CLI says it is logged in. Nothing else from those answers is kept. `claude auth status` returns an email, an organisation and a plan, and `tests/test_brains_detect.py::test_nothing_of_the_account_survives_the_detection` is the check that none of it reaches a page, a trace or a log line.
 
 The note that belongs wherever a local brain is selected, verbatim from ADR 0008 item 6:
 
