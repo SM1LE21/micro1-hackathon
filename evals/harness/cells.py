@@ -20,7 +20,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 from evals.harness import score as scoring
-from evals.harness.plan import REPO_ROOT, Cell
+from evals.harness.plan import PINS, REPO_ROOT, Cell
 from evals.harness.trace_check import check_trace
 
 # 01-architecture.md section 9, one clause per stop condition, past tense, for the diagnosis line.
@@ -42,19 +42,36 @@ CLAUSE = {
 # --- the child process -------------------------------------------------------------------------
 
 
-def launch(cell: Cell) -> tuple[int, str, bool, float]:
-    """The one subprocess seam: (returncode, stderr, timed_out, wall_s)."""
-    command = [sys.executable, "-m", "art30.cli", "scan", cell.repo, "--arm", cell.arm,
-               "--case", cell.case, "--seed", str(cell.seed), "--mode", cell.mode,
-               "--approve", cell.approve, "--out", cell.out]
-    env = dict(os.environ)
+def cell_env(cell: Cell, environ: dict[str, str] | None = None) -> dict[str, str]:
+    """The child's environment: the process's, plus what this sweep pins (ADR 0008 item 5).
+
+    Every request setting is written out rather than left to the runtime's defaults, so a
+    sweep can say what it bought and no default two modules away can move under it.
+    `ART30_MAX_USD` is dropped from a local-brain cell — nothing enforces a dollar ceiling
+    there and the child must not print one; `ART30_RECORD` writes the API response cache,
+    which a local brain never fills, so it is left where it is (ADR 0008 item 3).
+    """
+    env = dict(os.environ if environ is None else environ)
     env["ART30_TRACE_DIR"] = cell.trace_dir  # the child's half of the section 9 seam
     # ADR 0008 item 5: a sweep is run at art30's own defaults plus whatever the sweep
     # itself set. `~/.config/art30/config.toml` is not a checkout artefact, so a clean
     # checkout does not exclude it; this switch does, for every key at once.
     env["ART30_IGNORE_SETTINGS_FILES"] = "1"
+    env.update(PINS)
+    env["ART30_TOOL_BUDGET"] = str(cell.tool_budget)
+    if cell.brain != "api":
+        env.pop("ART30_MAX_USD", None)
     if cell.unlock:
         env["ART30_UNLOCK_TEST"] = "1"  # the CLI's own half of the lock (section 5.4)
+    return env
+
+
+def launch(cell: Cell) -> tuple[int, str, bool, float]:
+    """The one subprocess seam: (returncode, stderr, timed_out, wall_s)."""
+    command = [sys.executable, "-m", "art30.cli", "scan", cell.repo, "--arm", cell.arm,
+               "--case", cell.case, "--seed", str(cell.seed), "--mode", cell.mode,
+               "--approve", cell.approve, "--out", cell.out, "--brain", cell.brain]
+    env = cell_env(cell)
     # `--approve ask` puts a person at the child's terminal: a pipe swallows the prompt and
     # art30/cli.py refuses a non-tty outright. Giving up stderr capture on those six cells (it
     # only feeds error.txt) is the cheaper half of the trade.
@@ -252,8 +269,14 @@ def finish_cell(cell: Cell, outcome: tuple[int, str, bool, float], manifest: dic
         target.with_suffix(".diagnosis.txt").write_text(diagnosis(cell, lines, end), encoding="utf-8")
     for violation in (check_trace(trace) if trace.is_file() else []):
         print(f"  trace: {violation}")
+    start = lines[0] if lines and lines[0].get("type") == "run_start" else {}
     return {"cell": cell, "metrics": metrics, "end": end,
             "wall_s": float(end.get("wall_s") or round(wall_s, 1)),
+            # The two things the identity check compares. A local brain assembles its request
+            # inside the CLI, so there are no bytes to hash and `step1` is null on every step
+            # (ADR 0008 item 1); `prompt_sha` is the instruction text, which art30 wrote and
+            # can still compare across the arms (`run._identity_check`).
+            "prompt_sha": start.get("prompt_sha"),
             "step1": next((o.get("request_hash") for o in lines if o.get("type") == "step"), None)}
 
 
