@@ -16,9 +16,9 @@ import webbrowser
 from contextlib import closing
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
-from art30.web import api, runs, sse
+from art30.web import api, runs, settings_api, sse
 
 LOOPBACK = ("127.0.0.1", "localhost", "::1")
 PAGE = "index.html"
@@ -104,6 +104,22 @@ class Handler(BaseHTTPRequestHandler):
             traceback.print_exc()
             self._safely(500, INTERNAL)
 
+    def do_DELETE(self) -> None:                       # noqa: N802 - stdlib name
+        if not self._same_origin():
+            return self._safely(403, REFUSED)
+        parsed = urlparse(self.path)
+        parts = [p for p in parsed.path.split("/") if p]
+        try:
+            if len(parts) == 3 and parts[:2] == ["api", "settings"]:
+                return self._json(*settings_api.unset(unquote(parts[2]),
+                                                      parse_qs(parsed.query)))
+            self._json(404, {"error": f"no route for DELETE {self.path}"})
+        except (BrokenPipeError, ConnectionResetError):
+            return
+        except Exception:                              # noqa: BLE001
+            traceback.print_exc()
+            self._safely(500, INTERNAL)
+
     def _get(self, parts: list[str], query: dict) -> None:
         if parts in ([], [PAGE]):
             return self._send(200, page_bytes(), "text/html; charset=utf-8")
@@ -113,6 +129,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(*api.cases())
         if parts == ["api", "results"]:
             return self._json(*api.results())
+        if parts == ["api", "settings"]:
+            return self._json(*settings_api.index(query))
         if parts == ["api", "runs"]:
             return self._json(*api.listing())
         if len(parts) >= 3 and parts[:2] == ["api", "runs"]:
@@ -138,6 +156,8 @@ class Handler(BaseHTTPRequestHandler):
         body = self._body()
         if parts == ["api", "runs"]:
             return self._json(*api.start(body))
+        if parts == ["api", "settings"]:
+            return self._json(*settings_api.write(body))
         if len(parts) == 4 and parts[:2] == ["api", "runs"]:
             if parts[3] == "gate":
                 return self._json(*api.gate(parts[2], body))
