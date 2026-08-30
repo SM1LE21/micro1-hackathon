@@ -31,3 +31,5 @@ Addendum 2026-08-29 (before any cache exists, so nothing is invalidated): two fr
 Addendum 2026-08-29 (still before any cache exists): ADR 0007 adds `"file"` to the `approve` literal in `art30/config.py` and the matching CLI choice, for the website's gate. No request byte changes; the frozen-list check runs from the commit that lands it.
 
 Addendum 2026-08-30 (still before any cache exists): `art30/loop.py` now records the full feedback of every rejected `submit_record` attempt and the accepted attempt's `unverified`/`conservative_divergences` lists, and takes `verification.rule_set_sha` from the arm (the advanced arm exposes a sha over its five rule files; the baseline has none). Before this, every advanced record rendered "Verification: none. This record was accepted on schema validity alone." — the signed document contradicting itself. `record.json` is an output; no request byte changes.
+
+Addendum 2026-08-30 (ADR 0008; still before any recording): `art30/config.py` gains `brain`, `brain_model`, `max_turns` and reads through `art30/settings.py`. The API brain's hashed request bytes are unchanged; `tests/test_llm.py`'s step-1 hash constant is the check.
