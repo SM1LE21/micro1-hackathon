@@ -120,10 +120,15 @@ def _entry(spec: dict, r: Rendered, doc: Doc, entry: dict) -> None:
     doc.add(f"    {var} = session.get({subject['name']}, {var}_id)")
     for symbol in entry["calls"]:
         store = next((s for s in spec["stores"] if s["delete_call"] == symbol), None)
-        if store is not None:
+        if store is not None and store["client"] == "redis":
+            # render_stores._cache renders the helper as `def purge_session(user)` and reads
+            # `user.email` inside it, so the route hands over the row (both local brains
+            # read the earlier `purge_session(user.email)` as a crash, correctly)
+            doc.add(f"    {symbol}({var})")
+        elif store is not None:
             keys = [f"{var}.{p[len(var) + 1:]}" if p.startswith(f"{var}_") else f"{var}.{p}"
                     for p in placeholders(store["key_template"])]
-            # a helper keyed on a subject attribute receives that attribute off the loaded row,
+            # an object-store helper takes the key's placeholders off the loaded row,
             # never a bare name the route does not define (audit B-1: D02 raised NameError)
             doc.add(f"    {symbol}({', '.join(keys)})")
         else:
