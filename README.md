@@ -78,7 +78,7 @@ One core, three surfaces (`.vault/adr/0007-three-surfaces-one-core.md`). The CLI
 | Surface | Start | Needs a key | What it is |
 |---|---|---|---|
 | Claude Code skill | copy `skill/art30/` into your skills directory; `skill/art30/README.md` | no — your own session; the verifier is offline Python | the eval's baseline instruction text, generated from the same prompt files, plus `scripts/verify.py` (the same verifier, same strings) and a Stop hook that turns it into a gate |
-| CLI | `uv run art30 scan <repo> --arm advanced --approve ask`; reference in `docs/cli.md` | live yes, replay no | the measured tool: the loop, both arms, the gate, traces, record/replay |
+| CLI | `uv run art30 scan <repo> --arm advanced --approve ask`; reference in `docs/cli.md` | with `--brain api` yes; with `--brain claude` or `--brain codex` no — your own logged-in CLI is the model (`docs/brains.md`) | the measured tool: the loop, both arms, the gate, traces, record/replay; cost is measured on the api brain and an estimate at list prices on a local one |
 | Local website | `make serve` (or `uv run art30 serve --open`); `docs/web.md` | live yes, replay no | drives `art30 scan` as a subprocess and shows the run as it happens: tool calls, the verifier's rejections, the checkpoint, the record with every citation opening its source line; a results view over `results/metrics.json` |
 
 ## Can another person reproduce the result?
