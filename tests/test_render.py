@@ -258,6 +258,18 @@ def test_a_citation_that_lost_its_symbol_stops_the_render(source: Path, tmp_path
     assert through.value.record_path.endswith("record.json")
 
 
+def test_a_citation_inside_a_multi_line_statement_renders(source: Path) -> None:
+    """7.2 rule 3 reads the statement whose span contains the cited line, so the
+    verifier accepts such a citation; the render check must not be stricter than
+    the verifier that vouched for the record (DEVIATIONS D-22 — the R01 demo run
+    died on exactly this, after the human had approved)."""
+    (source / "notify.py").write_text(
+        "send_email(\n    to=user.email,\n    password=password,\n)\n", encoding="utf-8")
+    rec = record()
+    rec["stores"][0]["fields"].append(field("password", "technical", "notify.py", 2))
+    render_html(rec, source)
+
+
 def test_two_renders_of_one_record_are_the_same_bytes(source: Path) -> None:
     assert render_markdown(record()) == render_markdown(record())
     assert render_html(record(), source) == render_html(record(), source)

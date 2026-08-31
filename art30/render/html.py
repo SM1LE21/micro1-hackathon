@@ -8,6 +8,7 @@ order or heading text (07-ui.md section 8).
 
 from __future__ import annotations
 
+import ast
 import html
 import re
 from pathlib import Path
@@ -218,15 +219,50 @@ def _file_lines(root: Path, path: str) -> list[str] | None:
 
 
 def _check_citations(record: dict, root: Path) -> None:
-    """Every cited symbol must still be on its logical line, or nothing renders."""
+    """Every cited symbol must still be on its logical line, or nothing renders.
+
+    The logical line is read the way the verifier reads it (7.2 rule 3,
+    `art30.verify.citations.Files.logical`): the cited physical line, or the
+    smallest ast statement whose span contains it. Before 2026-08-31 this check
+    read only the cited line plus its forward continuation, so a citation the
+    verifier had accepted mid-statement failed here — after the human had
+    approved (D01/R01 demo runs; DEVIATIONS D-22). The render check must never
+    be stricter than the verifier that vouched for the record.
+    """
     for path, line, symbol in _symbols(record):
         lines = _file_lines(root, path)
         if lines is None:
             raise RenderError(f"citation {path}:{line} names a file this scan cannot read")
         if not 1 <= line <= len(lines):
             raise RenderError(f"citation {path}:{line} is past the end of the file")
-        if symbol.lower() not in _logical(lines, line).lower():
+        if symbol.lower() not in _logical(lines, line).lower() \
+                and symbol.lower() not in _statement(path, lines, line).lower():
             raise RenderError(f"citation {path}:{line} no longer contains {symbol}")
+
+
+_SPANS: dict[tuple[str, int], list[tuple[int, int]]] = {}
+
+
+def _statement(path: str, lines: list[str], line: int) -> str:
+    """The smallest ast statement span containing the cited line, for a Python
+    file that parses; empty otherwise. Sorted smallest-first, as the verifier's."""
+    if not path.endswith(".py"):
+        return ""
+    key = (path, id(lines))
+    if key not in _SPANS:
+        spans: list[tuple[int, int]] = []
+        try:
+            tree = ast.parse("\n".join(lines))
+        except (SyntaxError, ValueError):
+            tree = None
+        for node in ast.walk(tree) if tree is not None else ():
+            if isinstance(node, ast.stmt) and node.end_lineno:
+                spans.append((node.lineno, node.end_lineno))
+        _SPANS[key] = sorted(spans, key=lambda s: (s[1] - s[0], s[0]))
+    for start, end in _SPANS[key]:
+        if start <= line <= end:
+            return "\n".join(lines[start - 1: end])
+    return ""
 
 
 def _logical(lines: list[str], line: int) -> str:

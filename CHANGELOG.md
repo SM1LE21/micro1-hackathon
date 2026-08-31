@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-08-31 16:10 UTC — A record the verifier vouched for must render
+
+- R01 demo run: the verifier accepted `utils.py:95` for a `password` on line 96 (7.2 span rule), the human approved, and the render check — which read only the cited line plus its forward continuation — refused it: `render failed` after 670 s and a human approval. The render check now reads the smallest enclosing ast statement span, exactly as the verifier does (DEVIATIONS D-22); the strict side after acceptance protects nobody
+- The gate card now states what Approve writes and what Reject ends (previous entry); together these close the two confusions of the first real-repo demo run
+
 ## 2026-08-31 16:00 UTC — The strip folds to the simple case
 
 - The Run view centres and asks only what a first run needs: Case, a path, Brain, Start. Arm, Mode, Model and Seed sit behind an Advanced options fold with one hint explaining the arms and the modes; the case intent and the mode reasons moved in with them; the credentials note folds behind "Your own login, not a key" and only unfolds its summary when a local brain is selected
