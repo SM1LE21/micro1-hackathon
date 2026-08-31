@@ -397,7 +397,8 @@ def test_a_relative_out_dir_reaches_the_cli_child_absolute(bench, tmp_path: Path
     (repo / "app.py").write_text("x = 1\n", encoding="utf-8")
     _script(tmp_path, [{"submit": _good(tmp_path)}])
     monkeypatch.chdir(tmp_path)
-    cfg = _cfg(tmp_path, out_dir=Path("relative-out"))
+    from dataclasses import replace
+    cfg = replace(_cfg(tmp_path), out_dir=Path("relative-out"))
     result, lines, _ = _drive(tmp_path, repo, cfg)
     assert result.stop_condition == "accepted"
     mcp = json.loads((tmp_path / "relative-out" / "mcp.json").read_text(encoding="utf-8"))
