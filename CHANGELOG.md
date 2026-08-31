@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-08-31 16:55 UTC — The budgets ride on top; the stage centres on the page
+
+- Tool calls, submit attempts, turns and the estimated cost sit in one centred row under the header; the cost's pricing note is a single centred line under them; the side column is gone, so the Now line and the findings own the full width, centred on the page both ways
+- Paths are relativised at render time with a third fallback: when neither the server nor a tree listing named the root, the directory every absolute read shares stands in; the page also asks `GET /api/runs/<id>` for the repo when the row arrived without one
+
 ## 2026-08-31 16:10 UTC — A record the verifier vouched for must render
 
 - R01 demo run: the verifier accepted `utils.py:95` for a `password` on line 96 (7.2 span rule), the human approved, and the render check — which read only the cited line plus its forward continuation — refused it: `render failed` after 670 s and a human approval. The render check now reads the smallest enclosing ast statement span, exactly as the verifier does (DEVIATIONS D-22); the strict side after acceptance protects nobody

@@ -111,6 +111,11 @@ noteNow({ step: 9 }, [{ id: "m", name: "Glob", input: { pattern: "**/*", path: "
 out.derivedRoot = state.repoRoot;
 out.derivedLine = byId("now-line").textContent;
 out.fileChips = byId("now-files")._children.map(function (c) { return [c.className, c.textContent]; });
+/* no repo and no tree listing: the common directory of the absolute reads stands in */
+state.run.repo = undefined; state.repoRoot = null; state.filesRead = [];
+noteNow({ step: 10 }, [{ id: "g1", name: "Read", input: { file_path: "/g/repo/app/m.py" } },
+                       { id: "g2", name: "Read", input: { file_path: "/g/repo/lib/n.py" } }], {});
+out.guessedChips = byId("now-files")._children.map(function (c) { return c.textContent; });
 newScan();
 out.afterNewScan = [byId("stage").hidden, byId("strip").hidden, byId("run-intro").hidden];
 state.liveEnabled = false; state.cases = [];
@@ -190,6 +195,7 @@ def test_paths_are_relative_to_the_repo_the_server_named_or_the_root_the_child_l
     assert view["derivedRoot"] == "/elsewhere/app"              # no run.repo: the Glob path
     assert view["derivedLine"] == "Reading pkg/x.py"
     assert view["fileChips"] == [["file-chip", "pkg/x.py"]]
+    assert view["guessedChips"] == ["app/m.py", "lib/n.py"]    # common-prefix fallback
 
 
 def test_new_scan_returns_to_the_strip(view: dict) -> None:

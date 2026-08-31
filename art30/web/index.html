@@ -275,16 +275,17 @@ td code{font-size:12px}
 }
 @keyframes sweep{from{background-position:-40% 0}to{background-position:140% 0}}
 @media (prefers-reduced-motion: reduce){.stage.running .stage-head::after{animation:none;background:var(--accent)}}
-.stage-body{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:48px;flex:1;padding-top:28px;align-items:start}
-/* on a wide screen an empty spacer mirrors the side column, so the centre column
-   sits on the centre of the page */
-@media (min-width:1200px){
-  .stage-body{grid-template-columns:220px minmax(0,1fr) 220px}
-  .stage-body::before{content:""}
-}
-@media (max-width:900px){.stage-body{grid-template-columns:1fr;gap:24px}}
-.stage-main{min-width:0}
-.now{min-height:40vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:24px 0}
+/* the budgets in one centred row on top; the main visual owns the full width below */
+.stage-stats{display:flex;justify-content:center;align-items:flex-start;gap:12px 48px;flex-wrap:wrap;padding:20px 0 0}
+.stage-stats .meter{min-width:118px}
+.stage-stats .meter .value{display:block;font-size:24px;font-weight:800;letter-spacing:-0.02em;line-height:1.1;margin-top:2px}
+.stage-stats .cost{font-size:24px;font-weight:800;letter-spacing:-0.02em;margin-top:2px}
+.stage-note{max-width:64ch;margin:8px auto 0;text-align:center;font-size:12px;line-height:1.5}
+.stage .pacing{justify-content:center;border-top:0;margin-top:10px;padding-top:0}
+.stage-body{flex:1;display:flex}
+.stage-main{margin:auto;width:100%;max-width:880px;min-width:0;padding:8px 0 36px}
+.now{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:24px 0}
+.stage.running .now{min-height:30vh}
 .stage.gated .now,.stage.finished .now{min-height:0;padding:8px 0 12px}
 /* once there is a finding to read, the step count and the files read are behind it */
 .stage.gated .now-files,.stage.finished .now-files,.stage.finished .now-progress{display:none}
@@ -307,12 +308,6 @@ td code{font-size:12px}
   font-family:var(--mono);font-size:11.5px;color:var(--muted);background:var(--surface);
   border:1px solid var(--rule);border-radius:6px;padding:2px 8px;white-space:nowrap;
 }
-.stage-side{border-left:1px solid var(--rule);padding-left:28px}
-@media (max-width:900px){.stage-side{border-left:0;padding-left:0;border-top:1px solid var(--rule);padding-top:20px}}
-.stage-side .meters{grid-template-columns:1fr;gap:22px;margin-top:0}
-.stage-side .meter .value{display:block;font-size:26px;font-weight:800;letter-spacing:-0.02em;line-height:1.1;margin-top:2px}
-.stage-side .cost{font-size:30px;font-weight:800}
-.stage-side .hint{font-size:12px;line-height:1.5;margin-top:8px}
 .findings-card,.stream .card{margin-top:16px}
 .findings-head{font-size:22px;font-weight:800;letter-spacing:-0.02em;margin:4px 0 0}
 .findings-ok{color:var(--ok-ink)}
@@ -522,6 +517,35 @@ td code{font-size:12px}
           <button type="button" class="btn btn-quiet btn-small" id="new-scan" hidden>New scan</button>
         </span>
       </div>
+      <div class="stage-stats">
+        <div class="meter">
+          <span class="label">Tool calls</span>
+          <span class="value" id="tool-value">0 / 60</span>
+          <span class="bar" id="tool-track"><span id="tool-bar"></span></span>
+        </div>
+        <div class="meter">
+          <span class="label">Submit attempts</span>
+          <span class="value" id="submit-value">0 / 5</span>
+          <span class="bar" id="submit-track"><span id="submit-bar"></span></span>
+        </div>
+        <div class="meter" id="turns-meter" hidden>
+          <span class="label">Turns</span>
+          <span class="value" id="turns-value">0 / 60</span>
+          <span class="bar" id="turns-track"><span id="turns-bar"></span></span>
+        </div>
+        <div class="meter">
+          <span class="label" id="cost-label">Cost so far</span>
+          <span class="cost" id="cost-value">$0.0000</span>
+        </div>
+      </div>
+      <p class="hint stage-note" id="cost-note" hidden></p>
+      <div class="pacing" id="pacing" hidden>
+        <span class="label" id="pacing-label">Replay pacing</span>
+        <button type="button" class="btn btn-quiet btn-small" id="pace-play">Pause</button>
+        <button type="button" class="btn btn-quiet btn-small" id="pace-step">Step</button>
+        <button type="button" class="btn btn-quiet btn-small" id="pace-instant">Instant</button>
+        <span class="hint" id="pace-count"></span>
+      </div>
       <div class="stage-body">
         <div class="stage-main">
           <div class="now" aria-live="polite">
@@ -533,37 +557,6 @@ td code{font-size:12px}
           <div class="record-links" id="record-links" hidden></div>
           <div class="stream" id="stream"></div>
         </div>
-        <aside class="stage-side">
-          <div class="meters">
-            <div class="meter">
-              <span class="label">Tool calls</span>
-              <span class="value" id="tool-value">0 / 60</span>
-              <span class="bar" id="tool-track"><span id="tool-bar"></span></span>
-            </div>
-            <div class="meter">
-              <span class="label">Submit attempts</span>
-              <span class="value" id="submit-value">0 / 5</span>
-              <span class="bar" id="submit-track"><span id="submit-bar"></span></span>
-            </div>
-            <div class="meter" id="turns-meter" hidden>
-              <span class="label">Turns</span>
-              <span class="value" id="turns-value">0 / 60</span>
-              <span class="bar" id="turns-track"><span id="turns-bar"></span></span>
-            </div>
-            <div class="meter">
-              <span class="label" id="cost-label">Cost so far</span>
-              <span class="cost" id="cost-value">$0.0000</span>
-              <span class="hint" id="cost-note" hidden></span>
-            </div>
-          </div>
-          <div class="pacing" id="pacing" hidden>
-            <span class="label" id="pacing-label">Replay pacing</span>
-            <button type="button" class="btn btn-quiet btn-small" id="pace-play">Pause</button>
-            <button type="button" class="btn btn-quiet btn-small" id="pace-step">Step</button>
-            <button type="button" class="btn btn-quiet btn-small" id="pace-instant">Instant</button>
-            <span class="hint" id="pace-count"></span>
-          </div>
-        </aside>
       </div>
     </section>
   </section>
@@ -1257,6 +1250,11 @@ function openRun(run, paced) {
   byId("now-files").hidden = true;
   stageMode("running");
   showStage(true);
+  if (!run.repo) {
+    api("/api/runs/" + run.run_id).then(function (row) {
+      if (state.run && state.run.run_id === run.run_id && row && row.repo) { state.run.repo = row.repo; }
+    }, function () { /* an old server names no repo; the guesses above stand in */ });
+  }
   setStatus(run.status || "running");
   drawMeters();
   startPacer();
@@ -1317,7 +1315,7 @@ function noteNow(line, calls, results) {
     var kind = toolKind(call.name);
     var input = call.input || {};
     if (kind === "read") {
-      var path = relPath(input.file_path || input.path);
+      var path = String(input.file_path || input.path || "");
       read.push(path);
       if (state.filesRead.indexOf(path) < 0) { state.filesRead.push(path); }
     } else if (kind === "grep") {
@@ -1344,7 +1342,7 @@ function noteNow(line, calls, results) {
       phrases = ["Handing the record to the verifier, " + attempt + "."];
     }
   } else if (read.length) {
-    phrases = read.map(function (path) { return "Reading `" + path + "`"; });
+    phrases = read.map(function (path) { return "Reading `" + relPath(path) + "`"; });
   } else if (patterns.length) {
     phrases = patterns.map(function (p) { return "Searching " + (p.indexOf(" for ") > 0 ? p : "the code for " + p); });
   } else if (mapped) {
@@ -1361,7 +1359,7 @@ function noteNow(line, calls, results) {
   var files = byId("now-files");
   files.hidden = !state.filesRead.length;
   clear(files);
-  state.filesRead.forEach(function (path) { files.appendChild(el("span", { class: "file-chip", text: path })); });
+  state.filesRead.forEach(function (path) { files.appendChild(el("span", { class: "file-chip", text: relPath(path) })); });
 }
 
 function onStep(line) {
@@ -1857,9 +1855,23 @@ function statusWord(status) {
 }
 
 /* Paths are printed relative to the repository under scan: the one the server named
-   for this run, else the one the child's first tree listing was asked for. */
+   for this run, else the one the child's first tree listing was asked for, else the
+   directory every absolute path read so far has in common. */
+function repoGuess() {
+  var absolute = state.filesRead.filter(function (p) { return p.indexOf("/") === 0; });
+  if (absolute.length < 2) { return ""; }
+  var parts = absolute[0].split("/").slice(0, -1);
+  absolute.forEach(function (p) {
+    var other = p.split("/");
+    var n = 0;
+    while (n < parts.length && n < other.length - 1 && parts[n] === other[n]) { n += 1; }
+    parts = parts.slice(0, n);
+  });
+  return parts.length > 1 ? parts.join("/") : "";
+}
+
 function relPath(path) {
-  var repo = String((state.run && state.run.repo) || state.repoRoot || "").replace(/\/+$/, "");
+  var repo = String((state.run && state.run.repo) || state.repoRoot || repoGuess() || "").replace(/\/+$/, "");
   var text = String(path || "");
   if (repo && text.indexOf(repo + "/") === 0) { return text.slice(repo.length + 1); }
   if (repo && text === repo) { return "."; }
