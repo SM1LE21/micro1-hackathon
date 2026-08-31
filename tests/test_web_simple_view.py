@@ -103,6 +103,13 @@ out.findingsAfter = byId("findings-card").textContent;
 out.links = byId("record-links")._children.map(function (a) { return [a.getAttribute("href"), a.textContent]; });
 out.linksHidden = byId("record-links").hidden;
 out.endCard = byId("stream")._children.filter(function (c) { return c.className.indexOf("end-card") >= 0; })[0].textContent;
+/* a run the server did not name a repo for: the first tree listing names the root */
+state.run.repo = undefined; state.repoRoot = null; state.filesRead = [];
+noteNow({ step: 9 }, [{ id: "m", name: "Glob", input: { pattern: "**/*", path: "/elsewhere/app" } },
+                      { id: "r", name: "Read", input: { file_path: "/elsewhere/app/pkg/x.py" } }], {});
+out.derivedRoot = state.repoRoot;
+out.derivedLine = byId("now-line").textContent;
+out.fileChips = byId("now-files")._children.map(function (c) { return [c.className, c.textContent]; });
 newScan();
 out.afterNewScan = [byId("stage").hidden, byId("strip").hidden, byId("run-intro").hidden];
 state.liveEnabled = false; state.cases = [];
@@ -174,6 +181,13 @@ def test_the_finish_says_so_in_plain_words_and_offers_the_two_files(view: dict) 
     assert view["links"] == [["/api/runs/advanced-T01-s1-test/record.html", "Open the full report"],
                              ["/api/runs/advanced-T01-s1-test/record.md", "record.md"]]
     assert "Finished" in view["endCard"] and "record written" in view["endCard"]
+
+
+def test_paths_are_relative_to_the_repo_the_server_named_or_the_root_the_child_listed(view: dict) -> None:
+    assert view["reading"] == "Reading app/models.py"          # state.run.repo = /repo
+    assert view["derivedRoot"] == "/elsewhere/app"              # no run.repo: the Glob path
+    assert view["derivedLine"] == "Reading pkg/x.py"
+    assert view["fileChips"] == [["file-chip", "pkg/x.py"]]
 
 
 def test_new_scan_returns_to_the_strip(view: dict) -> None:

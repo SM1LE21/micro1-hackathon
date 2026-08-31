@@ -5,6 +5,7 @@
 - Details is gone, and with it the page's own record renderer: a run takes the view — what the child is doing now, large and centred, the agent's tool calls read back as sentences that rotate through a step's files; the budgets at the side; at the checkpoint the findings card and the gate, the CLI's text folded; at the finish the card again from `record.json`, **Open the full report** and `record.md`, the totals, New scan
 - Codex is not offered on the page for now; the CLI and the harness keep `--brain codex`. The no-key callout gains Dismiss (this page load only)
 - The on-page record tests go with the renderer; `tests/test_web_simple_view.py` reads the stage as text through the Node DOM stub; 892 tests green
+- Paths on the stage are relative to the repository under scan: the server names it on the `POST /api/runs` answer and in the runs listing, and the page falls back to the root the child's first tree listing was asked for; the big line wraps inside its column; files read are chips; once the checkpoint or the finish is on screen the step count and the files step aside for the findings
 
 ## 2026-08-31 15:30 UTC — Simple view on the website
 

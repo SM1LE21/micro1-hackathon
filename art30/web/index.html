@@ -254,23 +254,48 @@ td code{font-size:12px}
 /* --- the stage: a run takes the view. What the child is doing now, large and centred;
    the budgets at the side; then what it found and the two files it wrote. --- */
 .stage{margin-top:4px;min-height:calc(100vh - 140px);display:flex;flex-direction:column}
-.stage-head{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:14px 0;border-bottom:1px solid var(--rule)}
+.stage-head{position:relative;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:14px 0;border-bottom:1px solid var(--rule)}
 .stage-head-actions{margin-left:auto;display:flex;gap:8px}
-.stage-body{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:44px;flex:1;padding-top:24px;align-items:start}
+/* a thin sweep along the header rule while the child runs */
+.stage.running .stage-head::after{
+  content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;
+  background:linear-gradient(90deg,transparent 0%,var(--accent) 50%,transparent 100%);
+  background-size:36% 100%;background-repeat:no-repeat;animation:sweep 1.8s ease-in-out infinite;
+}
+@keyframes sweep{from{background-position:-40% 0}to{background-position:140% 0}}
+@media (prefers-reduced-motion: reduce){.stage.running .stage-head::after{animation:none;background:var(--accent)}}
+.stage-body{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:48px;flex:1;padding-top:28px;align-items:start}
 @media (max-width:900px){.stage-body{grid-template-columns:1fr;gap:24px}}
-.now{min-height:42vh;display:flex;flex-direction:column;justify-content:center;text-align:center;padding:24px 0}
+.stage-main{min-width:0}
+.now{min-height:40vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:24px 0}
 .stage.gated .now,.stage.finished .now{min-height:0;padding:8px 0 12px}
-.now-line{margin:0;font-size:clamp(22px,3.2vw,38px);font-weight:800;letter-spacing:-0.025em;line-height:1.2}
-.stage.gated .now-line,.stage.finished .now-line{font-size:clamp(20px,2.4vw,28px)}
+/* once there is a finding to read, the step count and the files read are behind it */
+.stage.gated .now-files,.stage.finished .now-files,.stage.finished .now-progress{display:none}
+.now-line{
+  margin:0;max-width:26ch;font-size:clamp(24px,3.4vw,40px);font-weight:800;letter-spacing:-0.025em;
+  line-height:1.18;overflow-wrap:anywhere;
+}
+.stage.gated .now-line,.stage.finished .now-line{max-width:40ch;font-size:clamp(20px,2.4vw,28px)}
 .now-line.rise{animation:rise .35s ease-out}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion: reduce){.now-line.rise{animation:none}}
-.now-line code{font-size:.8em;font-weight:700;background:var(--surface);padding:2px 10px;border-radius:8px}
-.now-progress{margin:16px 0 0;font-size:14px}
-.now-files{margin:10px auto 0;max-width:72ch;white-space:normal;word-break:break-word;line-height:1.7;font-size:12px}
-.stage-side .meters{grid-template-columns:1fr;gap:18px;margin-top:0}
-.stage-side .meter .value{font-size:22px;font-weight:700;letter-spacing:-0.02em}
-.stage-side .cost{font-size:30px}
+.now-line code{
+  display:inline-block;font-size:.66em;font-weight:700;letter-spacing:0;line-height:1.35;
+  background:var(--surface);border:1px solid var(--rule);padding:4px 12px;border-radius:10px;
+  vertical-align:middle;overflow-wrap:anywhere;
+}
+.now-progress{margin:18px 0 0;font-size:14px}
+.now-files{margin:14px auto 0;max-width:80ch;display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.file-chip{
+  font-family:var(--mono);font-size:11.5px;color:var(--muted);background:var(--surface);
+  border:1px solid var(--rule);border-radius:6px;padding:2px 8px;white-space:nowrap;
+}
+.stage-side{border-left:1px solid var(--rule);padding-left:28px}
+@media (max-width:900px){.stage-side{border-left:0;padding-left:0;border-top:1px solid var(--rule);padding-top:20px}}
+.stage-side .meters{grid-template-columns:1fr;gap:22px;margin-top:0}
+.stage-side .meter .value{display:block;font-size:26px;font-weight:800;letter-spacing:-0.02em;line-height:1.1;margin-top:2px}
+.stage-side .cost{font-size:30px;font-weight:800}
+.stage-side .hint{font-size:12px;line-height:1.5;margin-top:8px}
 .findings-card,.stream .card{margin-top:16px}
 .findings-head{font-size:22px;font-weight:800;letter-spacing:-0.02em;margin:4px 0 0}
 .findings-ok{color:var(--ok-ink)}
@@ -463,7 +488,7 @@ td code{font-size:12px}
           <div class="now" aria-live="polite">
             <p class="now-line" id="now-line"></p>
             <p class="hint now-progress" id="now-progress"></p>
-            <p class="hint mono now-files" id="now-files" hidden></p>
+            <div class="now-files" id="now-files" hidden></div>
           </div>
           <article class="card findings-card" id="findings-card" hidden></article>
           <div class="record-links" id="record-links" hidden></div>
@@ -736,6 +761,7 @@ var state = {
   phraseAt: 0,
   phraseTimer: null,
   ended: false,
+  repoRoot: null,
   blockedDismissed: false
 };
 
@@ -1132,7 +1158,7 @@ function startRun() {
     openRun({
       run_id: data.run_id, case: state.form.caseId, arm: state.form.arm,
       mode: state.form.mode, seed: state.form.seed, status: "running",
-      brain: state.form.brain
+      brain: state.form.brain, repo: data.repo
     }, state.form.mode === "replay");
   }, function (error) {
     byId("start").disabled = false;
@@ -1167,6 +1193,7 @@ function openRun(run, paced) {
   state.filesRead = [];
   state.submitted = null;
   state.ended = false;
+  state.repoRoot = null;
   stopGateTicker();
   stopRecordPoll();
 
@@ -1256,8 +1283,10 @@ function noteNow(line, calls, results) {
       if (state.filesRead.indexOf(path) < 0) { state.filesRead.push(path); }
     } else if (kind === "grep") {
       patterns.push((input.glob ? "`" + String(input.glob) + "` for " : "") + "`" + String(input.pattern || "") + "`");
-    } else if (kind === "map") { mapped = true; }
-    else if (kind === "submit") { submit = call; }
+    } else if (kind === "map") {
+      mapped = true;
+      if (!state.repoRoot && String(input.path || "").indexOf("/") === 0) { state.repoRoot = String(input.path); }
+    } else if (kind === "submit") { submit = call; }
   });
   var phrases;
   if (submit) {
@@ -1292,7 +1321,8 @@ function noteNow(line, calls, results) {
     + plural(state.filesRead.length, "file read", "files read");
   var files = byId("now-files");
   files.hidden = !state.filesRead.length;
-  files.textContent = state.filesRead.join("   ");
+  clear(files);
+  state.filesRead.forEach(function (path) { files.appendChild(el("span", { class: "file-chip", text: path })); });
 }
 
 function onStep(line) {
@@ -1781,8 +1811,10 @@ function statusWord(status) {
   return words(text);
 }
 
+/* Paths are printed relative to the repository under scan: the one the server named
+   for this run, else the one the child's first tree listing was asked for. */
 function relPath(path) {
-  var repo = state.run && state.run.repo ? String(state.run.repo) : "";
+  var repo = String((state.run && state.run.repo) || state.repoRoot || "").replace(/\/+$/, "");
   var text = String(path || "");
   if (repo && text.indexOf(repo + "/") === 0) { return text.slice(repo.length + 1); }
   if (repo && text === repo) { return "."; }

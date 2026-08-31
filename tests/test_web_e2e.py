@@ -141,6 +141,8 @@ def test_s10_replays_through_the_website_and_the_gate_reaches_the_record(web) ->
     status, started = call(web + "/api/runs",
                            {"repo": CASE, "arm": ARM, "mode": "replay", "seed": SEED})
     assert (status, started["status"]) == (201, "running"), started
+    # the page prints paths relative to this; the run's own directory would be wrong
+    assert Path(started["repo"]).is_absolute() and started["repo"].endswith(CASE), started
     run_id = started["run_id"]
     assert run_id.startswith(f"{ARM}-{CASE}-s{SEED}-")
 

@@ -129,7 +129,7 @@ def start(body: dict) -> tuple[int, dict]:
         return refused
     assert repo is not None
     run = runs.spawn(repo, arm, case, seed, mode, brain, model)
-    return 201, {"run_id": run.run_id, "status": "running", "brain": brain}
+    return 201, {"run_id": run.run_id, "status": "running", "brain": brain, "repo": str(run.repo)}
 
 
 def _brain_refusal(brain: str, mode: str, case: str, arm: str) -> tuple[int, dict] | None:

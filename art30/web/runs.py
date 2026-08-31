@@ -242,7 +242,7 @@ def state(run: Run) -> dict:
     start = trace_line(trace_path(run), "run_start")
     return {"run_id": run.run_id, "case": run.case, "arm": run.arm, "mode": run.mode,
             "seed": run.seed, "started_at": run.started_at, "status": status(run),
-            "exit_code": run.proc.poll(), "brain": run.brain,
+            "exit_code": run.proc.poll(), "brain": run.brain, "repo": str(run.repo),
             "cost_source": cost_source(run.brain, start)}
 
 
