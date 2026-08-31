@@ -59,12 +59,12 @@ reverify:
 
 eval-replay-local:
 	uv run python -m evals.harness.reverify --runs results/runs
-	ART30_REPRODUCIBLE=1 uv run python -m evals.harness.report --runs results/runs --out results/metrics.json --markdown
+	ART30_REPRODUCIBLE=1 uv run python -m evals.harness.report --runs results/runs --out results/metrics.json --markdown --cases S01,S02,S03,S04,S05,S06,S07,S08,S09,S10 --arms baseline,advanced --seeds 1,2,3
 	git diff --exit-code -- results/metrics.json
 	@echo "eval-replay-local reproduced results/metrics.json"
 
 report:
-	uv run python -m evals.harness.report --runs results/runs --out results/metrics.json --markdown
+	uv run python -m evals.harness.report --runs results/runs --out results/metrics.json --markdown --cases S01,S02,S03,S04,S05,S06,S07,S08,S09,S10 --arms baseline,advanced --seeds 1,2,3
 
 gate-timing:
 	uv run python -m evals.harness.run --cases S03,S05,R01,R02,R03,R04 --arms advanced --seeds 1 --mode replay --approve ask --jobs 1 --out results/.gate-timing --unlock-test --reason "gate timing, replay"
