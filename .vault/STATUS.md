@@ -1,10 +1,11 @@
 # STATUS
 
-status: active
-last_updated: 2026-08-30 07:05 UTC
+status: submitting
+last_updated: 2026-08-31 17:00 UTC
 
 ## Where we are
 
+- **Submission day complete except the video and the form (2026-08-31 17:00 UTC).** Both sweeps recorded on `--brain claude` (dev 15:10–15:56, test 15:56–16:23 UTC, ledger lines 1–2); `results/metrics.json` committed at cc60c95; `make smoke` 894 passed and `make eval-replay-local` ends "reproduced". Headline: dev F1 0.86→0.90 (CI −0.01…+0.09), test 0.88→0.86 (CI −0.06…+0.02), false safes 0→0, delivery 25/30→27/30, S10 1/3→3/3; all eight failures are the render-time citation rule (`traces/failures/INDEX.md`). Judge docs filled from artefacts; `docs/submission.md` is the form text; `docs/video-script.md` the take; zip = `git archive` at the final sha (~19 MB). Remaining: record + upload the video, paste form, upload zip, Submit by 17:30 UTC.
 - Hour ~6 of 75 (kickoff 2026-08-28 15:00 UTC; deadline 2026-08-31 18:00 UTC; code freeze Sunday 19:30 UTC, ADR 0005).
 - Direction chosen and recorded: GDPR Art. 30 inventory + erasure-path check, closed over an `ast` reachability verifier (ADR 0002). Runtime decisions in ADR 0003; contract amendments in ADR 0004; plan amendments in ADR 0005.
 - **v1 concept, research and spec are complete, committed and accepted by the author in full (2026-08-29).** The design of record from here on. Entry point: `docs/spec/README.md`. Research with verified sources under `docs/research/`; judge-facing mapping under `docs/judging/`; ten fixture specs under `evals/fixtures/specs/`; the target artefact at `docs/spec/example-record-S10.md`; the build plan at `docs/spec/08-plan.md`; the narrative drafts at `docs/spec/09-narrative.md`.
