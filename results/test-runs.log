@@ -1,1 +1,2 @@
 2026-08-31T14:44:36Z | 7521862 | baseline,advanced | S08,S09,S10 | 1,2,3 | live | brain claude; final system, both arms, one window (ADR 0005); brain claude; R03,R04 dropped: unlabelled | 0000000000000000000000000000000000000000000000000000000000000000
+2026-08-31T15:56:36Z | 92cc635 | baseline,advanced | S08,S09,S10 | 1,2,3 | live | brain claude; final system re-run after the path fix (ADR 0005); brain claude | f60cbfc4af6e29e1bfc40c6372a4e9cee2ad986b6968e04ba960d68d73f853d4
