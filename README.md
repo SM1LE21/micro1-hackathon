@@ -51,19 +51,17 @@ hand, under the protocol in `evals/CASES.md`; how long that takes was never meas
 
 ## Does the agent solve it well?
 
-The agent reads the repository with three read-only tools and submits through a fourth,
-`submit_record` (`00-contract.md` §Tools): `list_tree`, `read_file` and `grep` on the API brain, and
-the CLI's own `Read`, `Grep` and `Glob` when the brain is `claude`, where `submit_record` arrives as
-an MCP tool whose handler is the arm's own code (`docs/brains.md`). It drafts the record, which is
-the part that needs judgement: whether a `notes` column, a `metadata` JSON blob or an IP in a log line
-is personal data is a semantic call, not a grep (Art. 4(1), `docs/research/gdpr-sources.md` §1 [S1]).
-Every claim it submits is re-checked by a deterministic verifier on stdlib `ast`, which answers one
-structural question per store — does a static call path run from the erasure entry point to a
-deletion primitive for that store — and hands back the struck claim, the reason and the line, as a
-tool result the model has to answer (`docs/spec/03-verifier.md`, `00-contract.md` §Feedback object).
-An unresolvable call renders `unverified` rather than a guess in either direction, and a human gate
-fires before the record renders (rows 14 and 8 of `.vault/AMBIGUITIES.md`; the gate itself is
-`00-contract.md` §Run phases 3, ground rule 04).
+The agent reads the repository with three read-only tools (`list_tree`, `read_file`, `grep`; `Read`,
+`Grep`, `Glob` on the `claude` brain) and submits through `submit_record`, served over MCP there
+(`00-contract.md` §Tools, `docs/brains.md`). It drafts the record, the part needing judgement:
+whether a `notes` column, a `metadata` blob or an IP in a log line is personal data is a semantic
+call, not a grep (Art. 4(1), `docs/research/gdpr-sources.md` §1 [S1]). Every claim it submits is
+re-checked by a deterministic verifier on stdlib `ast`, answering one structural question per store
+— does a static call path run from the erasure entry point to a deletion primitive for that store —
+and hands back the struck claim, the reason and the line as a tool result the model must answer
+(`docs/spec/03-verifier.md`, `00-contract.md` §Feedback object). An unresolvable call renders
+`unverified` rather than a guess either way, and a human gate fires before the record renders
+(`.vault/AMBIGUITIES.md` rows 14 and 8; `00-contract.md` §Run phases 3, ground rule 04).
 
 The baseline is the same model, the same instruction bytes, the same four tools and the same five
 submission attempts, with the verifier and the gate removed. That is a good SKILL.md
@@ -76,18 +74,17 @@ One core, three surfaces (`.vault/adr/0007-three-surfaces-one-core.md`). The CLI
 
 | Surface | Start | Needs a key | What it is |
 |---|---|---|---|
-| Claude Code skill | copy `skill/art30/` into your skills directory; `skill/art30/README.md` | no — your own session; the verifier is offline Python | the eval's baseline instruction text, generated from the same prompt files, plus `scripts/verify.py` (the same verifier, same strings) and a Stop hook that turns it into a gate |
+| Claude Code skill | copy `skill/art30/` into your skills directory; `skill/art30/README.md` | no — your own session; the verifier is offline Python | the eval's baseline instruction text, generated from the same prompt files, plus `skill/art30/scripts/verify.py` (the same verifier, same strings) and a Stop hook that turns it into a gate |
 | CLI | `uv run art30 scan <repo> --arm advanced --approve ask`; reference in `docs/cli.md` | with `--brain api` yes; with `--brain claude` or `--brain codex` no — your own logged-in CLI is the model (`docs/brains.md`) | the measured tool: the loop, both arms, the gate, traces, record/replay; cost is measured on the api brain and an estimate at list prices on a local one |
 | Local website | `make serve` (or `uv run art30 serve --open`); `docs/web.md` | live yes, replay no | drives `art30 scan` as a subprocess and shows the run as one stage: what the scan is doing now, the budgets at the side, then what it found — the stores not proven erased, each cited, every citation opening its source line — and the two files it wrote (`docs/web.md` §The stage); a results view sits over `results/metrics.json` |
 
 ## Can another person reproduce the result?
 
-`make setup && make smoke && make eval-replay-local` needs no key: `reverify` re-runs the verifier
-over every recorded submission (`results/runs/<arm>/<case>/s<seed>/brain/submissions.jsonl`) and
-re-scores every `record.json`, `report` rebuilds `results/metrics.json`, `git diff --exit-code`
-compares it with the committed file (`Makefile`, `docs/runbook-sweeps.md` §7). It cannot regenerate
-model outputs; it proves the verifier and the scorer still say what they said over those records.
-Docker and the live runs: [REPRODUCE.md](REPRODUCE.md).
+`make setup && make smoke && make eval-replay-local` needs no key: `reverify` re-runs the verifier over
+every submission recorded under `results/runs/` and re-scores every `record.json`, `report` rebuilds
+`results/metrics.json`, `git diff --exit-code` compares it with the committed file (`Makefile`,
+`docs/runbook-sweeps.md` §7). It cannot regenerate model outputs; what it proves is that the verifier
+and the scorer still say what they said. Docker and live runs: [REPRODUCE.md](REPRODUCE.md).
 
 ## Results
 
@@ -106,14 +103,12 @@ False safe — the agent says a store is erased where the manifest says it is no
 matters more than F1, because it is the error that costs a founder a month:
 [arms.baseline.test.false_safe_total] against [arms.advanced.test.false_safe_total] on test.
 
-Every scored run was made on `--brain claude`, the author's own logged-in Claude Code CLI answering
-as `claude-opus-5`, with no API key in the process (`docs/runbook-sweeps.md` §6a,
-`.vault/adr/0008-brains-and-settings.md`). So the cost column is an estimate rather than a bill: a
-subscription run costs no marginal dollars, and what is reported is the CLI's own token counts over
-the trace's `step` lines priced at API list prices, `cost_source: cli_estimate`, nothing netted out
-(`art30/brains/pricing.py`; `docs/judging/requirements-matrix.md` D2g). Both arms spend five
-`submit_record` attempts per run and every attempt is counted, rejected ones included, because a user
-pays for retries (`00-contract.md` §Budgets, ADR 0003 §2 and §Consequences).
+Every scored run ran on `--brain claude`: the author's logged-in Claude Code CLI, `claude-opus-5`,
+no API key (`docs/runbook-sweeps.md` §6a, ADR 0008). So the cost column is an estimate, not a bill:
+a subscription run costs no marginal dollars, and the number is the CLI's own token counts over the
+run's `step` lines at list prices, `cost_source: cli_estimate` (`art30/brains/pricing.py`,
+`docs/judging/requirements-matrix.md` D2g). Both arms spend five `submit_record` attempts a run,
+every one counted, rejected included: a user pays for retries (ADR 0003 §2).
 
 Dev, and the secondary rows (pass, pass^3, regressions, unverified, bad citations, turns, tool
 calls): `results/metrics.json` via `make report`. Runs: [identity_check.success] success +
@@ -163,8 +158,8 @@ whose rendered text was grepped in full, nor in the slugs of the remaining 846 r
 (`docs/research/prior-art.md` §0, §1 [S6][S1][S8][S8b]). Privado detects 110+ data elements and
 scores `s3.delete_object` as evidence that data *arrived* at S3, the inverse of an erasure check
 (§2 [S10][S13]). Fides executes real erasure, from a YAML declaration a human writes rather than
-from the code (§3 [S17][S18]). Nothing found produces
-an erasure-path table from application source: per store, reaches or does not, path cited (§7).
+from the code (§3 [S17][S18]). Nothing found produces an erasure-path table from application
+source: per store, reaches or does not, path cited (§7).
 
 Two qualifiers, because the strong version of that claim is false. Privado Cloud generates an
 Art. 30 record from code scans today, at no cost, using a fine-tuned LLM with no verification step
