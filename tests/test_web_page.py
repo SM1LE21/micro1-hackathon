@@ -34,8 +34,6 @@ VIEWS = ("run", "runs", "results", "settings", "about")
 # excluded from the scans below by span rather than by hoping it stays quiet.
 FONT_DATA = re.compile(r"base64,([A-Za-z0-9+/=]+)")
 HEADING = re.compile(r'"## ([A-H]\. [^"]+)"')
-SECTIONS_ARRAY = re.compile(r"var SECTIONS = \[(.*?)\];", re.S)
-STRING = re.compile(r'"([^"]+)"')
 COMMENTS = (
     re.compile(r"<!--.*?-->", re.S),      # HTML
     re.compile(r"/\*.*?\*/", re.S),       # CSS and JS block
@@ -159,7 +157,7 @@ def test_every_view_has_its_anchor_and_its_section(page: str) -> None:
         assert f'id="view-{name}"' in page
 
 
-# --- the record view cannot drift from the Markdown renderer ------------------------------
+# --- the renderer's eight sections (the page links the record, it no longer draws it) ---
 
 
 def markdown_headings() -> list[str]:
@@ -170,32 +168,13 @@ def markdown_headings() -> list[str]:
     found = HEADING.findall(text)
     return sorted(set(found), key=found.index)
 
-
-def page_headings(page: str) -> list[str]:
-    found = SECTIONS_ARRAY.search(page)
-    assert found is not None, "the page has no SECTIONS array"
-    return STRING.findall(found.group(1))
-
-
 def test_the_renderer_still_writes_eight_sections_in_order() -> None:
     headings = markdown_headings()
     assert [h[0] for h in headings] == list("ABCDEFGH")
-
-
-def test_the_page_reproduces_those_headings_verbatim_and_in_order(page: str) -> None:
-    assert page_headings(page) == markdown_headings()
-
-
-def test_each_heading_is_on_the_page(page: str) -> None:
-    for heading in markdown_headings():
-        assert heading in page
-
-
 def test_the_page_keeps_the_human_cell_wording(page: str) -> None:
-    """`requires human completion` is how an empty Art. 30(1) cell renders, in the
-    record and in the placeholder that stands in for it."""
+    """`requires human completion` is how an empty Art. 30(1) cell renders; the
+    findings card names the cells the code cannot answer with the same words."""
     assert "requires human completion" in page
-    assert "The record appears here once the run submits and the checkpoint is approved." in page
 
 
 # --- the stylesheet does what the page's own attributes assume ----------------------------
@@ -303,9 +282,10 @@ def test_the_page_pre_empts_the_missing_recording_refusal(page: str) -> None:
 
 def test_the_brand_is_the_login_and_never_the_product_name(page: str) -> None:
     """ADR 0008 item 6: "Claude (your login)", never "Claude Code". The page is where
-    that rule is visible, so the page is where it is checked."""
+    that rule is visible, so the page is where it is checked. Codex is not offered on
+    the page for now (2026-08-31); the CLI keeps `--brain codex`."""
     assert "Claude Code" not in page
-    assert "Claude (your login)" in page and "Codex (your login)" in page
+    assert "Claude (your login)" in page and "Codex (your login)" not in page
     for path in sorted((REPO_ROOT / "art30" / "web").glob("*.py")):
         assert "Claude Code" not in path.read_text(encoding="utf-8"), path.name
 

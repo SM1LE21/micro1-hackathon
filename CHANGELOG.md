@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-31 15:50 UTC — The run view is one stage
+
+- Details is gone, and with it the page's own record renderer: a run takes the view — what the child is doing now, large and centred, the agent's tool calls read back as sentences that rotate through a step's files; the budgets at the side; at the checkpoint the findings card and the gate, the CLI's text folded; at the finish the card again from `record.json`, **Open the full report** and `record.md`, the totals, New scan
+- Codex is not offered on the page for now; the CLI and the harness keep `--brain codex`. The no-key callout gains Dismiss (this page load only)
+- The on-page record tests go with the renderer; `tests/test_web_simple_view.py` reads the stage as text through the Node DOM stub; 892 tests green
+
 ## 2026-08-31 15:30 UTC — Simple view on the website
 
 - The Run view opens in Simple: one card for what the scan is doing now (the tool calls read back as a sentence, the files read so far) and one for what it found (stores not proven erased, each with kind, verdict, declaration, reason and cited evidence; the entry points; the stores that reach erasure; timers; the human cells), drawn from the accepted submission while the checkpoint waits and again from `record.json` once rendered; Details is the page as it was

@@ -8,7 +8,7 @@ renders, and a person approves before anything is written.
 
 Built solo for the micro1 Agentic Workflows Hackathon, 2026-08-28 to 2026-08-31.
 
-**If you have five minutes:** `make setup && make smoke && make eval-replay`. No API key needed.
+**If you have five minutes:** `make setup && make smoke && make eval-replay-local`. No API key needed.
 
 ## Who has this problem?
 
@@ -23,8 +23,7 @@ any one of which triggers the obligation, and processing in the regular course o
 exempt is a legal judgement, which is exactly the class of question this tool refuses to answer.
 
 I have been that person: in a product I run, the hand-written record had two statements reversed,
-and a soft delete never reached object storage for a month before anyone noticed. [Q3: confirm
-this sentence — .vault/QUESTIONS.md]
+and a soft delete never reached object storage for a month before anyone noticed.
 
 ## What bottleneck makes it worth solving?
 
@@ -47,17 +46,17 @@ repository. The Garante's EUR 2.6m Foodinho decision is the other half: the regi
 categories of personal data the inspection found in the systems, and keeping it "non costituisce un
 adempimento formale" (§4 [S16]).
 
-Drift between the document and the system is the failure. Reading the code by hand is the current
-fix, and it costs [human_time.manual_minutes.mean] minutes per repository under the written
-protocol in `evals/CASES.md`.
+Drift between the document and the system is the failure. The current fix is reading the code by
+hand, under the protocol in `evals/CASES.md`; how long that takes was never measured here.
 
 ## Does the agent solve it well?
 
-The agent reads the repository with three read-only tools — `list_tree`, `read_file`, `grep` — and
-submits through a fourth, `submit_record` (`00-contract.md` §Tools). It drafts the record, which is
-the part that needs judgement: whether a `notes` column, a `metadata` JSON blob or an IP in a log
-line is personal data is a semantic call, not a grep (Art. 4(1),
-`docs/research/gdpr-sources.md` §1 [S1]).
+The agent reads the repository with three read-only tools and submits through a fourth,
+`submit_record` (`00-contract.md` §Tools): `list_tree`, `read_file` and `grep` on the API brain, and
+the CLI's own `Read`, `Grep` and `Glob` when the brain is `claude`, where `submit_record` arrives as
+an MCP tool whose handler is the arm's own code (`docs/brains.md`). It drafts the record, which is
+the part that needs judgement: whether a `notes` column, a `metadata` JSON blob or an IP in a log line
+is personal data is a semantic call, not a grep (Art. 4(1), `docs/research/gdpr-sources.md` §1 [S1]).
 Every claim it submits is re-checked by a deterministic verifier on stdlib `ast`, which answers one
 structural question per store — does a static call path run from the erasure entry point to a
 deletion primitive for that store — and hands back the struck claim, the reason and the line, as a
@@ -79,18 +78,21 @@ One core, three surfaces (`.vault/adr/0007-three-surfaces-one-core.md`). The CLI
 |---|---|---|---|
 | Claude Code skill | copy `skill/art30/` into your skills directory; `skill/art30/README.md` | no — your own session; the verifier is offline Python | the eval's baseline instruction text, generated from the same prompt files, plus `scripts/verify.py` (the same verifier, same strings) and a Stop hook that turns it into a gate |
 | CLI | `uv run art30 scan <repo> --arm advanced --approve ask`; reference in `docs/cli.md` | with `--brain api` yes; with `--brain claude` or `--brain codex` no — your own logged-in CLI is the model (`docs/brains.md`) | the measured tool: the loop, both arms, the gate, traces, record/replay; cost is measured on the api brain and an estimate at list prices on a local one |
-| Local website | `make serve` (or `uv run art30 serve --open`); `docs/web.md` | live yes, replay no | drives `art30 scan` as a subprocess and shows the run as it happens: tool calls, the verifier's rejections, the checkpoint, the record with every citation opening its source line; a results view over `results/metrics.json` |
+| Local website | `make serve` (or `uv run art30 serve --open`); `docs/web.md` | live yes, replay no | drives `art30 scan` as a subprocess and shows the run as one stage: what the scan is doing now, the budgets at the side, then what it found — the stores not proven erased, each cited, every citation opening its source line — and the two files it wrote (`docs/web.md` §The stage); a results view sits over `results/metrics.json` |
 
 ## Can another person reproduce the result?
 
-`make setup && make smoke && make eval-replay` regenerates `results/metrics.json` from recorded API
-responses with no key, and ends in `git diff --exit-code` against the committed file. Commands, the
-Docker path and the live runs: [REPRODUCE.md](REPRODUCE.md).
+`make setup && make smoke && make eval-replay-local` needs no key: `reverify` re-runs the verifier
+over every recorded submission (`results/runs/<arm>/<case>/s<seed>/brain/submissions.jsonl`) and
+re-scores every `record.json`, `report` rebuilds `results/metrics.json`, `git diff --exit-code`
+compares it with the committed file (`Makefile`, `docs/runbook-sweeps.md` §7). It cannot regenerate
+model outputs; it proves the verifier and the scorer still say what they said over those records.
+Docker and the live runs: [REPRODUCE.md](REPRODUCE.md).
 
 ## Results
 
-Test split, mean over three runs per case. `±` is `f1_std_seeds`, the mean over cases of the
-standard deviation across that case's three runs (`05-eval-harness.md` §7.3).
+Test split (S08–S10), mean over three runs per case. `±` is `f1_std_seeds`, the mean over cases of
+the standard deviation across that case's three runs (`05-eval-harness.md` §7.3).
 
 <!-- metrics:begin -->
 | Metric | Simple baseline | Agent solution | Change |
@@ -104,20 +106,24 @@ False safe — the agent says a store is erased where the manifest says it is no
 matters more than F1, because it is the error that costs a founder a month:
 [arms.baseline.test.false_safe_total] against [arms.advanced.test.false_safe_total] on test.
 
-Both arms are billed for every `submit_record` attempt they spend, rejected ones included — five per
-run in each arm (`00-contract.md` §Budgets, ADR 0003 §2) — because a user pays for retries. Cost per
-run is the sum over the trace's `step` lines at list prices, with nothing netted out
-(ADR 0003 §Consequences; `docs/judging/requirements-matrix.md` D2g).
+Every scored run was made on `--brain claude`, the author's own logged-in Claude Code CLI answering
+as `claude-opus-5`, with no API key in the process (`docs/runbook-sweeps.md` §6a,
+`.vault/adr/0008-brains-and-settings.md`). So the cost column is an estimate rather than a bill: a
+subscription run costs no marginal dollars, and what is reported is the CLI's own token counts over
+the trace's `step` lines priced at API list prices, `cost_source: cli_estimate`, nothing netted out
+(`art30/brains/pricing.py`; `docs/judging/requirements-matrix.md` D2g). Both arms spend five
+`submit_record` attempts per run and every attempt is counted, rejected ones included, because a user
+pays for retries (`00-contract.md` §Budgets, ADR 0003 §2 and §Consequences).
 
 Dev, and the secondary rows (pass, pass^3, regressions, unverified, bad citations, turns, tool
 calls): `results/metrics.json` via `make report`. Runs: [identity_check.success] success +
 [identity_check.failure] failure = [identity_check.n]; failures ship in `traces/failures/`.
 
 Statistics: exact McNemar on the binary pass row, majority of three runs per case, dev
-p = [comparison.dev.mcnemar.p_exact] and test p = [comparison.test.mcnemar.p_exact]. With five test
-cases the smallest attainable two-sided p is 0.0625, so the test split cannot reach 0.05 and the
-number is reported for shape. F1 carries a paired bootstrap 95% interval over cases
-([comparison.test.f1_bootstrap.ci95]). This model exposes no temperature and no seed (ADR 0003 §2).
+p = [comparison.dev.mcnemar.p_exact] and test p = [comparison.test.mcnemar.p_exact]. With three test
+cases the exact test cannot reach 0.05 whatever the arms do, so the number is reported for shape.
+F1 carries a paired bootstrap 95% interval over cases ([comparison.test.f1_bootstrap.ci95]). This
+model exposes no temperature and no seed (ADR 0003 §2).
 
 The gate approves in every scored run (`--approve auto`, `by: "simulated"`), so none of the measured
 difference comes from a human intervening; it is the verifier's (`05-eval-harness.md` §7.1).
@@ -137,7 +143,7 @@ This repository was created after kickoff on 2026-08-28 15:00 UTC. Nothing in it
 - The tools: Claude Code (the coding agent that wrote most of the code; sessions rendered at
   `traces/build-trajectory.html.gz`), the `claude-opus-5` model both arms call, Python 3.12, uv, the
   `anthropic` SDK, `pyyaml`, `jsonschema`, `pytest`, `claude-code-log` 1.5.0, `gitleaks`, Docker.
-- Four open-source repositories vendored as eval cases at pinned SHAs, each keeping its upstream
+- Four open-source repositories vendored at pinned SHAs, each keeping its upstream
   LICENSE and a `SOURCE.md` with url, sha, licence, date and what was stripped:
   `fastapi/full-stack-fastapi-template` @ `486f054` (MIT), `flaskbb/flaskbb` @ `fc64c74` (BSD-3),
   `pinry/pinry` @ `05476b1` (BSD-2), `miguelgrinberg/microblog` @ `a975ef6` (MIT); `evals/CASES.md`.
@@ -145,8 +151,9 @@ This repository was created after kickoff on 2026-08-28 15:00 UTC. Nothing in it
   2016/679, 2024/1689 and 2026/1744 under `docs/research/sources/`, each file carrying its retrieval
   URL and date; the competition's own problem statement at `docs/problem/problem-statement.pdf`.
 
-Cases S01–S10 are generated from the YAML specs in `evals/fixtures/specs/`. No pre-existing prompt
-library, agent framework or rule set was carried in.
+The scored set is S01–S10 from `evals/fixtures/specs/` (dev S01–S07, test S08–S10); R01–R04 were
+never hand-labelled and were dropped from it, staying in the tree as material the CLI can scan
+(`evals/CASES.md` errata, 2026-08-31). No prompt library, agent framework or rule set was carried in.
 
 ## Prior art
 
@@ -185,18 +192,16 @@ is reported "unscanned" rather than guessed (`.vault/NON-GOALS.md`).
 
 ## Licence
 
-[Q4: no LICENSE file exists yet. micro1 owns the submission under the hackathon terms; whether this
-also ships under MIT or Apache-2.0 is the author's call — .vault/QUESTIONS.md]
+micro1 owns the submission under the hackathon terms (`AGENTS.md` §Competition facts). No separate
+licence file ships with it (`.vault/QUESTIONS.md` Q4); the vendored repositories keep their own.
 
 ## Agent trajectories
 
-`traces/` holds one JSONL trace per run, both arms, failures included. Four are worth opening:
+`traces/` holds one JSONL trace per run, both arms, failures included. Three are worth opening:
 
-- `traces/advanced/S10-s1.jsonl` — the rejection and the revision on the hard case.
-- `traces/baseline/S10-s1.jsonl` — the same repository, no verifier: the false safe, unedited.
-- `traces/advanced/S05-s1.jsonl` — the completeness guard adding a store the model had not listed.
-- `traces/advanced/R04-s1.jsonl` — a real repository where the honest answer is that no deletion
-  feature exists.
+- [WRITE: advanced trace ID] — the verifier's rejection and the model's revision after it.
+- [WRITE: baseline trace ID on the same case] — the same repository with the verifier removed.
+- [WRITE: trace ID where a store came out `unverified`] — the call the checker could not resolve.
 
 `traces/failures/` holds every failed run with a one-line diagnosis.
 `traces/build-trajectory.html.gz` is the rendered transcript of the Claude Code sessions that built

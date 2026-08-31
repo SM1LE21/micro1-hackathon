@@ -173,21 +173,7 @@ select{font-size:14px}
 .form-hints .hint + .hint{margin-top:4px}
 @media (max-width:1100px){.strip-grid,.strip-two{grid-template-columns:1fr 1fr;align-items:end}}
 
-/* --- two columns --- */
-/* minmax(0,...): without it a wide record table sets the column's minimum width and
-   pushes the grid past the viewport instead of scrolling inside .tablewrap */
-.columns{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:32px;margin-top:20px;align-items:start}
-/* A pending gate takes the page. No record can exist while it waits — the server
-   answers /record with a 404 until the decision is written — so the right column is
-   holding a placeholder, and the gate block is fixed columns that must not wrap. */
-.columns.gate-open{grid-template-columns:minmax(0,1fr)}
-.columns.gate-open .col-right{display:none}
-/* Once the record is drawn it is the thing being read; the trace is behind it. */
-.columns.has-record{grid-template-columns:minmax(0,4fr) minmax(0,8fr)}
-@media (max-width:1000px){.columns,.columns.has-record{grid-template-columns:1fr;gap:24px}}
-
 /* --- run head --- */
-.runline{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
 .meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;margin-top:18px;align-items:start}
 @media (max-width:640px){.meters{grid-template-columns:1fr}}
 .meter .value{font-size:14px;font-weight:600}
@@ -211,38 +197,7 @@ select{font-size:14px}
 .chip.accent{background:var(--accent-tint);color:var(--accent-ink)}
 .chip.mono{font-family:var(--mono);font-weight:600;letter-spacing:0}
 
-/* --- steps --- */
-.steps{margin-top:16px}
-/* 20px of inner margin, as .card: the two stacks share a left edge */
-.step{border:1px solid var(--rule);border-radius:10px;padding:16px 20px;background:var(--ground);margin-top:16px}
-.step-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.step-no{font-weight:700;font-size:14px}
-.step-cost{margin-left:auto;font-size:13px;color:var(--muted)}
-.reasoning{margin:10px 0 0;font-size:14.5px}
-.calls{margin-top:10px;border-top:1px solid var(--rule)}
-.call{padding:10px 0;border-bottom:1px solid var(--rule)}
-.call:last-child{border-bottom:0;padding-bottom:0}
-/* a fixed first column, so the tool names stack and the targets start on one line */
-.call-row{display:grid;grid-template-columns:112px minmax(0,1fr) auto;gap:8px 12px;align-items:baseline}
-.call-name{font-family:var(--mono);font-size:13px;font-weight:700}
-.call-arg{font-family:var(--mono);font-size:13px;word-break:break-word}
-.call-side{display:flex;gap:8px;align-items:center;justify-self:end}
-@media (max-width:560px){.call-row{grid-template-columns:1fr auto}.call-row .call-arg{grid-column:1/-1}}
-/* pre-wrap, not pre: tool output is `n: line` source text with no columns to keep,
-   and a long source line reads better wrapped than behind a second scrollbar */
-.result{
-  margin:9px 0 0;padding:10px 12px;background:var(--surface);border-radius:8px;
-  font-size:12.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;
-  max-height:340px;overflow:auto;
-}
-.reject{border-color:var(--danger-rule);background:var(--danger-tint)}
-.reject h3{font-size:14px}
-.reject-group{margin-top:12px}
-.reject-item{padding:8px 0;border-top:1px solid var(--danger-rule-soft)}
-.reject-item .what{font-weight:600;font-size:14px}
-.reject-item .why{font-size:14px;margin-top:2px}
-.reject-item .expected{font-size:13px;color:var(--danger-ink);margin-top:3px}
-.reject-item .hop{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-left:14px}
+/* --- the gate and the end --- */
 .gate-risk{border:1px solid var(--rule);background:var(--surface);border-radius:10px;padding:14px 16px}
 .gate-risk.risk-high{background:var(--danger-tint);border-color:var(--danger-rule)}
 .gate-risk.risk-medium{background:var(--warn-tint);border-color:var(--warn-rule)}
@@ -256,8 +211,9 @@ select{font-size:14px}
 .risk-low .gate-rating{color:var(--ok)}
 .gate-why{font-size:14.5px;margin:2px 0 0}
 .gate-cross{font-size:13.5px;color:var(--muted);margin:6px 0 0}
-.gate-label{margin:18px 0 6px}
-.gate-subject{font-weight:700;font-size:15px;margin:0}
+.gate-text{margin-top:14px}
+.gate-text summary{cursor:pointer;font-size:13px;color:var(--muted)}
+.gate-subject{font-weight:700;font-size:15px;margin:10px 0 0}
 .gate-summary{
   margin:10px 0 0;padding:12px 14px;background:var(--surface);border-radius:8px;
   font-size:12.5px;line-height:1.55;white-space:pre;overflow-x:auto;
@@ -268,18 +224,16 @@ select{font-size:14px}
 @media (max-width:560px){.kind-row{grid-template-columns:1fr}}
 .gate-actions{display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap}
 .waited{font-size:13px;color:var(--muted);margin-left:auto}
+.expected{font-size:13px;color:var(--danger-ink);margin-top:8px}
+.end-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.end-head h3{margin:0;font-size:16px}
+.end-card .why{margin:8px 0 0;font-size:14px}
 .end-card .totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:14px;margin-top:12px}
 .end-card .totals div span{display:block}
 .end-card .totals .n{font-size:19px;font-weight:700}
+.tail{margin:8px 0 0;padding:10px 12px;background:var(--surface);border-radius:8px;font-size:12px;overflow-x:auto;white-space:pre-wrap}
 
-/* --- record --- */
-.record h2{font-size:20px;margin-bottom:4px}
-.record h3{font-size:14px;margin:26px 0 10px;padding-top:16px;border-top:1px solid var(--rule)}
-.record h4{font-size:13.5px;margin:16px 0 8px;font-family:var(--mono);font-weight:700}
-.record p{font-size:14px}
-.record ul{margin:0 0 10px;padding-left:18px;font-size:14px}
-.record li{margin:2px 0}
-.boundary{background:var(--surface);border-left:3px solid var(--ink);padding:12px 14px;border-radius:0 8px 8px 0;font-size:13.5px}
+/* --- tables, citations, verdicts --- */
 .tablewrap{overflow-x:auto;margin:0 0 10px}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
@@ -289,7 +243,6 @@ th:last-child,td:last-child{padding-right:0}
 th{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
 tbody tr:last-child td{border-bottom:0}
 td code{font-size:12px}
-.human-cell{color:var(--muted);font-style:italic}
 .cite{
   font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--rule);
   border-radius:6px;padding:1px 6px;cursor:pointer;color:var(--accent-hover);font-weight:600;
@@ -298,30 +251,35 @@ td code{font-size:12px}
 .verdict{font-weight:700;letter-spacing:.02em;font-size:12px;white-space:nowrap}
 .placeholder{color:var(--muted);font-size:14px}
 
-/* --- the simple view: one line for what is happening, one card for what was found.
-   Details is the page as it was: every step, every call, the whole record. --- */
-.view-toggle{margin-left:auto}
-.view-toggle button{font-size:12.5px;padding:4px 12px}
-.columns.simple .steps .step{display:none}
-.columns.simple .steps .gate-card,.columns.simple .steps .end-card{display:block}
-.columns.simple .gate-card .gate-label,.columns.simple .gate-card .gate-subject,
-.columns.simple .gate-card .gate-summary{display:none}
-.columns.simple #cost-note{display:none}
-.columns.simple,.columns.simple.has-record{grid-template-columns:minmax(0,1fr)}
-.columns.simple .col-right{display:none}
-.now-line{margin:4px 0 0;font-size:16.5px;font-weight:600;line-height:1.4}
-.now-files{white-space:normal;word-break:break-word;line-height:1.7}
-.findings-head{font-size:19px;font-weight:800;letter-spacing:-0.02em;margin:4px 0 0}
+/* --- the stage: a run takes the view. What the child is doing now, large and centred;
+   the budgets at the side; then what it found and the two files it wrote. --- */
+.stage{margin-top:4px;min-height:calc(100vh - 140px);display:flex;flex-direction:column}
+.stage-head{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:14px 0;border-bottom:1px solid var(--rule)}
+.stage-head-actions{margin-left:auto;display:flex;gap:8px}
+.stage-body{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:44px;flex:1;padding-top:24px;align-items:start}
+@media (max-width:900px){.stage-body{grid-template-columns:1fr;gap:24px}}
+.now{min-height:42vh;display:flex;flex-direction:column;justify-content:center;text-align:center;padding:24px 0}
+.stage.gated .now,.stage.finished .now{min-height:0;padding:8px 0 12px}
+.now-line{margin:0;font-size:clamp(22px,3.2vw,38px);font-weight:800;letter-spacing:-0.025em;line-height:1.2}
+.stage.gated .now-line,.stage.finished .now-line{font-size:clamp(20px,2.4vw,28px)}
+.now-line.rise{animation:rise .35s ease-out}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.now-line.rise{animation:none}}
+.now-line code{font-size:.8em;font-weight:700;background:var(--surface);padding:2px 10px;border-radius:8px}
+.now-progress{margin:16px 0 0;font-size:14px}
+.now-files{margin:10px auto 0;max-width:72ch;white-space:normal;word-break:break-word;line-height:1.7;font-size:12px}
+.stage-side .meters{grid-template-columns:1fr;gap:18px;margin-top:0}
+.stage-side .meter .value{font-size:22px;font-weight:700;letter-spacing:-0.02em}
+.stage-side .cost{font-size:30px}
+.findings-card,.stream .card{margin-top:16px}
+.findings-head{font-size:22px;font-weight:800;letter-spacing:-0.02em;margin:4px 0 0}
 .findings-ok{color:var(--ok-ink)}
 .finding{padding:12px 0 0;margin-top:12px;border-top:1px solid var(--rule)}
 .finding-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .finding-store{font-family:var(--mono);font-weight:700;font-size:13.5px}
 .finding-why{margin:6px 0 0;font-size:14.5px}
 .finding-evidence{margin:6px 0 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.findings-links{margin-top:14px}
-.empty{padding:30px 24px}
-.empty p{max-width:62ch;font-size:14.5px}
-.empty p + p{margin-top:8px}
+.record-links{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
 
 /* --- source drawer --- */
 .drawer{
@@ -422,13 +380,13 @@ td code{font-size:12px}
 
   <!-- ---------------------------- Run ---------------------------- -->
   <section id="view-run" class="view" hidden>
-    <div class="view-head">
+    <div class="view-head" id="run-intro">
       <h1>Run a scan</h1>
-      <p>The server runs <span class="mono">art30 scan</span> as a child process. Every step,
-         tool call and verdict below is the trace that child wrote.</p>
+      <p>The server runs <span class="mono">art30 scan</span> as a child process. While it runs
+         you see what it is doing; when it is done, what it found and the record it wrote.</p>
     </div>
 
-    <div class="card">
+    <div class="card" id="strip">
       <form id="start-form" autocomplete="off">
         <div class="strip-grid">
           <div class="field">
@@ -460,7 +418,6 @@ td code{font-size:12px}
             <div class="toggle" role="radiogroup" aria-labelledby="brain-label" id="brain">
               <button type="button" role="radio" data-value="api" aria-checked="true">api</button>
               <button type="button" role="radio" data-value="claude" aria-checked="false">Claude (your login)</button>
-              <button type="button" role="radio" data-value="codex" aria-checked="false">Codex (your login)</button>
             </div>
           </div>
           <div class="field">
@@ -473,14 +430,13 @@ td code{font-size:12px}
           </div>
           <div class="field actions">
             <button type="submit" class="btn btn-accent" id="start">Start</button>
-            <button type="button" class="btn btn-quiet" id="cancel" hidden>Cancel</button>
           </div>
         </div>
       </form>
       <div class="callout" id="blocked" hidden>
         <p class="callout-title" id="blocked-title"></p>
         <ol id="blocked-steps"></ol>
-        <p class="callout-foot"><button type="button" class="btn btn-quiet btn-small" id="recheck">Check again</button> <span id="recheck-note" class="hint"></span></p>
+        <p class="callout-foot"><button type="button" class="btn btn-quiet btn-small" id="recheck">Check again</button> <button type="button" class="btn btn-quiet btn-small" id="dismiss-blocked">Dismiss</button> <span id="recheck-note" class="hint"></span></p>
       </div>
       <div class="form-hints">
         <p class="hint" id="case-hint"></p>
@@ -491,73 +447,61 @@ td code{font-size:12px}
       </div>
     </div>
 
-    <div class="columns" id="run-columns">
-      <div class="col-left">
-        <div class="card" id="run-head">
-          <p class="placeholder" id="run-idle">No run yet. Pick a case above and press Start.</p>
-          <div id="run-live" hidden>
-            <div class="runline">
-              <span class="chip mono" id="run-id"></span>
-              <span class="chip" id="run-status"></span>
-              <span class="chip" id="run-brain"></span>
-              <span class="hint" id="run-what"></span>
-              <span class="toggle view-toggle" role="radiogroup" aria-label="View" id="view">
-                <button type="button" role="radio" data-value="simple" aria-checked="true">Simple</button>
-                <button type="button" role="radio" data-value="details" aria-checked="false">Details</button>
-              </span>
-            </div>
-            <div class="meters">
-              <div class="meter">
-                <span class="label">Tool calls</span>
-                <span class="value" id="tool-value">0 / 60</span>
-                <span class="bar" id="tool-track"><span id="tool-bar"></span></span>
-              </div>
-              <div class="meter">
-                <span class="label">Submit attempts</span>
-                <span class="value" id="submit-value">0 / 5</span>
-                <span class="bar" id="submit-track"><span id="submit-bar"></span></span>
-              </div>
-              <div class="meter" id="turns-meter" hidden>
-                <span class="label">Turns</span>
-                <span class="value" id="turns-value">0 / 60</span>
-                <span class="bar" id="turns-track"><span id="turns-bar"></span></span>
-              </div>
-              <div class="meter">
-                <span class="label" id="cost-label">Cost so far</span>
-                <span class="cost" id="cost-value">$0.0000</span>
-                <span class="hint" id="cost-note" hidden></span>
-              </div>
-            </div>
-            <div class="pacing" id="pacing" hidden>
-              <span class="label" id="pacing-label">Replay pacing</span>
-              <button type="button" class="btn btn-quiet btn-small" id="pace-play">Pause</button>
-              <button type="button" class="btn btn-quiet btn-small" id="pace-step">Step</button>
-              <button type="button" class="btn btn-quiet btn-small" id="pace-instant">Instant</button>
-              <span class="hint" id="pace-count"></span>
-            </div>
-          </div>
-        </div>
-        <div id="simple" hidden>
-          <article class="step now-card" id="now-card" aria-live="polite">
-            <span class="label">Now</span>
+    <section class="stage running" id="stage" hidden>
+      <div class="stage-head">
+        <span class="chip mono" id="run-id"></span>
+        <span class="chip" id="run-status"></span>
+        <span class="chip" id="run-brain"></span>
+        <span class="hint" id="run-what"></span>
+        <span class="stage-head-actions">
+          <button type="button" class="btn btn-quiet btn-small" id="cancel" hidden>Cancel</button>
+          <button type="button" class="btn btn-quiet btn-small" id="new-scan" hidden>New scan</button>
+        </span>
+      </div>
+      <div class="stage-body">
+        <div class="stage-main">
+          <div class="now" aria-live="polite">
             <p class="now-line" id="now-line"></p>
-            <p class="hint" id="now-progress"></p>
+            <p class="hint now-progress" id="now-progress"></p>
             <p class="hint mono now-files" id="now-files" hidden></p>
-          </article>
-          <article class="step findings-card" id="findings-card" hidden></article>
-        </div>
-        <div class="steps" id="steps" aria-live="polite" aria-relevant="additions"></div>
-      </div>
-
-      <div class="col-right">
-        <div class="card">
-          <div class="card-head"><h2>Record</h2><span class="chip" id="record-chip" hidden></span><span class="record-links" id="record-links"></span></div>
-          <div id="record">
-            <p class="placeholder">The record appears here once the run submits and the checkpoint is approved.</p>
           </div>
+          <article class="card findings-card" id="findings-card" hidden></article>
+          <div class="record-links" id="record-links" hidden></div>
+          <div class="stream" id="stream"></div>
         </div>
+        <aside class="stage-side">
+          <div class="meters">
+            <div class="meter">
+              <span class="label">Tool calls</span>
+              <span class="value" id="tool-value">0 / 60</span>
+              <span class="bar" id="tool-track"><span id="tool-bar"></span></span>
+            </div>
+            <div class="meter">
+              <span class="label">Submit attempts</span>
+              <span class="value" id="submit-value">0 / 5</span>
+              <span class="bar" id="submit-track"><span id="submit-bar"></span></span>
+            </div>
+            <div class="meter" id="turns-meter" hidden>
+              <span class="label">Turns</span>
+              <span class="value" id="turns-value">0 / 60</span>
+              <span class="bar" id="turns-track"><span id="turns-bar"></span></span>
+            </div>
+            <div class="meter">
+              <span class="label" id="cost-label">Cost so far</span>
+              <span class="cost" id="cost-value">$0.0000</span>
+              <span class="hint" id="cost-note" hidden></span>
+            </div>
+          </div>
+          <div class="pacing" id="pacing" hidden>
+            <span class="label" id="pacing-label">Replay pacing</span>
+            <button type="button" class="btn btn-quiet btn-small" id="pace-play">Pause</button>
+            <button type="button" class="btn btn-quiet btn-small" id="pace-step">Step</button>
+            <button type="button" class="btn btn-quiet btn-small" id="pace-instant">Instant</button>
+            <span class="hint" id="pace-count"></span>
+          </div>
+        </aside>
       </div>
-    </div>
+    </section>
   </section>
 
   <!-- ---------------------------- Runs ---------------------------- -->
@@ -786,11 +730,13 @@ var state = {
   recordLoaded: false,
   recordPoll: null,
   lastCite: null,
-  gateOpen: false,
-  recordShown: false,
-  view: "simple",
   filesRead: [],
-  submitted: null
+  submitted: null,
+  phrases: [],
+  phraseAt: 0,
+  phraseTimer: null,
+  ended: false,
+  blockedDismissed: false
 };
 
 var PACE_MS = 700;
@@ -894,7 +840,7 @@ byId("recheck").addEventListener("click", function () {
   byId("recheck-note").textContent = "checking";
   Promise.all([loadCases(), loadSettings(true), loadRuns(true)]).then(function () {
     refreshModes();
-    var ready = ["claude", "codex"].filter(brainReady);
+    var ready = ["claude"].filter(brainReady);
     byId("recheck-note").textContent = state.liveEnabled
       ? "a key is present: live runs are enabled"
       : (ready.length ? brainLabel(ready[0]) + " is logged in: live runs can go there"
@@ -1005,7 +951,7 @@ function refreshModes() {
 function refreshBrains() {
   var anyReplayable = state.cases.some(function (c) { return (c.replay_arms || []).length > 0; });
   var open = [];
-  ["api", "claude", "codex"].forEach(function (name) {
+  ["api", "claude"].forEach(function (name) {
     var button = byId("brain").querySelector('[data-value="' + name + '"]');
     if (name !== "api") { button.textContent = brainLabel(name); }
     var ready = name === "api" ? (state.liveEnabled || anyReplayable) : brainReady(name);
@@ -1017,7 +963,7 @@ function refreshBrains() {
     state.form.brain = open[0];
   }
   var blocked = [];
-  ["claude", "codex"].forEach(function (name) {
+  ["claude"].forEach(function (name) {
     if (brainReady(name)) { return; }
     var why = brainReason(name);
     if (why && blocked.indexOf(why) < 0) { blocked.push(why); }
@@ -1044,9 +990,9 @@ function playbackRun() {
 function showBlocked(row) {
   var anyReplayable = state.cases.some(function (c) { return (c.replay_arms || []).length > 0; });
   var box = byId("blocked");
-  if (state.liveEnabled || anyReplayable) { box.hidden = true; return; }
+  if (state.liveEnabled || anyReplayable || state.blockedDismissed) { box.hidden = true; return; }
   var caseId = row ? row.id : "D02";
-  var ready = ["claude", "codex"].filter(brainReady);
+  var ready = ["claude"].filter(brainReady);
   var steps = byId("blocked-steps");
   steps.replaceChildren();
   if (ready.length) {
@@ -1064,7 +1010,7 @@ function showBlocked(row) {
   [
     ["Put the key in ", ".env", " at the project root (the file is git-ignored): ", "ANTHROPIC_API_KEY=... and ART30_MAX_USD=6", ". Then press Check again; the server reads the file on every request."],
     ["Record a first run from a terminal, so replay has something to play: ", "ART30_RECORD=1 uv run art30 scan evals/fixtures/synthetic/" + caseId + " --arm advanced --case " + caseId + " --seed 1 --mode live --approve auto", ". After that this page can replay it without a key, or start live runs directly."],
-    ["Or log in to a local brain from a terminal and run on it: ", "claude", " or ", "codex", ", then press Check again."]
+    ["Or log in to the claude CLI from a terminal and run on it: ", "claude", ", then press Check again."]
   ].forEach(function (parts) {
     var li = document.createElement("li");
     parts.forEach(function (part, i) {
@@ -1194,17 +1140,17 @@ function startRun() {
   });
 }
 
-/* ---------- one run ---------- */
+/* ---------- one run: the stage ---------- */
 
-/* The run column owns the page while a gate waits, and gives two thirds of it to
-   the record once there is one. Both are class names on .columns. */
-function layout() {
-  var names = "columns";
-  if (state.view === "simple") { names += " simple"; }
-  if (state.gateOpen) { names += " gate-open"; }
-  else if (state.recordShown) { names += " has-record"; }
-  byId("run-columns").className = names;
+var PHRASE_MS = 1600;
+
+function showStage(on) {
+  byId("stage").hidden = !on;
+  byId("strip").hidden = on;
+  byId("run-intro").hidden = on;
 }
+
+function stageMode(mode) { byId("stage").className = "stage " + mode; }
 
 function openRun(run, paced) {
   closeStream();
@@ -1218,43 +1164,33 @@ function openRun(run, paced) {
   state.opened = false;
   state.gate = null;
   state.recordLoaded = false;
-  state.gateOpen = false;
-  state.recordShown = false;
-  layout();
+  state.filesRead = [];
+  state.submitted = null;
+  state.ended = false;
   stopGateTicker();
   stopRecordPoll();
 
-  byId("run-idle").hidden = true;
-  byId("run-live").hidden = false;
   byId("run-id").textContent = run.run_id;
   byId("run-brain").textContent = brainLabel(state.brain);
   byId("run-what").textContent = [run.case || "", run.arm, modeWord(run.mode, state.brain),
-    "seed " + run.seed].filter(Boolean).join(" \u00b7 ");
+    "seed " + run.seed].filter(Boolean).join(" · ");
   byId("turns-meter").hidden = true;
   byId("cost-label").textContent = state.brain === "api" ? "Cost so far" : "Cost, estimated";
   byId("cost-note").hidden = state.brain === "api";
   byId("cost-note").textContent = state.brain === "api" ? ""
     : "priced at API list prices from the tokens the CLI reported. This brain bills no"
       + " dollars, so no ceiling stops it; the turn budget does.";
-  byId("cancel").hidden = false;
   byId("pacing").hidden = !state.paced;
   byId("pacing-label").textContent = state.brain === "api" ? "Replay pacing" : "Play back pacing";
   byId("pace-play").textContent = "Pause";
-  state.filesRead = [];
-  state.submitted = null;
-  byId("simple").hidden = state.view !== "simple";
-  setNow("Starting the scan.");
+  clear(byId("stream"));
+  drawFindings(null, false);
+  recordLinks(null);
+  setPhrases(["Starting the scan."]);
   byId("now-progress").textContent = "";
   byId("now-files").hidden = true;
-  drawFindings(null, false);
-  clear(byId("steps"));
-  clear(byId("record"));
-  byId("record").appendChild(el("p", {
-    class: "placeholder",
-    text: "The record appears here once the run submits and the checkpoint is approved."
-  }));
-  byId("record-chip").hidden = true;
-  clear(byId("record-links"));
+  stageMode("running");
+  showStage(true);
   setStatus(run.status || "running");
   drawMeters();
   startPacer();
@@ -1262,583 +1198,51 @@ function openRun(run, paced) {
   go("run");
 }
 
-function setStatus(status) {
-  var chip = byId("run-status");
-  chip.textContent = statusWord(status);
-  chip.className = "chip " + toneOfStatus(status);
-  var running = status === "running" || status === "gate_waiting";
-  byId("live-dot").className = "dot" + (running ? " live" : "");
-  byId("live-text").textContent = state.run || running ? statusWord(status) : "idle";
-  byId("cancel").disabled = !running;
-  if (running) { byId("start").disabled = true; } else { refreshModes(); }
-}
-
-function toneOfStatus(status) {
-  if (status === "accepted") { return "ok"; }
-  if (status === "running") { return "accent"; }
-  if (status === "gate_waiting") { return "warn"; }
-  if (status.indexOf("failed") === 0) { return "danger"; }
-  return "";
-}
-
-function drawMeters() {
-  meter("tool", state.budget.tool, state.budget.toolMax);
-  meter("submit", state.budget.submit, state.budget.submitMax);
-  if (state.budget.turnsMax) { meter("turns", state.budget.turns, state.budget.turnsMax); }
-  byId("cost-value").textContent = money(state.cost);
-}
-
-function modeWord(mode, brain) {
-  return (mode === "replay" && brain && brain !== "api") ? "play back" : mode;
-}
-
-function meter(name, used, budget) {
-  var share = budget ? Math.min(1, used / budget) : 0;
-  byId(name + "-value").textContent = used + " / " + budget;
-  byId(name + "-bar").style.width = (share * 100).toFixed(1) + "%";
-  byId(name + "-track").className = "bar" + (share >= 1 ? " danger" : (share >= 0.8 ? " warn" : ""));
-}
-
-function attach(runId) {
-  var stream = new EventSource("/api/runs/" + runId + "/events");
-  state.stream = stream;
-  stream.addEventListener("open", function () {
-    if (state.opened) { resetPanels(); }
-    state.opened = true;
-  });
-  stream.addEventListener("trace", function (event) { push({ kind: "trace", data: event.data }); });
-  stream.addEventListener("stdout", function (event) { push({ kind: "stdout", data: event.data }); });
-  stream.addEventListener("gate", function (event) { push({ kind: "gate", data: event.data }); });
-  stream.addEventListener("done", function (event) { push({ kind: "done", data: event.data }); });
+/* Back to the strip. The run stays where it is: the Runs view plays it back. */
+function newScan() {
+  closeStream();
+  stopGateTicker();
+  stopRecordPoll();
+  if (state.phraseTimer) { clearInterval(state.phraseTimer); state.phraseTimer = null; }
+  showStage(false);
+  refreshModes();
 }
 
 function resetPanels() {
-  clear(byId("steps"));
+  clear(byId("stream"));
   state.gate = null;
   state.budget.tool = 0;
   state.budget.submit = 0;
   state.budget.turns = 0;
   state.cost = 0;
+  state.filesRead = [];
   drawMeters();
 }
 
-function closeStream() {
-  if (state.stream) { state.stream.close(); state.stream = null; }
-  if (state.timer) { clearInterval(state.timer); state.timer = null; }
-}
+/* --- what the child is doing now --- */
 
-/* --- pacing: a replay arrives in one burst, so it is played back --- */
-
-function push(event) {
-  /* `stdout` never waits: it is the CLI's own line and the pacer counts steps. */
-  if (state.paced && event.kind !== "stdout") { state.queue.push(event); drawQueue(); }
-  else { apply(event); }
-}
-
-function startPacer() {
-  if (state.timer) { clearInterval(state.timer); }
-  state.timer = setInterval(function () {
-    if (state.paced && state.playing) { release(1); }
-  }, PACE_MS);
-}
-
-function release(count) {
-  for (var i = 0; i < count && state.queue.length; i += 1) { apply(state.queue.shift()); }
-  drawQueue();
-}
-
-function drawQueue() {
-  byId("pace-count").textContent = state.queue.length
-    ? state.queue.length + " buffered" : "up to date";
-}
-
-function wirePacing() {
-  byId("pace-play").addEventListener("click", function () {
-    state.playing = !state.playing;
-    this.textContent = state.playing ? "Pause" : "Play";
-  });
-  byId("pace-step").addEventListener("click", function () {
-    state.playing = false;
-    byId("pace-play").textContent = "Play";
-    release(1);
-  });
-  byId("pace-instant").addEventListener("click", function () {
-    state.paced = false;
-    release(state.queue.length);
-    byId("pacing").hidden = true;
-  });
-}
-
-/* --- applying one event --- */
-
-function apply(event) {
-  if (event.kind === "trace") {
-    var line = null;
-    try { line = JSON.parse(event.data); } catch (error) { line = null; }
-    if (line) { onTrace(line); }
-  } else if (event.kind === "gate") {
-    var request = null;
-    try { request = JSON.parse(event.data); } catch (error) { request = null; }
-    if (request) { onGate(request); }
-  } else if (event.kind === "done") {
-    var done = null;
-    try { done = JSON.parse(event.data); } catch (error) { done = null; }
-    onDone(done || {});
+/* One phrase stays; several rotate until the next step arrives, so a step that read
+   four files shows each of them. The text lands at once; the motion is CSS. */
+function setPhrases(list) {
+  state.phrases = list.length ? list : ["Working"];
+  state.phraseAt = 0;
+  if (state.phraseTimer) { clearInterval(state.phraseTimer); state.phraseTimer = null; }
+  setNow(state.phrases[0]);
+  if (state.phrases.length > 1) {
+    state.phraseTimer = setInterval(function () {
+      state.phraseAt = (state.phraseAt + 1) % state.phrases.length;
+      setNow(state.phrases[state.phraseAt]);
+    }, PHRASE_MS);
   }
-  /* `stdout` is the CLI's own printed line. The step cards below carry the same
-     facts in a form a reader can open, so it is not printed twice. */
-}
-
-function onTrace(line) {
-  if (line.type === "run_start") { onRunStart(line); }
-  else if (line.type === "step") { onStep(line); }
-  else if (line.type === "checkpoint") { onCheckpoint(line); }
-  else if (line.type === "run_end") { onRunEnd(line); }
-}
-
-function onRunStart(line) {
-  var config = line.config || {};
-  state.budget.toolMax = config.tool_budget || 60;
-  state.budget.submitMax = config.submit_budget || 5;
-  /* A local brain has no dollar ceiling; what bounds it is the turn budget, and the
-     trace carries it only when the run had one (ADR 0008 item 3). */
-  state.budget.turnsMax = Number(config.max_turns || line.max_turns || 0) || 0;
-  byId("turns-meter").hidden = !state.budget.turnsMax;
-  var brain = line.brain || config.brain;
-  if (brain) {
-    state.brain = String(brain);
-    byId("run-brain").textContent = brainLabel(state.brain);
-  }
-  drawMeters();
-}
-
-function onStep(line) {
-  var calls = line.tool_calls || [];
-  var results = {};
-  (line.tool_results || []).forEach(function (item) { results[item.call_id] = item; });
-  state.budget.tool += calls.length;
-  state.budget.turns += 1;
-  calls.forEach(function (call) { if (call.name === "submit_record") { state.budget.submit += 1; } });
-  state.cost = Number(line.cost_cum_usd) || state.cost;
-  drawMeters();
-
-  var card = el("article", { class: "step" }, [
-    el("div", { class: "step-head" }, [
-      el("span", { class: "step-no", text: "Step " + line.step }),
-      el("span", { class: "chip", text: line.phase || "agent" }),
-      el("span", { class: "step-cost", text: money(line.cost_usd) + " step, " + money(line.cost_cum_usd) + " so far" })
-    ])
-  ]);
-  if (line.reasoning) {
-    card.appendChild(el("p", { class: "reasoning", text: line.reasoning }));
-  } else {
-    card.appendChild(el("p", { class: "reasoning muted", text: "No reasoning summary on this step." }));
-  }
-  if (calls.length) {
-    var box = el("div", { class: "calls" });
-    calls.forEach(function (call) { box.appendChild(callRow(call, results[call.id])); });
-    card.appendChild(box);
-  }
-  byId("steps").appendChild(card);
-
-  calls.forEach(function (call) {
-    if (call.name !== "submit_record") { return; }
-    var result = results[call.id];
-    if (!result) { return; }
-    var feedback = null;
-    try { feedback = JSON.parse(result.output); } catch (error) { feedback = null; }
-    if (feedback && feedback.accepted === false) { byId("steps").appendChild(rejectionCard(feedback)); }
-  });
-  noteNow(line, calls, results);
-  scrollIntoRun(card);
-}
-
-function callRow(call, result) {
-  var row = el("div", { class: "call" });
-  var head = el("div", { class: "call-row" });
-  if (call.name === "submit_record") {
-    head.appendChild(el("span", { class: "chip accent", text: "submit_record" }));
-  } else {
-    head.appendChild(el("span", { class: "call-name", text: call.name }));
-  }
-  head.appendChild(el("span", { class: "call-arg", text: compactInput(call) }));
-  row.appendChild(head);
-  if (result) {
-    var body = el("pre", { class: "result", hidden: true, text: String(result.output || "") });
-    var toggle = el("button", {
-      class: "btn btn-quiet btn-small", type: "button", "aria-expanded": "false"
-    }, "show result");
-    toggle.addEventListener("click", function () {
-      var open = body.hidden;
-      body.hidden = !open;
-      toggle.textContent = open ? "hide result" : "show result";
-      toggle.setAttribute("aria-expanded", open ? "true" : "false");
-    });
-    var side = el("div", { class: "call-side" });
-    if (result.is_error) {
-      side.appendChild(el("span", {
-        class: "chip danger", text: call.name === "submit_record" ? "refused" : "tool error"
-      }));
-    }
-    side.appendChild(toggle);
-    head.appendChild(side);
-    row.appendChild(body);
-  }
-  return row;
-}
-
-function compactInput(call) {
-  var input = call.input || {};
-  if (call.name === "read_file") {
-    var span = input.start_line || input.end_line
-      ? ":" + (input.start_line || 1) + "-" + (input.end_line || "end") : "";
-    return String(input.path || "") + span;
-  }
-  if (call.name === "grep") {
-    var glob = input.glob && input.glob !== "*.py" ? "  " + input.glob : "";
-    var where = input.path && input.path !== "." ? "  " + input.path : "";
-    return String(input.pattern || "") + where + glob;
-  }
-  if (call.name === "list_tree") {
-    return String(input.path || ".") + "  depth=" + (input.max_depth === undefined ? 4 : input.max_depth);
-  }
-  if (call.name === "submit_record") {
-    var record = input.record || {};
-    var stores = (record.stores || []).length;
-    var fields = (record.stores || []).reduce(function (total, store) {
-      return total + ((store.fields || []).length);
-    }, 0);
-    return plural(stores, "store", "stores") + ", " + plural(fields, "field", "fields");
-  }
-  return JSON.stringify(input).slice(0, 160);
-}
-
-/* --- the verifier's answer --- */
-
-var REJECT_GROUPS = [
-  ["rejected_claims", "Claims rejected", function (item) {
-    return {
-      what: String(item.store) + (item.field ? " \u00b7 " + item.field : "")
-        + " \u00b7 " + String(item.claim),
-      why: item.reason, expected: item.expected, path: item.path
-    };
-  }],
-  ["missing_stores", "Stores the record does not contain", function (item) {
-    return { what: String(item.store) + " \u00b7 " + String(item.kind), why: item.evidence,
-      expected: item.expected };
-  }],
-  ["missing_entry_points", "Erasure entry points the record does not declare", function (item) {
-    return {
-      what: String(item.name) + " \u00b7 " + words(item.kind),
-      why: String(item.file) + ":" + String(item.line), expected: item.expected
-    };
-  }],
-  ["bad_citations", "Citations that do not resolve", function (item) {
-    return {
-      what: String(item.file) + ":" + String(item.line) + " \u00b7 " + String(item.symbol),
-      why: item.problem, expected: item.expected
-    };
-  }],
-  ["unverified", "Claims that could not be decided", function (item) {
-    return { what: String(item.store) + " \u00b7 " + String(item.claim), why: item.reason,
-      expected: item.expected };
-  }],
-  ["conservative_divergences", "Accepted, and more conservative than the evidence", function (item) {
-    return { what: String(item.store) + "  " + String(item.claim), why: item.verifier, expected: item.note };
-  }],
-  ["schema_errors", "Schema errors", function (item) {
-    return typeof item === "string" ? { what: item } : { what: String(item.path || ""), why: item.message };
-  }]
-];
-
-function rejectionCard(feedback) {
-  var card = el("article", { class: "step reject" }, [
-    el("div", { class: "step-head" }, [
-      el("h3", { text: "The verifier refused this record" }),
-      el("span", {
-        class: "chip danger",
-        text: "attempt " + feedback.attempt + ", " + feedback.attempts_left + " left"
-      })
-    ])
-  ]);
-  var any = false;
-  REJECT_GROUPS.forEach(function (group) {
-    var items = feedback[group[0]] || [];
-    if (!items.length) { return; }
-    any = true;
-    var box = el("div", { class: "reject-group" }, el("span", { class: "label", text: group[1] }));
-    items.forEach(function (raw) {
-      var item = group[2](raw);
-      var node = el("div", { class: "reject-item" }, el("div", { class: "what", text: item.what }));
-      if (item.why) { node.appendChild(el("div", { class: "why", text: item.why })); }
-      (item.path || []).forEach(function (hop) {
-        node.appendChild(el("div", {
-          class: "hop",
-          text: String(hop.file || "") + ":" + String(hop.line || "")
-            + " \u00b7 " + String(hop.symbol || hop.name || "")
-        }));
-      });
-      if (item.expected) { node.appendChild(el("div", { class: "expected", text: item.expected })); }
-      box.appendChild(node);
-    });
-    card.appendChild(box);
-  });
-  if (!any) { card.appendChild(el("p", { class: "why", text: "No item was returned with the refusal." })); }
-  return card;
-}
-
-/* --- the gate --- */
-
-/* advanced/gate.py writes the head -- the record's title, the rating and its reason,
-   and on a split reading the verifier's own rating -- then one blank line, then the
-   block. The card leads on the rating, states what is being approved, and puts the
-   two buttons last; nothing is quoted twice. */
-function gateParts(summary) {
-  var text = String(summary || "");
-  var split = text.indexOf("\n\n");
-  var head = (split < 0 ? text : text.slice(0, split)).split("\n");
-  var why = head[1] || "";
-  var stop = why.indexOf("Risk:") === 0 ? why.indexOf(". ") : -1;
-  return {
-    subject: head[0] || "",
-    why: stop > 0 ? why.slice(stop + 2) : why,
-    cross: head.slice(2).join(" "),
-    body: split < 0 ? "" : text.slice(split + 2)
-  };
-}
-
-function onGate(request) {
-  state.gate = request;
-  setStatus("gate_waiting");
-  setNow("Scan complete. The verifier accepted the record; approve below to write it.");
-  drawFindings(state.submitted, false);
-  var parts = gateParts(request.summary);
-  var card = el("article", { class: "step gate-card", id: "gate-card", tabindex: "-1" });
-  var waited = el("span", { class: "waited", text: "waiting 0 s" });
-  var band = el("div", { class: "gate-risk risk-" + String(request.risk || "") }, [
-    el("div", { class: "gate-band" }, [
-      el("span", { class: "label", text: "Human checkpoint" }), waited
-    ]),
-    el("p", { class: "gate-rating", text: "Risk " + String(request.risk || "").toUpperCase() }),
-    el("p", { class: "gate-why", text: parts.why })
-  ]);
-  if (parts.cross) { band.appendChild(el("p", { class: "gate-cross", text: parts.cross })); }
-  card.appendChild(band);
-  card.appendChild(el("span", { class: "label gate-label", text: "What you are approving" }));
-  card.appendChild(el("p", { class: "gate-subject", text: parts.subject }));
-  card.appendChild(el("pre", { class: "gate-summary", text: parts.body }));
-
-  var selects = {};
-  var parties = request.third_party || [];
-  if (parties.length) {
-    var kinds = el("div", { class: "kinds" });
-    kinds.appendChild(el("span", { class: "label", text: "Recipient kind, one per third-party store" }));
-    parties.forEach(function (party, index) {
-      var id = "kind-" + index;
-      var picker = el("select", { id: id });
-      (party.kinds || ["unknown"]).forEach(function (kind) {
-        picker.appendChild(el("option", { value: kind, text: words(kind) }));
-      });
-      selects[party.store] = picker;
-      kinds.appendChild(el("div", { class: "kind-row" }, [
-        el("label", { for: id }, [
-          el("span", { class: "mono", text: party.store }),
-          el("span", { class: "hint", text: party.where || "" })
-        ]),
-        picker
-      ]));
-    });
-    card.appendChild(kinds);
-  }
-  /* request.human_cells is not drawn here: gate_summary already carries the list,
-     and the page, the trace and the terminal quote one rendering of the record. */
-
-  var approve = el("button", { class: "btn btn-accent", type: "button" }, "Approve and render");
-  var reject = el("button", { class: "btn btn-danger", type: "button" }, "Reject");
-  card.appendChild(el("div", { class: "gate-actions" }, [approve, reject]));
-
-  function decide(approved) {
-    approve.disabled = true;
-    reject.disabled = true;
-    var edits = {};
-    Object.keys(selects).forEach(function (name) {
-      if (selects[name].value && selects[name].value !== "unknown") { edits[name] = selects[name].value; }
-    });
-    post("/api/runs/" + state.run.run_id + "/gate", { approved: approved, edits: edits })
-      .then(function () {
-        stopGateTicker();
-        state.gateOpen = false;
-        layout();
-        setNow(approved ? "Approved. Writing the record." : "Rejected. Nothing is written.");
-        card.appendChild(el("p", {
-          class: "hint",
-          text: (approved ? "Approved" : "Rejected") + " after " + elapsed() + " s"
-            + (Object.keys(edits).length
-              ? ", recipient kinds set: " + Object.keys(edits).map(function (name) {
-                return name + " " + words(edits[name]);
-              }).join(", ")
-              : (Object.keys(selects).length ? ", every recipient kind left unknown" : ""))
-        }));
-        if (approved) { pollRecord(); }
-      }, function (error) {
-        approve.disabled = false;
-        reject.disabled = false;
-        card.appendChild(el("p", { class: "expected", text: error.message }));
-      });
-  }
-  approve.addEventListener("click", function () { decide(true); });
-  reject.addEventListener("click", function () { decide(false); });
-
-  state.gateOpen = true;
-  layout();
-  byId("steps").appendChild(card);
-  card.focus();
-  scrollIntoRun(card);
-
-  state.gateStart = Date.now();
-  stopGateTicker();
-  state.gateTicker = setInterval(function () { waited.textContent = "waiting " + elapsed() + " s"; }, 1000);
-}
-
-function elapsed() { return Math.round((Date.now() - state.gateStart) / 1000); }
-
-function stopGateTicker() {
-  if (state.gateTicker) { clearInterval(state.gateTicker); state.gateTicker = null; }
-}
-
-function onCheckpoint(line) {
-  /* Replayed traces carry the checkpoint the harness already answered; a gate this
-     page answered has its own card above, so this one only states the decision. It
-     is laid out as the live card is: the rating, the record, then the block. */
-  if (state.gate) { return; }
-  setNow("Checkpoint " + String(line.decision) + " by " + String(line.by) + ".");
-  drawFindings(state.submitted, false);
-  var parts = gateParts(line.summary);
-  var band = el("div", { class: "gate-risk risk-" + String(line.risk || "") }, [
-    el("div", { class: "gate-band" }, [
-      el("span", { class: "label", text: "Human checkpoint" }),
-      el("span", { class: "chip", text: String(line.decision) + " by " + String(line.by) })
-    ]),
-    el("p", { class: "gate-rating", text: "Risk " + String(line.risk || "").toUpperCase() }),
-    el("p", { class: "gate-why", text: parts.why })
-  ]);
-  if (parts.cross) { band.appendChild(el("p", { class: "gate-cross", text: parts.cross })); }
-  byId("steps").appendChild(el("article", { class: "step" }, [
-    band,
-    el("span", { class: "label gate-label", text: "What was reviewed" }),
-    el("p", { class: "gate-subject", text: parts.subject }),
-    el("pre", { class: "gate-summary", text: parts.body })
-  ]));
-}
-
-function onRunEnd(line) {
-  var totals = [
-    ["steps", line.steps], ["tool calls", line.tool_calls_total], ["submits", line.submits],
-    ["verify rounds", line.verify_rounds], ["seconds", fixed(line.wall_s, 1)],
-    ["cost", money(line.cost_usd)]
-  ];
-  var accepted = line.stop_condition === "accepted";
-  var card = el("article", { class: "step end-card" }, [
-    el("div", { class: "step-head" }, [
-      el("h3", { text: "Run finished" }),
-      el("span", { class: "chip " + (accepted ? "ok" : "danger"),
-        text: accepted ? "record written" : words(line.stop_condition) })
-    ])
-  ]);
-  if (line.note) { card.appendChild(el("p", { class: "why", text: line.note })); }
-  var box = el("div", { class: "totals" });
-  totals.forEach(function (pair) {
-    box.appendChild(el("div", {}, [
-      el("span", { class: "label", text: pair[0] }),
-      el("span", { class: "n", text: String(pair[1] === undefined || pair[1] === null ? "0" : pair[1]) })
-    ]));
-  });
-  card.appendChild(box);
-  if (line.record_path) {
-    card.appendChild(el("p", { class: "hint mono", text: String(line.record_path) }));
-  }
-  byId("steps").appendChild(card);
-  scrollIntoRun(card);
-  setNow(accepted ? "Finished. The record is written."
-    : "Stopped: " + words(line.stop_condition) + (line.note ? ". " + String(line.note) : "."));
-  if (accepted) { pollRecord(); }
-}
-
-function onDone(done) {
-  setStatus(done.status || "accepted");
-  state.gateOpen = false;
-  layout();
-  stopGateTicker();
-  closeStream();
-  if (done.note) {
-    byId("steps").appendChild(el("article", { class: "step" }, [
-      el("span", { class: "label", text: "the last lines the child printed" }),
-      el("pre", { class: "result", text: done.note })
-    ]));
-  }
-  if ((done.status || "") === "accepted") { pollRecord(); }
-  loadRuns(true);          /* a finished run is one a local brain can play back */
-}
-
-function scrollIntoRun(node) {
-  if (state.paced) { node.scrollIntoView({ block: "nearest", behavior: "auto" }); }
-}
-
-/* ---------- the simple view ---------- */
-
-var VIEW_KEY = "art30.view";
-
-function storedView() {
-  try { return window.localStorage.getItem(VIEW_KEY) === "details" ? "details" : "simple"; }
-  catch (error) { return "simple"; }
-}
-
-function setView(value) {
-  state.view = value === "details" ? "details" : "simple";
-  setRadio("view", state.view);
-  try { window.localStorage.setItem(VIEW_KEY, state.view); } catch (error) { /* a private window */ }
-  byId("simple").hidden = state.view !== "simple" || !state.run;
-  layout();
-}
-
-/* The server's status words are the loop's stop conditions. The chip says what they
-   mean to the person watching. */
-function statusWord(status) {
-  var text = String(status || "");
-  if (text === "running") { return "scanning"; }
-  if (text === "gate_waiting") { return "waiting for your approval"; }
-  if (text === "accepted") { return "finished"; }
-  if (text.indexOf("failed:") === 0) { return "failed: " + words(text.slice(7)); }
-  return words(text);
-}
-
-function relPath(path) {
-  var repo = state.run && state.run.repo ? String(state.run.repo) : "";
-  var text = String(path || "");
-  if (repo && text.indexOf(repo + "/") === 0) { return text.slice(repo.length + 1); }
-  if (repo && text === repo) { return "."; }
-  return text;
-}
-
-/* The api brain's tools and the CLI brains' tools, one word each. */
-function toolKind(name) {
-  var key = String(name || "").toLowerCase();
-  if (key === "read" || key === "read_file") { return "read"; }
-  if (key === "glob" || key === "list_tree") { return "map"; }
-  if (key === "grep") { return "grep"; }
-  if (key === "submit_record") { return "submit"; }
-  return "other";
 }
 
 function setNow(text) {
   var node = byId("now-line");
   clear(node);
   append(node, prose(text));
-}
-
-function feedbackCount(feedback) {
-  return ["rejected_claims", "missing_stores", "missing_entry_points", "bad_citations", "schema_errors"]
-    .reduce(function (total, key) { return total + ((feedback[key] || []).length); }, 0);
+  node.className = "now-line";
+  void node.offsetWidth;            /* restarts the animation */
+  node.className = "now-line rise";
 }
 
 function noteNow(line, calls, results) {
@@ -1852,11 +1256,10 @@ function noteNow(line, calls, results) {
       if (state.filesRead.indexOf(path) < 0) { state.filesRead.push(path); }
     } else if (kind === "grep") {
       patterns.push((input.glob ? "`" + String(input.glob) + "` for " : "") + "`" + String(input.pattern || "") + "`");
-    }
-    else if (kind === "map") { mapped = true; }
+    } else if (kind === "map") { mapped = true; }
     else if (kind === "submit") { submit = call; }
   });
-  var text;
+  var phrases;
   if (submit) {
     state.submitted = (submit.input || {}).record || state.submitted;
     var feedback = null;
@@ -1864,28 +1267,26 @@ function noteNow(line, calls, results) {
     if (result) { try { feedback = JSON.parse(result.output); } catch (error) { feedback = null; } }
     var attempt = "attempt " + state.budget.submit;
     if (feedback && feedback.accepted === true) {
-      text = "The verifier accepted the record on " + attempt + ": every claim in it resolved against the code.";
+      phrases = ["The verifier accepted the record on " + attempt + ": every claim in it resolved against the code."];
     } else if (feedback && feedback.accepted === false) {
       var n = feedbackCount(feedback);
-      text = "The verifier refused " + attempt + (n ? " with " + plural(n, "problem", "problems") : "")
-        + ". The agent is correcting the record.";
+      phrases = ["The verifier refused " + attempt + (n ? " with " + plural(n, "problem", "problems") : "")
+        + ". The agent is correcting the record."];
     } else {
-      text = "Handing the record to the verifier, " + attempt + ".";
+      phrases = ["Handing the record to the verifier, " + attempt + "."];
     }
   } else if (read.length) {
-    var shown = read.slice(0, 4).map(function (path) { return "`" + path + "`"; }).join(", ");
-    text = "Reading " + shown
-      + (read.length > 4 ? " and " + plural(read.length - 4, "more file", "more files") : "") + ".";
+    phrases = read.map(function (path) { return "Reading `" + path + "`"; });
   } else if (patterns.length) {
-    text = "Searching " + patterns.map(function (p) { return p.indexOf(" for ") > 0 ? p : "the code for " + p; }).join("; ") + ".";
+    phrases = patterns.map(function (p) { return "Searching " + (p.indexOf(" for ") > 0 ? p : "the code for " + p); });
   } else if (mapped) {
-    text = "Mapping the repository tree.";
+    phrases = ["Mapping the repository tree"];
   } else if (line.text) {
-    text = String(line.text);
+    phrases = [String(line.text)];
   } else {
-    text = "Working.";
+    phrases = ["Working"];
   }
-  setNow(text);
+  setPhrases(phrases);
   byId("now-progress").textContent = "Step " + line.step + " · "
     + plural(state.budget.tool, "tool call", "tool calls") + " · "
     + plural(state.filesRead.length, "file read", "files read");
@@ -1893,6 +1294,20 @@ function noteNow(line, calls, results) {
   files.hidden = !state.filesRead.length;
   files.textContent = state.filesRead.join("   ");
 }
+
+function onStep(line) {
+  var calls = line.tool_calls || [];
+  var results = {};
+  (line.tool_results || []).forEach(function (item) { results[item.call_id] = item; });
+  state.budget.tool += calls.length;
+  state.budget.turns += 1;
+  calls.forEach(function (call) { if (call.name === "submit_record") { state.budget.submit += 1; } });
+  state.cost = Number(line.cost_cum_usd) || state.cost;
+  drawMeters();
+  noteNow(line, calls, results);
+}
+
+/* --- what it found --- */
 
 /* One card: which stores do not reach erasure, where, and why. Drawn from the
    accepted submission while the gate waits, and again from record.json once it
@@ -1962,28 +1377,26 @@ function drawFindings(record, rendered) {
     : "No retention timer was found in the code for any store; the schedule is a policy for a person to set." }));
   card.appendChild(el("p", { class: "hint", text: "The controller, purposes, legal basis and transfers"
     + " cannot be read from code: those cells are rendered as " + HUMAN + "." }));
-
-  if (rendered) {
-    var links = el("div", { class: "record-links findings-links" });
-    var runId = state.run ? state.run.run_id : null;
-    if (runId) {
-      [["record.html", "Open the full record"], ["record.md", "record.md"]].forEach(function (pair) {
-        links.appendChild(el("a", {
-          class: "btn btn-quiet btn-small",
-          href: "/api/runs/" + runId + "/" + pair[0], target: "_blank", rel: "noopener"
-        }, pair[1]));
-      });
-    }
-    card.appendChild(links);
-  } else {
+  if (!rendered) {
     card.appendChild(el("p", { class: "hint", text: "Approve at the checkpoint below to write the record, or reject to stop without writing it." }));
   }
 }
 
-/* ---------- the record ---------- */
-
-function stopRecordPoll() {
-  if (state.recordPoll) { clearInterval(state.recordPoll); state.recordPoll = null; }
+/* The renderer's own two files, on the loopback server that already serves them
+   byte for byte. Without these the finished document has no route off this page. */
+function recordLinks(runId) {
+  var host = byId("record-links");
+  clear(host);
+  host.hidden = !runId;
+  if (!runId) { return; }
+  [["record.html", "Open the full report"], ["record.md", "record.md"]]
+    .forEach(function (pair) {
+      host.appendChild(el("a", {
+        class: "btn " + (pair[0] === "record.html" ? "btn-accent" : "btn-quiet"),
+        href: "/api/runs/" + runId + "/" + pair[0],
+        target: "_blank", rel: "noopener"
+      }, pair[1]));
+    });
 }
 
 function pollRecord() {
@@ -2004,87 +1417,393 @@ function pollRecord() {
       if (!record || record.error) { return; }
       state.recordLoaded = true;
       stopRecordPoll();
-      drawRecord(record);
+      drawFindings(record, true);
+      recordLinks(runId);
     });
   }
   attempt();
   state.recordPoll = setInterval(attempt, 600);
 }
 
-/* --- the vocabulary of art30/render/__init__.py --- */
+/* --- the gate --- */
+
+function riskBand(risk, parts, right) {
+  var band = el("div", { class: "gate-risk risk-" + String(risk || "") }, [
+    el("div", { class: "gate-band" }, [el("span", { class: "label", text: "Human checkpoint" }), right]),
+    el("p", { class: "gate-rating", text: "Risk " + String(risk || "").toUpperCase() }),
+    el("p", { class: "gate-why", text: parts.why })
+  ]);
+  if (parts.cross) { band.appendChild(el("p", { class: "gate-cross", text: parts.cross })); }
+  return band;
+}
+
+/* The CLI's own checkpoint text, folded: the findings card above says the same
+   thing in rows, and the terminal, the trace and this page quote one rendering. */
+function gateText(parts, label) {
+  return el("details", { class: "gate-text" }, [
+    el("summary", { text: label }),
+    el("p", { class: "gate-subject", text: parts.subject }),
+    el("pre", { class: "gate-summary", text: parts.body })
+  ]);
+}
+
+function onGate(request) {
+  state.gate = request;
+  setStatus("gate_waiting");
+  stageMode("gated");
+  setPhrases(["Scan complete. The verifier accepted the record; approve below to write it."]);
+  drawFindings(state.submitted, false);
+  var parts = gateParts(request.summary);
+  var card = el("article", { class: "card gate-card", id: "gate-card", tabindex: "-1" });
+  var waited = el("span", { class: "waited", text: "waiting 0 s" });
+  card.appendChild(riskBand(request.risk, parts, waited));
+  card.appendChild(gateText(parts, "The checkpoint text, as the CLI prints it"));
+
+  var selects = {};
+  var parties = request.third_party || [];
+  if (parties.length) {
+    var kinds = el("div", { class: "kinds" });
+    kinds.appendChild(el("span", { class: "label", text: "Recipient kind, one per third-party store" }));
+    parties.forEach(function (party, index) {
+      var id = "kind-" + index;
+      var picker = el("select", { id: id });
+      (party.kinds || ["unknown"]).forEach(function (kind) {
+        picker.appendChild(el("option", { value: kind, text: words(kind) }));
+      });
+      selects[party.store] = picker;
+      kinds.appendChild(el("div", { class: "kind-row" }, [
+        el("label", { for: id }, [
+          el("span", { class: "mono", text: party.store }),
+          el("span", { class: "hint", text: party.where || "" })
+        ]),
+        picker
+      ]));
+    });
+    card.appendChild(kinds);
+  }
+  /* request.human_cells is not drawn here: gate_summary already carries the list,
+     and the page, the trace and the terminal quote one rendering of the record. */
+
+  var approve = el("button", { class: "btn btn-accent", type: "button" }, "Approve and render");
+  var reject = el("button", { class: "btn btn-danger", type: "button" }, "Reject");
+  card.appendChild(el("div", { class: "gate-actions" }, [approve, reject]));
+
+  function decide(approved) {
+    approve.disabled = true;
+    reject.disabled = true;
+    var edits = {};
+    Object.keys(selects).forEach(function (name) {
+      if (selects[name].value && selects[name].value !== "unknown") { edits[name] = selects[name].value; }
+    });
+    post("/api/runs/" + state.run.run_id + "/gate", { approved: approved, edits: edits })
+      .then(function () {
+        stopGateTicker();
+        setPhrases([approved ? "Approved. Writing the record." : "Rejected. Nothing is written."]);
+        card.appendChild(el("p", {
+          class: "hint",
+          text: (approved ? "Approved" : "Rejected") + " after " + elapsed() + " s"
+            + (Object.keys(edits).length
+              ? ", recipient kinds set: " + Object.keys(edits).map(function (name) {
+                return name + " " + words(edits[name]);
+              }).join(", ")
+              : (Object.keys(selects).length ? ", every recipient kind left unknown" : ""))
+        }));
+        if (approved) { pollRecord(); }
+      }, function (error) {
+        approve.disabled = false;
+        reject.disabled = false;
+        card.appendChild(el("p", { class: "expected", text: error.message }));
+      });
+  }
+  approve.addEventListener("click", function () { decide(true); });
+  reject.addEventListener("click", function () { decide(false); });
+
+  byId("stream").appendChild(card);
+  card.focus();
+  scrollIntoRun(card);
+
+  state.gateStart = Date.now();
+  stopGateTicker();
+  state.gateTicker = setInterval(function () { waited.textContent = "waiting " + elapsed() + " s"; }, 1000);
+}
+
+/* A played-back trace carries the checkpoint the harness or a person already
+   answered; a gate this page answered has its own card above. */
+function onCheckpoint(line) {
+  if (state.gate) { return; }
+  stageMode("gated");
+  setPhrases(["Checkpoint " + String(line.decision) + " by " + String(line.by) + "."]);
+  drawFindings(state.submitted, false);
+  var parts = gateParts(line.summary);
+  byId("stream").appendChild(el("article", { class: "card" }, [
+    riskBand(line.risk, parts, el("span", { class: "chip", text: String(line.decision) + " by " + String(line.by) })),
+    gateText(parts, "What was reviewed, as the CLI printed it")
+  ]));
+}
+
+/* --- the end --- */
+
+function onRunEnd(line) {
+  var accepted = line.stop_condition === "accepted";
+  var totals = [
+    ["steps", line.steps], ["tool calls", line.tool_calls_total], ["submits", line.submits],
+    ["verify rounds", line.verify_rounds], ["seconds", fixed(line.wall_s, 1)],
+    ["cost", money(line.cost_usd)]
+  ];
+  var card = el("article", { class: "card end-card" }, [
+    el("div", { class: "end-head" }, [
+      el("h3", { text: accepted ? "Finished" : "Stopped" }),
+      el("span", { class: "chip " + (accepted ? "ok" : "danger"),
+        text: accepted ? "record written" : words(line.stop_condition) })
+    ])
+  ]);
+  if (line.note) { card.appendChild(el("p", { class: "why", text: line.note })); }
+  var box = el("div", { class: "totals" });
+  totals.forEach(function (pair) {
+    box.appendChild(el("div", {}, [
+      el("span", { class: "label", text: pair[0] }),
+      el("span", { class: "n", text: String(pair[1] === undefined || pair[1] === null ? "0" : pair[1]) })
+    ]));
+  });
+  card.appendChild(box);
+  if (line.record_path) {
+    card.appendChild(el("p", { class: "hint mono", text: String(line.record_path) }));
+  }
+  byId("stream").appendChild(card);
+  scrollIntoRun(card);
+  state.ended = true;
+  stageMode("finished");
+  setPhrases([accepted ? "Finished. The record is written."
+    : "Stopped: " + words(line.stop_condition) + (line.note ? ". " + String(line.note) : ".")]);
+  if (accepted) { pollRecord(); }
+}
+
+function onDone(done) {
+  var status = done.status || "accepted";
+  setStatus(status);
+  stopGateTicker();
+  closeStream();
+  stageMode("finished");
+  if (!state.ended) {
+    setPhrases([status === "accepted" ? "Finished. The record is written." : "Stopped: " + statusWord(status) + "."]);
+  }
+  if (done.note) {
+    byId("stream").appendChild(el("article", { class: "card" }, [
+      el("span", { class: "label", text: "the last lines the child printed" }),
+      el("pre", { class: "tail", text: done.note })
+    ]));
+  }
+  if (status === "accepted") { pollRecord(); }
+  loadRuns(true);          /* a finished run is one a local brain can play back */
+}
+
+/* --- kept verbatim from the run view --- */
 
 var HUMAN = "requires human completion";
 var KIND_ORDER = ["relational", "object_storage", "cache", "search_index", "queue", "log", "backup", "third_party"];
-var CATEGORY_ORDER = ["identifier", "contact", "financial", "behavioural", "free_text_may_contain", "technical"];
 var VERDICT_ORDER = ["pseudonymised", "not_erased", "external_manual", "no_entry_point",
   "governed_by_retention", "no_schedule_evidenced", "unverified", "erased", "erased_after_timer", "anonymised"];
 var TIMED = ["erased_after_timer", "governed_by_retention"];
 var REACHING = ["erased", "erased_after_timer", "anonymised"];
 var WARN_VERDICTS = ["governed_by_retention", "no_schedule_evidenced", "unverified"];
 
-/* --- the wording of art30/render/markdown.py, quoted --- */
+function setStatus(status) {
+  var chip = byId("run-status");
+  chip.textContent = statusWord(status);
+  chip.className = "chip " + toneOfStatus(status);
+  var running = status === "running" || status === "gate_waiting";
+  byId("live-dot").className = "dot" + (running ? " live" : "");
+  byId("live-text").textContent = state.run || running ? statusWord(status) : "idle";
+  byId("cancel").hidden = !running;
+  byId("cancel").disabled = !running;
+  byId("new-scan").hidden = running;
+  if (running) { byId("start").disabled = true; } else { refreshModes(); }
+}
 
-var BOUNDARY = "This is the technical half of a record of processing activities under Article 30(1)"
-  + " GDPR. It was derived from source code by static reading, on the date above. It is not legal"
-  + " advice, it states no legal basis, and it is incomplete until the cells marked `requires human"
-  + " completion` are filled by a person. It covers Article 30(1) — the controller's own record —"
-  + " for the repository named above; a processor's record under Article 30(2), and any personal"
-  + " data held outside this repository, are not in it.";
-var RECIPIENTS_NOTE = "Personal data flows into the call at the cited lines. Whether this recipient"
-  + " acts as a processor on the controller's instructions or as an independent controller, and"
-  + " whether a contract under Article 28(3) exists, is not visible in code.";
-var RETENTION_NOTE = "A period found in code is evidence for a retention schedule. The schedule"
-  + " itself is a policy the controller sets, and the reason for each period belongs in the"
-  + " justification column.";
-var BACKUP_NOTE = "No erasure verdict is rendered for a store of kind backup; it carries a retention"
-  + " verdict instead. This tool reports the retention schedule it found in code and cites it;"
-  + " whether that schedule and the procedure applied to restored systems are adequate is not"
-  + " visible here.";
-var VERSIONING_NOTE = "Object storage: where bucket versioning is enabled, a delete that passes no"
-  + " `versionId` leaves the previous version of the object in place.";
-var ACTIVITIES_NOTE = "Processing activities. Article 30 records processing activities; this document"
-  + " records stores. No activity grouping is derived from code. The stores in section A are the"
-  + " input to the fiche below, one copy per activity.";
-var UNSCANNED_REASONS = {
-  not_python: "not Python", orm_not_supported: "ORM not supported",
-  generated_or_vendored: "generated or vendored", read_budget_exhausted: "read budget exhausted"
-};
-var OBSERVATIONS = [
-  ["Module names. A module name says what the code was called, not what it is for."
-    + " Article 30(1)(b) purposes are in section F.", "observed_module_names", ["Name", "File"],
-  function (item) { return [item.name, code(item.file)]; }],
-  ["Region hints. A region string says where a service was configured to run. It is not a finding"
-    + " about a transfer under Article 30(1)(e); that cell is in section F.", "observed_region_hints",
-  ["Value", "Evidence"], function (item) { return [code(item.symbol), cite(item)]; }],
-  ["Security measures. Technical measures under Article 32(1)(a) only, one line each. The"
-    + " organisational half is in section F.", "security_evidence", ["Measure", "Evidence", "Symbol"],
-  function (item) { return [words(item.measure), cite(item), code(item.symbol)]; }]
-];
-var HUMAN_CELLS = [
-  ["Controller — name, contact", "(a)"], ["Joint controller — name, contact", "(a)"],
-  ["Representative — name, contact", "(a)"], ["Data protection officer — name, contact", "(a)"],
-  ["Purposes of the processing", "(b)"], ["Confirmation of data-subject categories", "(c)"],
-  ["Categories of personal data held outside this repository", "(c)"]
-];
-var LATE_CELLS = [
-  ["Transfer to a third country — occurs", "(e)"],
-  ["Transfer to a third country — countries", "(e)"],
-  ["Transfer to a third country — safeguards", "(e)"],
-  ["Justification for each retention period", "(f)"],
-  ["Organisational security measures", "(g)"],
-  ["Special categories of data (Article 9)", "—"], ["Legal basis", "—"]
-];
-var FICHE = ["Activity name", "Purposes", "Categories of data subjects", "Categories of personal data",
-  "Categories of recipients", "Transfers outside the EU", "Retention", "Security measures"];
-var SECTIONS = ["A. Data inventory", "B. Recipients", "C. Retention", "D. Erasure",
-  "E. Observations from the code (not findings)", "F. Requires human completion",
-  "G. Verification appendix", "H. Evidence index"];
+function toneOfStatus(status) {
+  if (status === "accepted") { return "ok"; }
+  if (status === "running") { return "accent"; }
+  if (status === "gate_waiting") { return "warn"; }
+  if (status.indexOf("failed") === 0) { return "danger"; }
+  return "";
+}
 
-/* --- record helpers --- */
+function drawMeters() {
+  meter("tool", state.budget.tool, state.budget.toolMax);
+  meter("submit", state.budget.submit, state.budget.submitMax);
+  if (state.budget.turnsMax) { meter("turns", state.budget.turns, state.budget.turnsMax); }
+  byId("cost-value").textContent = money(state.cost);
+}
+
+function modeWord(mode, brain) {
+  return (mode === "replay" && brain && brain !== "api") ? "play back" : mode;
+}
+
+function meter(name, used, budget) {
+  var share = budget ? Math.min(1, used / budget) : 0;
+  byId(name + "-value").textContent = used + " / " + budget;
+  byId(name + "-bar").style.width = (share * 100).toFixed(1) + "%";
+  byId(name + "-track").className = "bar" + (share >= 1 ? " danger" : (share >= 0.8 ? " warn" : ""));
+}
+
+function attach(runId) {
+  var stream = new EventSource("/api/runs/" + runId + "/events");
+  state.stream = stream;
+  stream.addEventListener("open", function () {
+    if (state.opened) { resetPanels(); }
+    state.opened = true;
+  });
+  stream.addEventListener("trace", function (event) { push({ kind: "trace", data: event.data }); });
+  stream.addEventListener("stdout", function (event) { push({ kind: "stdout", data: event.data }); });
+  stream.addEventListener("gate", function (event) { push({ kind: "gate", data: event.data }); });
+  stream.addEventListener("done", function (event) { push({ kind: "done", data: event.data }); });
+}
+
+function closeStream() {
+  if (state.stream) { state.stream.close(); state.stream = null; }
+  if (state.timer) { clearInterval(state.timer); state.timer = null; }
+}
+
+function push(event) {
+  /* `stdout` never waits: it is the CLI's own line and the pacer counts steps. */
+  if (state.paced && event.kind !== "stdout") { state.queue.push(event); drawQueue(); }
+  else { apply(event); }
+}
+
+function startPacer() {
+  if (state.timer) { clearInterval(state.timer); }
+  state.timer = setInterval(function () {
+    if (state.paced && state.playing) { release(1); }
+  }, PACE_MS);
+}
+
+function release(count) {
+  for (var i = 0; i < count && state.queue.length; i += 1) { apply(state.queue.shift()); }
+  drawQueue();
+}
+
+function drawQueue() {
+  byId("pace-count").textContent = state.queue.length
+    ? state.queue.length + " buffered" : "up to date";
+}
+
+function wirePacing() {
+  byId("pace-play").addEventListener("click", function () {
+    state.playing = !state.playing;
+    this.textContent = state.playing ? "Pause" : "Play";
+  });
+  byId("pace-step").addEventListener("click", function () {
+    state.playing = false;
+    byId("pace-play").textContent = "Play";
+    release(1);
+  });
+  byId("pace-instant").addEventListener("click", function () {
+    state.paced = false;
+    release(state.queue.length);
+    byId("pacing").hidden = true;
+  });
+}
+
+function apply(event) {
+  if (event.kind === "trace") {
+    var line = null;
+    try { line = JSON.parse(event.data); } catch (error) { line = null; }
+    if (line) { onTrace(line); }
+  } else if (event.kind === "gate") {
+    var request = null;
+    try { request = JSON.parse(event.data); } catch (error) { request = null; }
+    if (request) { onGate(request); }
+  } else if (event.kind === "done") {
+    var done = null;
+    try { done = JSON.parse(event.data); } catch (error) { done = null; }
+    onDone(done || {});
+  }
+  /* `stdout` is the CLI's own printed line; the trace carries the same facts. */
+}
+
+function onTrace(line) {
+  if (line.type === "run_start") { onRunStart(line); }
+  else if (line.type === "step") { onStep(line); }
+  else if (line.type === "checkpoint") { onCheckpoint(line); }
+  else if (line.type === "run_end") { onRunEnd(line); }
+}
+
+function onRunStart(line) {
+  var config = line.config || {};
+  state.budget.toolMax = config.tool_budget || 60;
+  state.budget.submitMax = config.submit_budget || 5;
+  /* A local brain has no dollar ceiling; what bounds it is the turn budget, and the
+     trace carries it only when the run had one (ADR 0008 item 3). */
+  state.budget.turnsMax = Number(config.max_turns || line.max_turns || 0) || 0;
+  byId("turns-meter").hidden = !state.budget.turnsMax;
+  var brain = line.brain || config.brain;
+  if (brain) {
+    state.brain = String(brain);
+    byId("run-brain").textContent = brainLabel(state.brain);
+  }
+  drawMeters();
+}
+
+function gateParts(summary) {
+  var text = String(summary || "");
+  var split = text.indexOf("\n\n");
+  var head = (split < 0 ? text : text.slice(0, split)).split("\n");
+  var why = head[1] || "";
+  var stop = why.indexOf("Risk:") === 0 ? why.indexOf(". ") : -1;
+  return {
+    subject: head[0] || "",
+    why: stop > 0 ? why.slice(stop + 2) : why,
+    cross: head.slice(2).join(" "),
+    body: split < 0 ? "" : text.slice(split + 2)
+  };
+}
+
+function elapsed() { return Math.round((Date.now() - state.gateStart) / 1000); }
+
+function stopGateTicker() {
+  if (state.gateTicker) { clearInterval(state.gateTicker); state.gateTicker = null; }
+}
+
+function scrollIntoRun(node) {
+  if (state.paced) { node.scrollIntoView({ block: "nearest", behavior: "auto" }); }
+}
+
+function stopRecordPoll() {
+  if (state.recordPoll) { clearInterval(state.recordPoll); state.recordPoll = null; }
+}
+
+function statusWord(status) {
+  var text = String(status || "");
+  if (text === "running") { return "scanning"; }
+  if (text === "gate_waiting") { return "waiting for your approval"; }
+  if (text === "accepted") { return "finished"; }
+  if (text.indexOf("failed:") === 0) { return "failed: " + words(text.slice(7)); }
+  return words(text);
+}
+
+function relPath(path) {
+  var repo = state.run && state.run.repo ? String(state.run.repo) : "";
+  var text = String(path || "");
+  if (repo && text.indexOf(repo + "/") === 0) { return text.slice(repo.length + 1); }
+  if (repo && text === repo) { return "."; }
+  return text;
+}
+
+function toolKind(name) {
+  var key = String(name || "").toLowerCase();
+  if (key === "read" || key === "read_file") { return "read"; }
+  if (key === "glob" || key === "list_tree") { return "map"; }
+  if (key === "grep") { return "grep"; }
+  if (key === "submit_record") { return "submit"; }
+  return "other";
+}
+
+function feedbackCount(feedback) {
+  return ["rejected_claims", "missing_stores", "missing_entry_points", "bad_citations", "schema_errors"]
+    .reduce(function (total, key) { return total + ((feedback[key] || []).length); }, 0);
+}
 
 function code(text) { return el("code", { text: String(text === null || text === undefined ? "" : text) }); }
-
-function human() { return el("span", { class: "human-cell", text: HUMAN }); }
 
 function prose(text) {
   /* `x` inside a note is code, the way art30/render/html.py renders the same string. */
@@ -2118,15 +1837,20 @@ function verdictSpan(block) {
   return el("span", { class: "verdict chip " + tone, text: verdictText(block) });
 }
 
-function rowCells(row) {
-  var tr = el("tr");
-  row.forEach(function (cell) { tr.appendChild(append(el("td"), cell)); });
-  return tr;
+function orderedStores(record) {
+  return (record.stores || []).slice().sort(function (a, b) {
+    var d = KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind);
+    return d !== 0 ? d : (a.name < b.name ? -1 : (a.name > b.name ? 1 : 0));
+  });
 }
 
-/* `widths` is one CSS width per column, or nothing where the content should decide.
-   A header of empty strings draws no header row: the provenance table has labels in
-   its first column and nothing to head them with. */
+function erasureRows(stores) {
+  return stores.slice().sort(function (a, b) {
+    var d = VERDICT_ORDER.indexOf(a.erasure.verdict) - VERDICT_ORDER.indexOf(b.erasure.verdict);
+    return d !== 0 ? d : (a.name < b.name ? -1 : (a.name > b.name ? 1 : 0));
+  });
+}
+
 function table(header, rows, widths) {
   var parts = [];
   if (widths) {
@@ -2145,395 +1869,7 @@ function table(header, rows, widths) {
   return el("div", { class: "tablewrap" }, el("table", {}, parts));
 }
 
-function norm(name) {
-  var base = String(name).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-  return (base.slice(-1) === "s" && base.length > 3) ? base.slice(0, -1) : base;
-}
-
-function orderedStores(record) {
-  return (record.stores || []).slice().sort(function (a, b) {
-    var d = KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind);
-    return d !== 0 ? d : (a.name < b.name ? -1 : (a.name > b.name ? 1 : 0));
-  });
-}
-
-function erasureRows(stores) {
-  return stores.slice().sort(function (a, b) {
-    var d = VERDICT_ORDER.indexOf(a.erasure.verdict) - VERDICT_ORDER.indexOf(b.erasure.verdict);
-    return d !== 0 ? d : (a.name < b.name ? -1 : (a.name > b.name ? 1 : 0));
-  });
-}
-
 function stamp(value) { return String(value).split("T").join(" ").split("Z").join(" UTC"); }
-
-function joined(items, separator) {
-  var out = [];
-  items.forEach(function (item, index) {
-    if (index) { out.push(separator); }
-    out.push(item);
-  });
-  return out;
-}
-
-function onePerLine(label, items, empty) {
-  if (!items.length) { return [el("p", {}, [label + ": " + empty + "."])]; }
-  if (items.length === 1) { return [el("p", {}, [label + ": "].concat(items[0], ["."])) ]; }
-  var list = el("ul");
-  items.forEach(function (parts) { list.appendChild(append(el("li"), parts.concat(["."]))); });
-  return [el("p", {}, label + ":"), list];
-}
-
-/* --- the eight sections --- */
-
-function drawRecord(record) {
-  var host = byId("record");
-  clear(host);
-  var page = el("div", { class: "record" });
-  titleBlock(record).forEach(function (node) { page.appendChild(node); });
-  var stores = orderedStores(record);
-  var blocks = [
-    inventory(record, stores), recipients(stores), retention(record, stores),
-    erasure(record, stores), observations(record), humanSection(stores),
-    verification(record), evidenceIndex(record, stores)
-  ];
-  blocks.forEach(function (nodes, index) {
-    page.appendChild(el("h3", { text: SECTIONS[index] }));
-    nodes.forEach(function (node) { page.appendChild(node); });
-  });
-  host.appendChild(page);
-  var chip = byId("record-chip");
-  chip.hidden = false;
-  chip.textContent = plural((record.stores || []).length, "store", "stores");
-  chip.className = "chip";
-  recordLinks(state.run ? state.run.run_id : null);
-  state.recordShown = true;
-  drawFindings(record, true);
-  layout();
-}
-
-/* The renderer's own two files, on the loopback server that already serves them
-   byte for byte. Without these the finished document has no route off this page. */
-function recordLinks(runId) {
-  var host = byId("record-links");
-  clear(host);
-  if (!runId) { return; }
-  [["record.html", "Open the rendered record"], ["record.md", "record.md"]]
-    .forEach(function (pair) {
-      host.appendChild(el("a", {
-        class: "btn btn-quiet btn-small",
-        href: "/api/runs/" + runId + "/" + pair[0],
-        target: "_blank", rel: "noopener"
-      }, pair[1]));
-    });
-}
-
-function titleBlock(record) {
-  var prov = record.provenance || {};
-  var ver = record.verification || {};
-  var fixture = prov.fixture || {};
-  var kind = String(fixture.path || "").split("/").indexOf("real") >= 0 ? "real" : "synthetic";
-  var count = ver.submits;
-  var verified = plural(count, "submission", "submissions")
-    + ", accepted on attempt " + ver.accepted_on_attempt;
-  if (ver.rule_set_sha) { verified += ", rule set " + ver.rule_set_sha; }
-  var rows = [
-    ["Case", String(prov.case) + " (" + kind + ")"],
-    ["Arm", String(prov.arm)],
-    ["Model", String(prov.model) + ", effort " + String(prov.effort)],
-    ["Run", String(prov.run_id)],
-    ["Code read", String(fixture.path) + ", sha256 " + String(fixture.sha256)],
-    ["Instructions", "sha256 " + String(prov.instruction_sha256)],
-    ["Generated", stamp(prov.finished_at)],
-    ["Trace", String(prov.trace)],
-    ["Verification", verified]
-  ];
-  if (prov.gate) {
-    /* art30/render/markdown.py writes "at the terminal" here. A run started from this
-       page answers the gate through `--approve file`, and no terminal was involved, so
-       the row names where the decision came from instead: `by` is the trace's own field. */
-    rows.push(["Approved", stamp(prov.gate.at) + ", " + Math.round(prov.gate.wait_s || 0)
-      + " s at the checkpoint, risk " + String(prov.gate.risk || "").toUpperCase()
-      + ", recorded by: " + String(prov.gate.by || "")]);
-  }
-  rows.push(["Cost", "USD " + String(prov.cost_usd) + ", " + String(prov.tool_calls) + " tool calls"]);
-  return [
-    el("h2", { text: "Record of processing — " + String(record.repository) }),
-    table(["", ""], rows.map(function (row) { return [row[0], el("span", { class: "mono", text: row[1] })]; }),
-      ["136px", ""]),
-    append(el("p", { class: "boundary" }), prose(BOUNDARY))
-  ];
-}
-
-function inventory(record, stores) {
-  var out = [];
-  var subjects = (record.data_subjects || []).map(function (subject) {
-    return [subject.label + " — inferred from " + words(subject.basis) + " (", cite(subject), ")"];
-  });
-  out = out.concat(onePerLine("Data subjects", subjects, "none inferred from the code"));
-  stores.forEach(function (store) {
-    var head = el("h4", {}, [store.name + " — " + store.kind + " — "]);
-    append(head, store.declared_at ? cite(store.declared_at) : "declaration not on a single line");
-    out.push(head);
-    if (store.note) { out.push(append(el("p"), prose(store.note))); }
-    out.push(table(["Field", "Category", "Evidence", "Note"],
-      (store.fields || []).map(function (field) {
-        return [code(field.name), field.category, cite(field), prose(field.note || "")];
-      }), ["22%", "18%", "22%", "38%"]));
-    out.push(store.subject_link
-      ? el("p", {}, ["Linked to the data subject at ", cite(store.subject_link), "."])
-      : el("p", { text: "No link to a data subject found in code." }));
-  });
-  var listed = (record.unscanned || []).map(function (item) {
-    return [code(item.path), " (" + (UNSCANNED_REASONS[item.reason] || words(item.reason)) + ")"];
-  });
-  return out.concat(onePerLine("Not scanned", listed, "nothing"));
-}
-
-function recipients(stores) {
-  var third = stores.filter(function (store) { return store.kind === "third_party"; });
-  if (!third.length) {
-    return [el("p", { text: "No store of kind third_party was found in the code." })];
-  }
-  var rows = third.map(function (store) {
-    var fields = store.fields || [];
-    var kind = store.recipient_kind || "unknown";
-    var disclosed = [];
-    fields.forEach(function (field, index) {
-      if (index) { disclosed.push(", "); }
-      disclosed.push(code(field.name), " (" + field.category + ")");
-    });
-    var evidence = fields.length ? joined(fields.map(cite), ", ") : ["—"];
-    return [
-      store.name, disclosed, evidence,
-      kind === "unknown" ? el("span", {}, ["UNKNOWN — ", human()])
-        : el("span", { class: "verdict", text: words(kind).toUpperCase() })
-    ];
-  });
-  return [
-    table(["Recipient", "Fields disclosed", "Evidence", "Recipient kind"], rows,
-      ["16%", "32%", "26%", "26%"]),
-    append(el("p", { class: "muted" }), prose(RECIPIENTS_NOTE))
-  ];
-}
-
-function limitOf(item) {
-  var parts = [];
-  if (item.days !== null && item.days !== undefined) { parts.push(item.days + " days"); }
-  if (item.criteria) { parts.push(item.criteria); }
-  return parts.join(" ") || "NO TIMER EVIDENCED";
-}
-
-function retention(record, stores) {
-  var byStore = {};
-  (record.retention || []).forEach(function (item) {
-    var key = norm(item.store);
-    if (!byStore[key]) { byStore[key] = []; }
-    byStore[key].push(item);
-  });
-  var rows = [];
-  stores.forEach(function (store) {
-    var own = (byStore[norm(store.name)] || []).slice().sort(function (a, b) {
-      var ai = a.category ? CATEGORY_ORDER.indexOf(a.category) : -1;
-      var bi = b.category ? CATEGORY_ORDER.indexOf(b.category) : -1;
-      return ai - bi;
-    });
-    if (!own.length) {
-      rows.push([store.name, "—", el("span", { class: "verdict chip warn", text: "NO TIMER EVIDENCED" }), "—", human()]);
-    }
-    own.forEach(function (item) {
-      rows.push([
-        store.name, item.category || "all categories", limitOf(item),
-        item.file ? cite(item) : "—", human()
-      ]);
-    });
-  });
-  return [
-    table(["Store", "Category", "Envisaged limit", "Evidence", "Justification"], rows,
-      ["20%", "18%", "20%", "20%", "22%"]),
-    append(el("p", { class: "muted" }), prose(RETENTION_NOTE))
-  ];
-}
-
-function entryPointParts(entry) {
-  var parts = [code(entry.name), " — " + words(entry.kind) + " — ", cite(entry)];
-  if (entry.admin_only) { parts.push(", admin only"); }
-  if (entry.note) { parts.push(" ("); parts.push.apply(parts, prose(entry.note)); parts.push(")"); }
-  return parts;
-}
-
-function evidenceParts(block) {
-  var items = (block.evidence || []).slice().sort(function (a, b) {
-    return a.file < b.file ? -1 : (a.file > b.file ? 1 : a.line - b.line);
-  });
-  if (!items.length) { return ["—"]; }
-  var out = [];
-  items.forEach(function (item, index) {
-    if (index) { out.push(el("br")); }
-    out.push(cite(item));
-  });
-  return out;
-}
-
-function erasure(record, stores) {
-  var out = onePerLine("Erasure entry points",
-    (record.entry_points || []).map(entryPointParts), "none found");
-  var rows = [];
-  erasureRows(stores).forEach(function (store) {
-    var block = store.erasure;
-    rows.push([store.name, verdictSpan(block), evidenceParts(block), prose(block.note || "")]);
-    (store.fields || []).forEach(function (field) {
-      if (!field.erasure) { return; }
-      rows.push([
-        el("span", {}, [el("span", { text: "↳ " }), code(field.name)]),
-        verdictSpan(field.erasure), evidenceParts(field.erasure), prose(field.erasure.note || "")
-      ]);
-    });
-  });
-  out.push(table(["Store", "Verdict", "Evidence", "Note"], rows, ["20%", "20%", "22%", "38%"]));
-  if (stores.some(function (store) { return store.kind === "backup"; })) {
-    out.push(append(el("p", { class: "muted" }), prose(BACKUP_NOTE)));
-  }
-  if (stores.some(function (store) { return store.kind === "object_storage"; })) {
-    out.push(append(el("p", { class: "muted" }), prose(VERSIONING_NOTE)));
-  }
-  return out;
-}
-
-function observations(record) {
-  var hints = record.hints || {};
-  var out = [];
-  OBSERVATIONS.forEach(function (block) {
-    var items = hints[block[1]] || [];
-    out.push(append(el("p", { class: "muted" }), prose(block[0])));
-    out.push(items.length
-      ? table(block[2], items.map(block[3]))
-      : el("p", { class: "placeholder", text: "None." }));
-  });
-  return out;
-}
-
-function humanSection(stores) {
-  var rows = HUMAN_CELLS.map(function (cell) { return [cell[0], cell[1], human()]; });
-  stores.filter(function (store) { return store.kind === "third_party"; })
-    .forEach(function (store) { rows.push(["Recipient kind — " + store.name, "(d)", human()]); });
-  LATE_CELLS.forEach(function (cell) { rows.push([cell[0], cell[1], human()]); });
-  return [
-    table(["Cell", "Article 30(1)", "Value"], rows, ["", "116px", "220px"]),
-    append(el("p", { class: "muted" }), prose(ACTIVITIES_NOTE)),
-    table(["Fiche field", "Value"], FICHE.map(function (name) { return [name, human()]; }),
-      ["36%", "64%"])
-  ];
-}
-
-/* art30/loop.py records one entry per refused submit. A schema refusal carries the
-   errors that caused it; the verifier's carries an empty list, because what it
-   struck was a claim and not a shape. So an entry with no schema error is a
-   refusal the verifier made, and no reader has to branch on the arm to see it. */
-function verifierRefusals(ver) {
-  return (ver.rejected_history || []).filter(function (item) {
-    return !((item.schema_errors || []).length);
-  }).length;
-}
-
-function rejectedReason(item) {
-  if (item.reason) { return String(item.reason); }
-  var errors = item.schema_errors || [];
-  if (!errors.length) { return "refused by the verifier"; }
-  return errors.map(function (one) {
-    return typeof one === "string" ? one
-      : (String(one.path || "") + " " + String(one.message || "")).trim();
-  }).join("; ");
-}
-
-function verification(record) {
-  var ver = record.verification || {};
-  if (!ver.rule_set_sha) {
-    /* art30/loop.py writes `rule_set_sha: null` on both arms, and
-       docs/spec/04-output-schema.md section 5 makes that null mean no verifier ran.
-       On a run the verifier did refuse, markdown.py's single line contradicts the
-       provenance row above it, so the page prints it only where it is true and
-       otherwise says what the record does carry. docs/web.md records the departure. */
-    var refused = verifierRefusals(ver);
-    if (!refused) {
-      return [el("p", { text: "Verification: none. This record was accepted on schema validity alone." })];
-    }
-    return [el("p", {
-      text: "Verification: this record carries no rule set digest, so the appendix names no"
-        + " rule set. " + plural(refused, "submission was", "submissions were")
-        + " refused on something other than the schema before the one rendered here."
-        + " Each refusal, and the reason the verifier gave for it, is a step in the trace"
-        + " named in the table above."
-    })];
-  }
-  var rejected = (ver.rejected_history || []).map(function (item) {
-    return [String(item.attempt), String(item.store || "\u2014"), code(item.claim || "\u2014"),
-      rejectedReason(item),
-      item.revised_to ? words(item.revised_to).toUpperCase() : "\u2014"];
-  });
-  var missing = (ver.missing_stores_resolved || []).map(function (item) {
-    return [String(item.attempt), String(item.store), String(item.kind), String(item.evidence),
-      item.added_on_attempt ? "round " + item.added_on_attempt : "not added"];
-  });
-  var none = [["—", "—", "—", "none", "—"]];
-  var bad = (ver.bad_citations_resolved || []).length || "none";
-  var unverified = (ver.unverified || []).length || "none";
-  return [
-    el("p", { text: "Claims rejected and what replaced them." }),
-    table(["Round", "Store", "Claim", "Reason", "Rendered instead"], rejected.length ? rejected : none,
-      ["66px", "16%", "20%", "", "18%"]),
-    el("p", { text: "Stores the record did not contain, found by the scan of the repository." }),
-    table(["Round", "Store", "Kind", "Evidence", "Added"], missing.length ? missing : none,
-      ["66px", "18%", "16%", "", "16%"]),
-    el("p", {
-      text: "Citations that did not resolve: " + bad + ". Claims that could not be decided: " + unverified + "."
-    })
-  ];
-}
-
-function citationIndex(record, stores) {
-  var index = {};
-  var order = [];
-  function add(item, section, symbol) {
-    if (!item || item.file === null || item.file === undefined
-      || item.line === null || item.line === undefined) { return; }
-    var key = item.file + "\n" + item.line;
-    if (!index[key]) {
-      index[key] = { file: item.file, line: item.line, symbols: [], sections: [] };
-      order.push(index[key]);
-    }
-    var entry = index[key];
-    var name = symbol === undefined ? item.symbol : symbol;
-    if (name && entry.symbols.indexOf(name) < 0) { entry.symbols.push(name); }
-    if (entry.sections.indexOf(section) < 0) { entry.sections.push(section); }
-  }
-  (record.data_subjects || []).forEach(function (subject) { add(subject, "A"); });
-  (record.entry_points || []).forEach(function (entry) { add(entry, "D", entry.name); });
-  stores.forEach(function (store) {
-    add(store.declared_at, "A");
-    add(store.subject_link, "A");
-    (store.fields || []).forEach(function (field) {
-      add(field, "A", field.name);
-      if (store.kind === "third_party") { add(field, "B", field.name); }
-      ((field.erasure || {}).evidence || []).forEach(function (item) { add(item, "D"); });
-    });
-    ((store.erasure || {}).evidence || []).forEach(function (item) { add(item, "D"); });
-  });
-  (record.retention || []).forEach(function (item) { add(item, "C"); });
-  var hints = record.hints || {};
-  (hints.observed_region_hints || []).concat(hints.security_evidence || [])
-    .forEach(function (item) { add(item, "E"); });
-  return order.sort(function (a, b) {
-    return a.file < b.file ? -1 : (a.file > b.file ? 1 : a.line - b.line);
-  });
-}
-
-function evidenceIndex(record, stores) {
-  var rows = citationIndex(record, stores).map(function (entry) {
-    var symbols = entry.symbols.length ? joined(entry.symbols.map(code), ", ") : ["—"];
-    return [cite(entry), symbols, entry.sections.slice().sort().join(", ")];
-  });
-  return [table(["Evidence", "Symbol", "Sections"], rows, ["190px", "", "100px"])];
-}
 
 /* ---------- the source drawer ---------- */
 
@@ -2812,7 +2148,7 @@ function del(path) { return api(path, { method: "DELETE" }); }
 function drawBrains() {
   var host = byId("brains");
   clear(host);
-  ["claude", "codex"].forEach(function (name) {
+  ["claude"].forEach(function (name) {
     var row = state.brains[name];
     if (!row) { return; }
     var line = el("div", { class: "brainrow" }, [
@@ -2971,12 +2307,11 @@ function boot() {
   wirePacing();
   wireSettings();
   byId("runs-refresh").addEventListener("click", function () { loadRuns(); });
-  wireArrows("view");
-  byId("view").addEventListener("click", function (event) {
-    var button = event.target.closest("button[data-value]");
-    if (button) { setView(button.dataset.value); }
+  byId("new-scan").addEventListener("click", newScan);
+  byId("dismiss-blocked").addEventListener("click", function () {
+    state.blockedDismissed = true;     /* for this page load only: a reload asks again */
+    byId("blocked").hidden = true;
   });
-  setView(storedView());
   byId("drawer-close").addEventListener("click", closeDrawer);
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape" && !byId("drawer").hidden) { closeDrawer(); }

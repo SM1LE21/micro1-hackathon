@@ -1,8 +1,9 @@
-"""The simple view, read as text. The page's script runs in Node against a small DOM
-stub (tests/web_dom_stub.js); a synthetic run is fed through `apply()` the way the
-event stream would; the Now line, the status chip and the findings card are asserted.
-No browser is on the build machine, so this is how the view's wording and plumbing
-are checked. Skipped where node is not on PATH, as test_web_page does."""
+"""The stage, read as text. The page's script runs in Node against a small DOM stub
+(tests/web_dom_stub.js); a synthetic run is fed through `apply()` the way the event
+stream would; the Now line, the status chip, the findings card, the record links and
+the way back to the strip are asserted. No browser is on the build machine, so this
+is how the view's wording and plumbing are checked. Skipped where node is not on
+PATH, as test_web_page does."""
 from __future__ import annotations
 
 import json
@@ -66,11 +67,16 @@ END = {"type": "run_end", "stop_condition": "accepted", "steps": 2, "tool_calls_
 
 CHECK = """
 var out = {};
+out.codexOnPage = document.getElementById("brain")._children.length;  /* the stub parses no HTML: 0 */
 openRun(RUN, false);
 out.start = byId("now-line").textContent;
-out.simpleHidden = byId("simple").hidden;
+out.stageHidden = byId("stage").hidden;
+out.stripHidden = byId("strip").hidden;
+out.introHidden = byId("run-intro").hidden;
+out.stageClass = byId("stage").className;
 apply({ kind: "trace", data: JSON.stringify(STEP_READ) });
 out.reading = byId("now-line").textContent;
+out.phrases = state.phrases.slice();
 out.progress = byId("now-progress").textContent;
 out.files = byId("now-files").textContent;
 apply({ kind: "trace", data: JSON.stringify(STEP_SUBMIT) });
@@ -79,18 +85,34 @@ out.findingsBeforeGate = byId("findings-card").hidden;
 apply({ kind: "gate", data: JSON.stringify(GATE) });
 out.gate = byId("now-line").textContent;
 out.status = byId("run-status").textContent;
-out.columns = byId("run-columns").className;
+out.gatedClass = byId("stage").className;
+out.cancelHidden = byId("cancel").hidden;
+out.newScanHidden = byId("new-scan").hidden;
 out.findings = byId("findings-card").textContent;
+out.stream = byId("stream")._children.map(function (c) { return c.className; });
 apply({ kind: "trace", data: JSON.stringify(END) });
 apply({ kind: "done", data: JSON.stringify({ status: "accepted" }) });
-drawRecord(RECORD);
+drawFindings(RECORD, true);      /* what pollRecord does once /record answers */
+recordLinks(RUN.run_id);
 out.finished = byId("now-line").textContent;
 out.statusEnd = byId("run-status").textContent;
+out.finishedClass = byId("stage").className;
+out.cancelHiddenEnd = byId("cancel").hidden;
+out.newScanHiddenEnd = byId("new-scan").hidden;
 out.findingsAfter = byId("findings-card").textContent;
-out.endCard = byId("steps")._children.filter(function (c) { return c.className.indexOf("end-card") >= 0; })[0].textContent;
-setView("details");
-out.detailsHidesSimple = byId("simple").hidden;
-out.detailsColumns = byId("run-columns").className;
+out.links = byId("record-links")._children.map(function (a) { return [a.getAttribute("href"), a.textContent]; });
+out.linksHidden = byId("record-links").hidden;
+out.endCard = byId("stream")._children.filter(function (c) { return c.className.indexOf("end-card") >= 0; })[0].textContent;
+newScan();
+out.afterNewScan = [byId("stage").hidden, byId("strip").hidden, byId("run-intro").hidden];
+state.liveEnabled = false; state.cases = [];
+state.brains = { claude: { label: "Claude (your login)", installed: true, logged_in: true } };
+showBlocked(null);
+out.blockedShown = !byId("blocked").hidden;
+out.blockedTitle = byId("blocked-title").textContent;
+state.blockedDismissed = true;
+showBlocked(null);
+out.blockedAfterDismiss = !byId("blocked").hidden;
 console.log(JSON.stringify(out));
 process.exit(0);
 """
@@ -107,17 +129,19 @@ def view(tmp_path_factory: pytest.TempPathFactory) -> dict:
     consts = "".join(f"var {name} = {json.dumps(value)};\n" for name, value in [
         ("RUN", RUN), ("RECORD", RECORD), ("STEP_READ", STEP_READ), ("STEP_SUBMIT", STEP_SUBMIT),
         ("GATE", GATE), ("END", END)])
-    target = tmp_path_factory.mktemp("page") / "simple.js"
+    target = tmp_path_factory.mktemp("page") / "stage.js"
     target.write_text(STUB.read_text(encoding="utf-8") + script.group(1) + consts + CHECK, encoding="utf-8")
     done = subprocess.run([node, str(target)], capture_output=True, text=True, timeout=60)
     assert done.returncode == 0, done.stderr
     return json.loads(done.stdout.strip().splitlines()[-1])
 
 
-def test_the_now_line_reads_the_tool_calls_back_as_a_sentence(view: dict) -> None:
+def test_a_run_takes_the_view_and_the_now_line_reads_the_tool_calls_back(view: dict) -> None:
     assert view["start"] == "Starting the scan."
-    assert view["simpleHidden"] is False
-    assert view["reading"] == "Reading app/models.py, app/views.py."
+    assert (view["stageHidden"], view["stripHidden"], view["introHidden"]) == (False, True, True)
+    assert view["stageClass"] == "stage running"
+    assert view["reading"] == "Reading app/models.py"
+    assert view["phrases"] == ["Reading `app/models.py`", "Reading `app/views.py`"]
     assert view["progress"] == "Step 1 · 2 tool calls · 2 files read"
     assert "app/models.py" in view["files"] and "app/views.py" in view["files"]
     assert view["submitted"].startswith("The verifier accepted the record on attempt 1")
@@ -127,26 +151,43 @@ def test_the_findings_card_opens_with_the_gate_and_names_the_store_the_line_and_
     assert view["findingsBeforeGate"] is True
     assert view["gate"].startswith("Scan complete.")
     assert view["status"] == "waiting for your approval"
-    assert "simple" in view["columns"].split() and "gate-open" in view["columns"].split()
+    assert view["gatedClass"] == "stage gated"
+    assert view["cancelHidden"] is False and view["newScanHidden"] is True
+    assert view["stream"] == ["card gate-card"]
     text = view["findings"]
     assert "1 of 2 stores is not proven erased." in text
     assert "delete_account (app/views.py:9)" in text
     assert "avatar.files" in text and "NOT ERASED" in text and "app/models.py:14" in text
     assert "No receiver removes the file when the row goes." in text
     assert "Reaching erasure: members." in text
-    assert "members" in text and "ERASED" in text
     assert "Approve at the checkpoint below" in text
     assert "requires human completion" in text
 
 
-def test_the_finished_run_says_so_in_plain_words_and_links_the_record(view: dict) -> None:
+def test_the_finish_says_so_in_plain_words_and_offers_the_two_files(view: dict) -> None:
     assert view["finished"] == "Finished. The record is written."
     assert view["statusEnd"] == "finished"
-    assert "Open the full record" in view["findingsAfter"] and "record.md" in view["findingsAfter"]
+    assert view["finishedClass"] == "stage finished"
+    assert view["cancelHiddenEnd"] is True and view["newScanHiddenEnd"] is False
     assert "Approve at the checkpoint" not in view["findingsAfter"]
-    assert "record written" in view["endCard"]
+    assert view["linksHidden"] is False
+    assert view["links"] == [["/api/runs/advanced-T01-s1-test/record.html", "Open the full report"],
+                             ["/api/runs/advanced-T01-s1-test/record.md", "record.md"]]
+    assert "Finished" in view["endCard"] and "record written" in view["endCard"]
 
 
-def test_details_is_the_page_as_it_was(view: dict) -> None:
-    assert view["detailsHidesSimple"] is True
-    assert "simple" not in view["detailsColumns"].split()
+def test_new_scan_returns_to_the_strip(view: dict) -> None:
+    assert view["afterNewScan"] == [True, False, False]
+
+
+def test_the_no_key_callout_names_the_claude_login_and_dismisses_for_this_page_load(view: dict) -> None:
+    assert view["blockedShown"] is True
+    assert view["blockedTitle"].startswith("The api brain has no key and nothing recorded to replay, but Claude (your login) is logged in")
+    assert view["blockedAfterDismiss"] is False
+
+
+def test_codex_is_not_offered_on_the_page() -> None:
+    page = PAGE.read_text(encoding="utf-8")
+    assert 'data-value="codex"' not in page
+    assert '["claude", "codex"]' not in page
+    assert 'id="dismiss-blocked"' in page
