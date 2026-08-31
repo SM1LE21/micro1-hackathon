@@ -78,15 +78,20 @@ def _risk(record: dict) -> str:
 
 
 def _find_record(trace: Path, record_path: Any) -> Path | None:
+    """A relative `record_path` is anchored to the run's own tree (the trace's
+    parents), never to the checker's working directory: once a sweep has written
+    `results/...` into the repository, a CWD-relative hit would shadow the run's
+    own record and check 11 would read the wrong document. An absolute path is
+    unaffected either way (`parent / "/abs"` is `/abs`)."""
     if not isinstance(record_path, str) or not record_path:
         return None
-    direct = Path(record_path)
-    if direct.is_file():
-        return direct
     for parent in trace.resolve().parents:
         candidate = parent / record_path
         if candidate.is_file():
             return candidate
+    direct = Path(record_path)
+    if direct.is_file():
+        return direct
     return None
 
 
