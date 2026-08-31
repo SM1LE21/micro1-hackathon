@@ -1,0 +1,5 @@
+baseline/S10-s1 · render_failed · a cited line no longer carried its symbol at render time · step 8
+run_id: base-S10-s1-e9eab12
+rule: citation storage.py:12 no longer contains avatar_key
+last step: none
+trace: traces/baseline/S10-s1.jsonl

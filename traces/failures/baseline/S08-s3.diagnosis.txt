@@ -1,0 +1,5 @@
+baseline/S08-s3 · render_failed · a cited line no longer carried its symbol at render time · step 8
+run_id: base-S08-s3-f7f2936
+rule: citation queue.py:20 no longer contains email
+last step: none
+trace: traces/baseline/S08-s3.jsonl

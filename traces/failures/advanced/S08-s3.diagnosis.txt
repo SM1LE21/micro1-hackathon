@@ -1,0 +1,5 @@
+advanced/S08-s3 · render_failed · a cited line no longer carried its symbol at render time · step 9
+run_id: adv-S08-s3-ca88dd3
+rule: citation queue.py:20 no longer contains email
+last step: none
+trace: traces/advanced/S08-s3.jsonl

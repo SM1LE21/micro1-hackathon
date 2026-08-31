@@ -1,0 +1,5 @@
+baseline/S05-s1 · render_failed · a cited line no longer carried its symbol at render time · step 7
+run_id: base-S05-s1-f85f6c2
+rule: citation cache.py:16 no longer contains purge_session
+last step: none
+trace: traces/baseline/S05-s1.jsonl
