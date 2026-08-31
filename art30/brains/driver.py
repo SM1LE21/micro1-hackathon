@@ -124,6 +124,7 @@ class Driver:
             cfg.tool_budget, cfg.max_submits, cfg.max_turns)
         self.stepper.model = self.stepper.model or cfg.brain_model
         self.written = 0        # step lines on disk
+        self.rejected = 0       # refused submit results on those lines (06-traces.md check 9)
         self.said = 0           # submissions already printed
         self.cost_cum = 0.0
         self.spent = {"input": 0, "cache_read": 0, "cache_write": 0, "output": 0}
@@ -273,6 +274,7 @@ class Driver:
 
     def _write(self, step: dict, final: bool = False) -> None:
         self.written += 1
+        self.rejected += _rejected_submits(step)
         usage, cache_1h = self._usage(step, final)
         cost = pricing.estimate(usage, self.stepper.model, cache_1h)
         if cost is None:
@@ -386,7 +388,7 @@ class Driver:
         counters = dict(
             stop_condition=condition, steps=self.written,
             tool_calls_total=self.stepper.tool_calls, submits=self.stepper.submits,
-            verify_rounds=len(self.spool.rejections()),
+            verify_rounds=self.rejected,
             wall_s=round(time.monotonic() - self.clock, 1), cost_usd=self.cost_cum,
             record_path=record_path, note=self._note(note),
         )
@@ -447,6 +449,19 @@ def _timeout() -> float:
     except ValueError:
         seconds = DEFAULT_TIMEOUT_S
     return seconds if seconds > 0 else DEFAULT_TIMEOUT_S
+
+
+def _rejected_submits(step: dict) -> int:
+    """`submit_record` results on this step whose payload says `accepted: false`.
+
+    That is the count 06-traces.md check 9 reads off the step lines, whoever refused
+    the call. The spool sees only the attempts the arm answered: a refusal the MCP
+    server made before the handler ran (`arguments must carry a record object`) is a
+    rejected submit in the trace and not in the spool, and `run_end.verify_rounds`
+    has to agree with the lines above it."""
+    submitted = {c.get("id") for c in step.get("tool_calls") or [] if c.get("name") == convert.SUBMIT}
+    return sum(1 for r in step.get("tool_results") or []
+               if r.get("call_id") in submitted and convert._rejected(r.get("output") or ""))
 
 
 def _submits_note(spool: Spool, budget: int) -> str:
