@@ -10,5 +10,5 @@ COPY art30 ./art30
 RUN uv sync --locked --no-install-project
 COPY . /app
 RUN uv sync --locked
-# make eval-replay ends in `git diff --exit-code -- results/metrics.json`, so .git stays in the context
-CMD ["make", "eval-replay"]
+# make eval-replay-local ends in `git diff --exit-code -- results/metrics.json`, so .git stays in the context
+CMD ["make", "eval-replay-local"]
