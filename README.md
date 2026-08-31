@@ -94,14 +94,32 @@ the standard deviation across that case's three runs (`05-eval-harness.md` §7.3
 <!-- metrics:begin -->
 | Metric | Simple baseline | Agent solution | Change |
 |---|---|---|---|
-| Erasure-inventory F1 (test) | [arms.baseline.test.f1_mean] ± [arms.baseline.test.f1_std_seeds] | [arms.advanced.test.f1_mean] ± [arms.advanced.test.f1_std_seeds] | [comparison.test.f1_bootstrap.delta_mean] (95% CI [comparison.test.f1_bootstrap.ci95]) |
-| Human time per task | [human_time.manual_minutes.mean] min (hand-labelling) | [human_time.machine_minutes.advanced] machine min + [human_time.gate_minutes.mean] min at the gate | −[human_time.manual_minutes.mean − human_time.gate_minutes.mean] min of a person's time (the machine minutes are unattended and are not subtracted from it) |
-| Cost per task (measured) | $[arms.baseline.test.cost_usd_mean] | $[arms.advanced.test.cost_usd_mean] | $[arms.advanced.test.cost_usd_mean − arms.baseline.test.cost_usd_mean] |
+| Erasure-inventory F1 (test, mean of seeds) | 0.88 ± 0.04 | 0.86 ± 0.03 | -0.01 |
+| Human time per task | n/a | n/a | n/a |
+| Cost per task (estimate at list prices) | $0.37 | $0.50 | +$0.13 |
+
+| Row | Baseline | Advanced |
+|---|---|---|
+| Pass (runs) | 2/9 | 3/9 |
+| Pass (cases, majority of seeds) | 1/3 | 1/3 |
+| pass^3 | 0/3 | 1/3 |
+| Regressions | n/a (no previous metrics.json) | n/a (no previous metrics.json) |
+| False safe (matched) | 0 | 0 |
+| Reaching claims on stores not in the manifest | 1 | 0 |
+| False safe in a gate-rejected draft | 0 | 0 |
+| Unverified per run | 0.00 | 0.00 |
+| Invalid verdict for kind | 0 | 0 |
+| Bad citations | 4 | 3 |
+| Cost per run | $0.37 | $0.50 |
+| Tokens per run (input · output · cache read · cache write) | 15 · 6,350 · 145,236 · 13,998 | 16 · 8,698 · 157,188 · 20,788 |
+| Turns · tool calls | 7.6 · 16.4 | 8.1 · 16.9 |
+| Machine minutes per run | n/a | n/a |
+| success + failure = n | 5 + 4 = 9 | 6 + 3 = 9 |
 <!-- metrics:end -->
 
 False safe — the agent says a store is erased where the manifest says it is not — is the row that
 matters more than F1, because it is the error that costs a founder a month:
-[arms.baseline.test.false_safe_total] against [arms.advanced.test.false_safe_total] on test.
+0 against 0 on test.
 
 Every scored run ran on `--brain claude`: the author's logged-in Claude Code CLI, `claude-opus-5`,
 no API key (`docs/runbook-sweeps.md` §6a, ADR 0008). So the cost column is an estimate, not a bill:
@@ -111,13 +129,13 @@ run's `step` lines at list prices, `cost_source: cli_estimate` (`art30/brains/pr
 every one counted, rejected included: a user pays for retries (ADR 0003 §2).
 
 Dev, and the secondary rows (pass, pass^3, regressions, unverified, bad citations, turns, tool
-calls): `results/metrics.json` via `make report`. Runs: [identity_check.success] success +
-[identity_check.failure] failure = [identity_check.n]; failures ship in `traces/failures/`.
+calls): `results/metrics.json` via `make report`. Runs: 52 success +
+8 failure = 60; failures ship in `traces/failures/`.
 
 Statistics: exact McNemar on the binary pass row, majority of three runs per case, dev
-p = [comparison.dev.mcnemar.p_exact] and test p = [comparison.test.mcnemar.p_exact]. With three test
+p = 1.0000 and test p = 1.0000. With three test
 cases the exact test cannot reach 0.05 whatever the arms do, so the number is reported for shape.
-F1 carries a paired bootstrap 95% interval over cases ([comparison.test.f1_bootstrap.ci95]). This
+F1 carries a paired bootstrap 95% interval over cases ([-0.061, +0.020]). This
 model exposes no temperature and no seed (ADR 0003 §2).
 
 The gate approves in every scored run (`--approve auto`, `by: "simulated"`), so none of the measured
@@ -127,9 +145,11 @@ difference comes from a human intervening; it is the verifier's (`05-eval-harnes
 
 [CHANGELOG_EVAL.md](CHANGELOG_EVAL.md): one row per experiment in the official four columns, with
 the evidence that drove the next decision, removed experiments included. End to end, test F1 went
-[arms.baseline.test.f1_mean] → [arms.advanced.test.f1_mean] and false safes
-[arms.baseline.test.false_safe_total] → [arms.advanced.test.false_safe_total]; the largest single
-contributor was [WRITE: the row named in CHANGELOG_EVAL.md's Final cell, copied from it].
+0.88 → 0.86 and false safes
+0 → 0; the largest single
+contributor was Iteration 1, the closed loop itself — not for the mean but for delivery: the
+citation rule reaches the model as feedback instead of a render wall, 25/30 → 27/30 records
+delivered, the hard case S10 1/3 → 3/3.
 
 ## What existed before the competition
 
@@ -194,9 +214,12 @@ licence file ships with it (`.vault/QUESTIONS.md` Q4); the vendored repositories
 
 `traces/` holds one JSONL trace per run, both arms, failures included. Three are worth opening:
 
-- [WRITE: advanced trace ID] — the verifier's rejection and the model's revision after it.
-- [WRITE: baseline trace ID on the same case] — the same repository with the verifier removed.
-- [WRITE: trace ID where a store came out `unverified`] — the call the checker could not resolve.
+- `traces/advanced/S10-s2.jsonl` — the verifier hands back `storage.py:12` for `avatar_key`, the
+  model corrects it, the record is delivered.
+- `traces/baseline/S10-s2.jsonl` — the same repository, no verifier: the same citation reaches the
+  renderer and the run dies (`traces/failures/baseline/S10-s2.diagnosis.txt`).
+- `traces/advanced/S03-s1.jsonl` — the unenforced `ondelete` S03 plants renders three cells
+  `unverified` rather than a guess in either direction.
 
 `traces/failures/` holds every failed run with a one-line diagnosis.
 `traces/build-trajectory.html.gz` is the rendered transcript of the Claude Code sessions that built
@@ -204,6 +227,8 @@ this repository (`make traces`, author-only; the HTML is committed).
 
 ## Main failure mode and hot take
 
-[WRITE: the chosen candidate's one-sentence lesson, copied verbatim from HOT_TAKE.md §2 so the two
-cannot drift.] The failure this project actually hit, its trace under `traces/failures/`, the fix and
-the residual risk accepted: [HOT_TAKE.md](HOT_TAKE.md).
+**All eight failures in sixty runs were wrong line numbers, none were wrong judgements: the
+reliability work was not making the model smarter, it was implementing each deterministic rule
+exactly once and wiring its answer back as feedback instead of a wall.** The failure this project
+actually hit, its traces under `traces/failures/`, the fix owed and the residual risk accepted:
+[HOT_TAKE.md](HOT_TAKE.md).
