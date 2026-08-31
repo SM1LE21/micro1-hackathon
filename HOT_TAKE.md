@@ -24,10 +24,12 @@ implement one rule — the symbol must be on the cited logical line — two ways
 whole `ast` statement that contains the cited line (`art30/verify/citations.py`, `logical`), the
 renderer extends the cited line forward by bracket depth and never looks up
 (`art30/render/html.py`, `_logical`). A citation to the closing brace of a multi-line literal passes
-the first and fails the second. Once in sixty scored runs, on the test split, and it cost the
-advanced arm a run. The fix is one function called from both places; it is not in this repository,
-because the test sweep had run on the code as frozen and a fix after the numbers is a different
-system. Owed, and the first row of the next changelog.
+the first and fails the second. On S08 that gap killed all three advanced runs — the verifier said
+`bad_citations: []`, the renderer refused the same record — and every one of the sweep's eight
+failures, both arms, is this one rule at render time (`traces/failures/INDEX.md`: eight rows, one
+diagnosis). The fix is one function called from both places; it is not in this repository, because
+the test sweep ran on the code as frozen and a fix after the numbers is a different system. Owed,
+and the first row of the next changelog.
 
 A second, smaller one, from the local brain: `traces/baseline/S01-s3.jsonl`, where the first
 `submit_record` call carried no record object and the second nested the record under a second
@@ -41,11 +43,16 @@ relative path that killed sixty cells in 0.2 s, and the counter above. Both are 
 
 ## The hot take
 
-[WRITE after `make report`: one sentence, copied verbatim into README.md's last section. Candidate,
-to be kept only if the numbers say so: **A verifier that never fires is still the reason you can
-sign.** On ten repositories the open loop and the closed loop [tie / differ by Δ] on F1 and neither
-produced a false safe; an eval built around the mean would call the verifier dead weight. It is the
-only reason each `erased` in the record is a proven call path rather than a believed docstring, and
-the only thing that turns an unresolvable call into `unverified` instead of a guess. Build the
-harness so the safety row is the headline, expect a strong model to tie on the mean, and keep the
-verifier for the repository you have not tested.]
+**All eight failures in sixty runs were wrong line numbers, none were wrong judgements: the
+reliability work was not making the model smarter, it was implementing each deterministic rule
+exactly once and wiring its answer back as feedback instead of a wall.**
+
+The verifier never had to strike a call-graph verdict — zero false safes, either arm, either split —
+and the F1 comparison is a tie inside its interval (test 0.88 → 0.86, 95% CI −0.06 … +0.02, dev
+0.86 → 0.90, CI −0.01 … +0.09). What the closed loop measurably moved is delivery: 27 of 30 records
+signed against 25, and the hard case S10 three of three against one of three, because the citation
+rule reached the model as `bad_citations` feedback it could answer instead of a render wall it died
+on. Where the rule's two implementations disagree (S08), the loop died exactly like the baseline. An
+eval built around mean F1 would call this verifier dead weight; what it buys is the floor — every
+`erased` a proven path, every unresolvable call an `unverified`, and delivery under the same rule
+that kills the open loop.
