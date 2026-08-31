@@ -140,8 +140,10 @@ def _secondary(base: dict, adv: dict, metrics: dict, split: str, prev: dict | No
                                 _minutes(machine.get("advanced") if isinstance(machine, dict) else None)))
     body = ["| Row | Baseline | Advanced |", "|---|---|---|"]
     body += [f"| {name} | {left} | {right} |" for name, left, right in rows]
-    note = ("With 5 test cases the smallest attainable two-sided p is 0.0625, so this test cannot "
-            "reach p < 0.05 on the test split." if split == "test" else "")
+    n_test = len((metrics.get("cases") or {}).get("test") or [])
+    floor = 0.5 ** (n_test - 1) if n_test else 1.0   # every discordant pair on one side
+    note = (f"With {n_test} test cases the smallest attainable two-sided p is {floor:.4g}, so this "
+            "test cannot reach p < 0.05 on the test split." if split == "test" and floor >= 0.05 else "")
     body += ["",
              f"McNemar (pass, majority of seeds): b={test.get('b', 0)} c={test.get('c', 0)} "
              f"p={test.get('p_exact', 1.0):.4f}"
