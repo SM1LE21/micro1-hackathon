@@ -13,10 +13,21 @@ and refuses one whose symbol is not on it (`art30/render/`), so the run ended `r
 every time it happened (`traces/advanced/S05-s3.jsonl` attempt 2, `S06-s1` attempts 2 and 3).
 
 Cause: line numbers are the one thing a language model reads worst and a document like this needs
-most. Fix: none to the model; the check is deterministic and sits in two places, at submit in the
-closed loop and at render in both arms, so a wrong line never reaches the page. Residual risk
-accepted: in the open loop the render check is a wall rather than feedback, and a baseline run that
-hits it is a failure, counted as one.
+most. The check is deterministic and sits in two places — at submit in the closed loop, at render in
+both arms — so a wrong line never reaches the page. In the open loop the render check is a wall
+rather than feedback, and a baseline run that hits it is a failure, counted as one.
+
+Then the closed loop hit the wall too. `traces/failures/advanced/S08-s1.jsonl`: the verifier
+accepted the submission with `bad_citations: []`, and the renderer refused `queue.py:20` for
+`email`, which sits on line 19 inside a dictionary literal spanning lines 18 to 21. The two places
+implement one rule — the symbol must be on the cited logical line — two ways: the verifier takes the
+whole `ast` statement that contains the cited line (`art30/verify/citations.py`, `logical`), the
+renderer extends the cited line forward by bracket depth and never looks up
+(`art30/render/html.py`, `_logical`). A citation to the closing brace of a multi-line literal passes
+the first and fails the second. Once in sixty scored runs, on the test split, and it cost the
+advanced arm a run. The fix is one function called from both places; it is not in this repository,
+because the test sweep had run on the code as frozen and a fix after the numbers is a different
+system. Owed, and the first row of the next changelog.
 
 A second, smaller one, from the local brain: `traces/baseline/S01-s3.jsonl`, where the first
 `submit_record` call carried no record object and the second nested the record under a second
