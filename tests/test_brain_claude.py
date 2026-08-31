@@ -385,3 +385,22 @@ def test_a_gate_that_raises_still_leaves_a_run_end_line(
     assert result.stop_condition == "api_error"
     assert result.note == "RuntimeError: the approver went away"
     assert sum(1 for line in lines if line["type"] == "run_end") == 1
+
+
+def test_a_relative_out_dir_reaches_the_cli_child_absolute(bench, tmp_path: Path,
+                                                             monkeypatch: pytest.MonkeyPatch) -> None:
+    """The harness passes --out relative to the project root while the claude child runs
+    with cwd = the scanned repository, so every path in mcp.json and its spool argument
+    must be absolute (the 2026-08-31 sweep failed on exactly this)."""
+    repo = tmp_path / "fixture"
+    repo.mkdir()
+    (repo / "app.py").write_text("x = 1\n", encoding="utf-8")
+    _script(tmp_path, [{"submit": _good(tmp_path)}])
+    monkeypatch.chdir(tmp_path)
+    cfg = _cfg(tmp_path, out_dir=Path("relative-out"))
+    result, lines, _ = _drive(tmp_path, repo, cfg)
+    assert result.stop_condition == "accepted"
+    mcp = json.loads((tmp_path / "relative-out" / "mcp.json").read_text(encoding="utf-8"))
+    args = mcp["mcpServers"]["art30"]["args"]
+    spool = args[args.index("--spool") + 1]
+    assert Path(spool).is_absolute(), spool
