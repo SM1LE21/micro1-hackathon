@@ -23,7 +23,7 @@ make smoke
 
 `make smoke` asserts the interpreter is 3.12, imports `anthropic`, `yaml` and `jsonschema`, checks
 `.env.example` and the problem statement are present, runs `evals/harness/trace_check.py` over
-`traces/`, then the pytest suite ([FILL: pytest summary line from `make smoke`]), and prints
+`traces/`, then the pytest suite (894 passed, 1 skipped, 2 xfailed at submission), and prints
 `smoke OK` (`Makefile`, target `smoke`).
 
 ## Reproduce the results (no API key)
@@ -51,11 +51,11 @@ follows from the record beside it.
 Expected final lines:
 
 ```
-reverified [FILL: N] submissions and [FILL: M] records in [FILL: K] runs, 0 mismatches
-[identity_check.n] runs: [identity_check.success] success, [identity_check.failure] failure  (success + failure == n: ok)
-dev   baseline F1 [arms.baseline.dev.f1_mean] ± [..f1_std_seeds] | advanced F1 [arms.advanced.dev.f1_mean] ± [..f1_std_seeds] | false safe [arms.baseline.dev.false_safe_total] → [arms.advanced.dev.false_safe_total]
-test  baseline F1 [arms.baseline.test.f1_mean] ± [..f1_std_seeds] | advanced F1 [arms.advanced.test.f1_mean] ± [..f1_std_seeds] | false safe [arms.baseline.test.false_safe_total] → [arms.advanced.test.false_safe_total]
-McNemar (pass, majority of 3): dev b=[comparison.dev.mcnemar.b] c=[comparison.dev.mcnemar.c] p=[comparison.dev.mcnemar.p_exact] | test b=[comparison.test.mcnemar.b] c=[comparison.test.mcnemar.c] p=[comparison.test.mcnemar.p_exact]
+reverified 80 submissions and 60 records in 60 runs, 0 mismatches
+60 runs: 52 success, 8 failure  (success + failure == n: ok)
+dev   baseline F1 0.86 ± 0.07 | advanced F1 0.90 ± 0.06 | false safe 0 → 0
+test  baseline F1 0.88 ± 0.04 | advanced F1 0.86 ± 0.03 | false safe 0 → 0
+McNemar (pass, majority of 3): dev b=0 c=0 p=1.0000 | test b=0 c=0 p=1.0000
 wrote results/metrics.json
 eval-replay-local reproduced results/metrics.json
 ```
@@ -107,12 +107,12 @@ so no `art30.toml` of yours reaches a sweep; each run header records what ran �
 
 ## Runtime and cost
 
-Per run on the claude brain, over the cells finished so far: 42.0–80.1 s wall and USD 0.26–0.41, read
-off the `run_end` lines of `traces/baseline/S01-s1.jsonl` … `S03-s2.jsonl` and
-`traces/advanced/S01-s1.jsonl` … `S03-s2.jsonl` (`wall_s`, `cost_usd`). Whole sweep:
-[FILL from `results/timing.cases-*.json` and `results/metrics.json`]. A subscription run costs zero
-marginal dollars; that dollar range is what the same tokens would have cost on the API, the only
-number comparable across brains (ADR 0008 item 3). Replay costs nothing and needs no network.
+Whole sweep, 60 runs at `--jobs 1`: 33.3 machine minutes and $10.50 at list prices for the baseline
+arm, 39.0 minutes and $12.35 for the advanced (sum of `wall_s` and `cost_usd` over the `run_end`
+lines of `traces/<arm>/*.jsonl`; per-arm means $0.35 and $0.41 in `results/metrics.json`
+`cost_usd_mean`). A subscription run costs zero marginal dollars; the dollar figures are what the
+same tokens would have cost on the API, the only number comparable across brains (ADR 0008 item 3).
+Replay costs nothing and needs no network.
 
 ## Data
 
@@ -135,8 +135,8 @@ network and calls no GitHub API.
 
 | Number | Produced by | Committed at |
 |---|---|---|
-| Everything in `results/metrics.json` and `results/report.md` | `make report` over `results/runs/` after the live sweeps; re-derived by `make eval-replay-local` | [commit sha] |
-| Wall clock per case and arm | the live sweep, into `results/timing.cases-<sha>.json`; `ART30_REPRODUCIBLE=1` suppresses it, so replay never regenerates it | [commit sha] |
+| Everything in `results/metrics.json` and `results/report.md` | `make report` over `results/runs/` after the live sweeps; re-derived by `make eval-replay-local` | cc60c95 |
+| Wall clock per case and arm | the live sweep, into `results/timing.cases-<sha>.json`; `ART30_REPRODUCIBLE=1` suppresses it, so replay never regenerates it | cc60c95 |
 | Which live test sweeps happened | `results/test-runs.log`, appended before the first call | at sweep time |
 | Every number in README and CHANGELOG_EVAL | pasted from the files above, never typed | — |
 
