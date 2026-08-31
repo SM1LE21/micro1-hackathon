@@ -90,6 +90,7 @@ out.cancelHidden = byId("cancel").hidden;
 out.newScanHidden = byId("new-scan").hidden;
 out.findings = byId("findings-card").textContent;
 out.stream = byId("stream")._children.map(function (c) { return c.className; });
+out.gateCard = byId("stream")._children[0].textContent;
 apply({ kind: "trace", data: JSON.stringify(END) });
 apply({ kind: "done", data: JSON.stringify({ status: "accepted" }) });
 drawFindings(RECORD, true);      /* what pollRecord does once /record answers */
@@ -161,6 +162,7 @@ def test_the_findings_card_opens_with_the_gate_and_names_the_store_the_line_and_
     assert view["gatedClass"] == "stage gated"
     assert view["cancelHidden"] is False and view["newScanHidden"] is True
     assert view["stream"] == ["card gate-card"]
+    assert "Approve writes the record into this run's folder" in view["gateCard"]
     text = view["findings"]
     assert "1 of 2 stores is not proven erased." in text
     assert "delete_account (app/views.py:9)" in text

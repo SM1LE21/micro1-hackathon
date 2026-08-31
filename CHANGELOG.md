@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-31 16:00 UTC — The strip folds to the simple case
+
+- The Run view centres and asks only what a first run needs: Case, a path, Brain, Start. Arm, Mode, Model and Seed sit behind an Advanced options fold with one hint explaining the arms and the modes; the case intent and the mode reasons moved in with them; the credentials note folds behind "Your own login, not a key" and only unfolds its summary when a local brain is selected
+- The intro is one sentence with the mechanics behind "How a scan works"; the gate card now says what Approve does (writes record.json/md/html with your recipient choices) and what Reject does (ends the run, nothing written); the button reads "Approve and write the record"; the recipient-kind rows explain that the processor-or-controller call is the human's
+- On a wide screen the stage's centre column sits on the centre of the page (a spacer mirrors the side column)
+
 ## 2026-08-31 15:50 UTC — The run view is one stage
 
 - Details is gone, and with it the page's own record renderer: a run takes the view — what the child is doing now, large and centred, the agent's tool calls read back as sentences that rotate through a step's files; the budgets at the side; at the checkpoint the findings card and the gate, the CLI's text folded; at the finish the card again from `record.json`, **Open the full report** and `record.md`, the totals, New scan
