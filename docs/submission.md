@@ -33,8 +33,9 @@ tools and the same five submit attempts with the verifier and the gate removed �
 which also ships as one. Ten synthetic repositories with planted erasure bugs (7 dev, 3 test), three
 runs per case per arm, both arms in one window, on the author's own Claude Code login. Primary metric:
 erasure-inventory F1 against a manifest generated from the same spec as the fixture; the row that
-matters more is false safes — "erased" where the data stays. [FILL after `make report`: test F1
-baseline → advanced; false safes baseline → advanced; success + failure = n.]
+matters more is false safes — "erased" where the data stays. The numbers — dev and test, exact McNemar and a
+paired bootstrap — are in the README results table and `results/metrics.json`, and every one of them
+regenerates with `make eval-replay-local`.
 
 **Reproduce.** `make setup && make smoke && make eval-replay-local` — no API key. The verifier
 re-runs over every recorded submission and the scorer over every delivered record, and the committed
@@ -45,7 +46,7 @@ the coding-agent session that built the repository is in `traces/build-trajector
 https://github.com/SM1LE21/micro1-hackathon/blob/main/README.md · Reproduction guide:
 https://github.com/SM1LE21/micro1-hackathon/blob/main/REPRODUCE.md · Improvement changelog:
 https://github.com/SM1LE21/micro1-hackathon/blob/main/CHANGELOG_EVAL.md · Failure mode and hot take:
-https://github.com/SM1LE21/micro1-hackathon/blob/main/HOT_TAKE.md · Video: [FILL video URL]
+https://github.com/SM1LE21/micro1-hackathon/blob/main/HOT_TAKE.md
 
 Built solo, 2026-08-28 15:00 UTC to 2026-08-31, with Claude Code as the coding agent (disclosed in
 every commit trailer). Public and synthetic data only.
