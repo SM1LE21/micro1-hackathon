@@ -27,9 +27,11 @@ renderer extends the cited line forward by bracket depth and never looks up
 the first and fails the second. On S08 that gap killed all three advanced runs — the verifier said
 `bad_citations: []`, the renderer refused the same record — and every one of the sweep's eight
 failures, both arms, is this one rule at render time (`traces/failures/INDEX.md`: eight rows, one
-diagnosis). The fix is one function called from both places; it is not in this repository, because
-the test sweep ran on the code as frozen and a fix after the numbers is a different system. Owed,
-and the first row of the next changelog.
+diagnosis). The fix is one function called from both
+places, and it landed after the sweeps (`ff8bfea`, the renderer now reads the statement span the
+verifier reads): the numbers stand as measured on the frozen code, and under the fixed renderer
+five of the eight refused records render — the three that still refuse are the baseline's own
+one-line-off citations, which is the check doing its job.
 
 A second, smaller one, from the local brain: `traces/baseline/S01-s3.jsonl`, where the first
 `submit_record` call carried no record object and the second nested the record under a second
