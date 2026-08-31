@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-31 17:00 UTC — Submission: sweeps recorded, docs final, zip cut
+
+- Dev and test sweeps on `--brain claude`, 60 runs, one window each; `results/metrics.json` committed and `make eval-replay-local` reproduces it byte for byte; `make smoke` 894 passed
+- README/REPRODUCE/CHANGELOG_EVAL/HOT_TAKE filled from the artefacts, no hand-typed numbers; S10 note in `evals/CASES.md` errata; failure index 8 rows, one diagnosis
+- The day's defects, all caught by the harness's own checks: relative `mcp.json` (pre-sweep), `verify_rounds` off the spool (da891dc), the ledger line break, the render/verify citation-rule gap (measured; fixed post-sweep in ff8bfea), relative `record_path` (0ddbc64)
+- Submission form text in `docs/submission.md`; video script in `docs/video-script.md`; source zip from `git archive` at the final sha
+
 ## 2026-08-31 16:55 UTC — The budgets ride on top; the stage centres on the page
 
 - Tool calls, submit attempts, turns and the estimated cost sit in one centred row under the header; the cost's pricing note is a single centred line under them; the side column is gone, so the Now line and the findings own the full width, centred on the page both ways
