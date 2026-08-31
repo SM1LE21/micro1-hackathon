@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-31 15:30 UTC — Simple view on the website
+
+- The Run view opens in Simple: one card for what the scan is doing now (the tool calls read back as a sentence, the files read so far) and one for what it found (stores not proven erased, each with kind, verdict, declaration, reason and cited evidence; the entry points; the stores that reach erasure; timers; the human cells), drawn from the accepted submission while the checkpoint waits and again from `record.json` once rendered; Details is the page as it was
+- Status chips in plain words (`scanning`, `waiting for your approval`, `finished`); the end card says `record written`; the "every recipient kind left unknown" line only when there was a kind to set
+- Verified by replaying the D01 trace through the page script in Node against a DOM stub (no browser on this machine); 888 tests green
+
 ## 2026-08-30 07:05 UTC — Three brains and one settings layer (ADR 0008)
 
 - `--brain api|claude|codex`: local brains run the user's own logged-in CLI with the arms served as an MCP `submit_record` tool; isolation flags (no Bash, jailed reads, no user memory, our MCP only); traces converted line by line; cost as a labelled estimate reproducing Claude's own `total_cost_usd`

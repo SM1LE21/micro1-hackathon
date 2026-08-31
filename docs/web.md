@@ -92,6 +92,14 @@ Wherever a local brain is selected, the page prints the note ADR 0008 item 6 wro
 
 The string lives in `art30/web/settings_api.py` and reaches the page through `GET /api/settings`. There is no second copy on the page, and a test asserts there is not. The brand is "Claude (your login)"; the page does not contain the words "Claude Code", and `tests/test_web_page.py` greps for both. The rule also holds for what the page draws rather than what it ships: `claude --version` prints `2.1.251 (Claude Code)`, so the version chip renders the number without the CLI's own trailing parenthetical (`versionText`, driven by `tests/test_web_page.py::test_the_version_chip_drops_the_clis_own_parenthetical`).
 
+## Simple and Details
+
+The Run view opens in **Simple**. While the child runs, one card says what it is doing now, the agent's tool calls read back as a sentence (*Reading `members/models.py`, `members/views.py`*), with the step, the tool calls spent and every file read so far. When the verifier accepts a submission and the checkpoint opens, a second card states the finding: how many stores are not proven erased, each with its kind, its verdict, where it is declared and the reason, every citation opening the source drawer; then the entry points the check ran against, the stores that do reach erasure, whether a retention timer was found, and the cells the code cannot answer. The gate card keeps its risk band and its two buttons; the block of text it quotes is in Details. Once the record is rendered the same card is drawn again from `record.json`, with the two file links.
+
+**Details** is the page as it was: every step, every tool call and result, the verifier's refusals, the checkpoint's full text and the whole record in the right column. The choice is kept in `localStorage` under `art30.view`. The status chip says `scanning`, `waiting for your approval` and `finished` where the server says `running`, `gate_waiting` and `accepted`; the stop condition itself is on the end card and in `run.json`.
+
+Nothing stops early in either view. The checkpoint opens once, after the whole repository has been read and the record has passed the verifier: it is an approval before rendering, not an interruption on the first finding.
+
 ## The record view
 
 The page draws `record.json` itself, in the section order and the wording of `art30/render/markdown.py`. It does not embed `record.html` — it links it. Two buttons sit beside the store count on the record card, `Open the rendered record` and `record.md`, pointing at `/api/runs/<id>/record.html` and `/api/runs/<id>/record.md` on this same loopback server. `tests/test_web_e2e.py` reads those two hrefs out of `recordLinks` in the page and requests them, so a renamed route breaks the test rather than the demo.

@@ -297,6 +297,28 @@ td code{font-size:12px}
 .cite:hover{background:var(--accent-tint);border-color:var(--accent)}
 .verdict{font-weight:700;letter-spacing:.02em;font-size:12px;white-space:nowrap}
 .placeholder{color:var(--muted);font-size:14px}
+
+/* --- the simple view: one line for what is happening, one card for what was found.
+   Details is the page as it was: every step, every call, the whole record. --- */
+.view-toggle{margin-left:auto}
+.view-toggle button{font-size:12.5px;padding:4px 12px}
+.columns.simple .steps .step{display:none}
+.columns.simple .steps .gate-card,.columns.simple .steps .end-card{display:block}
+.columns.simple .gate-card .gate-label,.columns.simple .gate-card .gate-subject,
+.columns.simple .gate-card .gate-summary{display:none}
+.columns.simple #cost-note{display:none}
+.columns.simple,.columns.simple.has-record{grid-template-columns:minmax(0,1fr)}
+.columns.simple .col-right{display:none}
+.now-line{margin:4px 0 0;font-size:16.5px;font-weight:600;line-height:1.4}
+.now-files{white-space:normal;word-break:break-word;line-height:1.7}
+.findings-head{font-size:19px;font-weight:800;letter-spacing:-0.02em;margin:4px 0 0}
+.findings-ok{color:var(--ok-ink)}
+.finding{padding:12px 0 0;margin-top:12px;border-top:1px solid var(--rule)}
+.finding-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.finding-store{font-family:var(--mono);font-weight:700;font-size:13.5px}
+.finding-why{margin:6px 0 0;font-size:14.5px}
+.finding-evidence{margin:6px 0 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.findings-links{margin-top:14px}
 .empty{padding:30px 24px}
 .empty p{max-width:62ch;font-size:14.5px}
 .empty p + p{margin-top:8px}
@@ -479,6 +501,10 @@ td code{font-size:12px}
               <span class="chip" id="run-status"></span>
               <span class="chip" id="run-brain"></span>
               <span class="hint" id="run-what"></span>
+              <span class="toggle view-toggle" role="radiogroup" aria-label="View" id="view">
+                <button type="button" role="radio" data-value="simple" aria-checked="true">Simple</button>
+                <button type="button" role="radio" data-value="details" aria-checked="false">Details</button>
+              </span>
             </div>
             <div class="meters">
               <div class="meter">
@@ -510,6 +536,15 @@ td code{font-size:12px}
               <span class="hint" id="pace-count"></span>
             </div>
           </div>
+        </div>
+        <div id="simple" hidden>
+          <article class="step now-card" id="now-card" aria-live="polite">
+            <span class="label">Now</span>
+            <p class="now-line" id="now-line"></p>
+            <p class="hint" id="now-progress"></p>
+            <p class="hint mono now-files" id="now-files" hidden></p>
+          </article>
+          <article class="step findings-card" id="findings-card" hidden></article>
         </div>
         <div class="steps" id="steps" aria-live="polite" aria-relevant="additions"></div>
       </div>
@@ -752,7 +787,10 @@ var state = {
   recordPoll: null,
   lastCite: null,
   gateOpen: false,
-  recordShown: false
+  recordShown: false,
+  view: "simple",
+  filesRead: [],
+  submitted: null
 };
 
 var PACE_MS = 700;
@@ -1162,6 +1200,7 @@ function startRun() {
    the record once there is one. Both are class names on .columns. */
 function layout() {
   var names = "columns";
+  if (state.view === "simple") { names += " simple"; }
   if (state.gateOpen) { names += " gate-open"; }
   else if (state.recordShown) { names += " has-record"; }
   byId("run-columns").className = names;
@@ -1201,6 +1240,13 @@ function openRun(run, paced) {
   byId("pacing").hidden = !state.paced;
   byId("pacing-label").textContent = state.brain === "api" ? "Replay pacing" : "Play back pacing";
   byId("pace-play").textContent = "Pause";
+  state.filesRead = [];
+  state.submitted = null;
+  byId("simple").hidden = state.view !== "simple";
+  setNow("Starting the scan.");
+  byId("now-progress").textContent = "";
+  byId("now-files").hidden = true;
+  drawFindings(null, false);
   clear(byId("steps"));
   clear(byId("record"));
   byId("record").appendChild(el("p", {
@@ -1218,11 +1264,11 @@ function openRun(run, paced) {
 
 function setStatus(status) {
   var chip = byId("run-status");
-  chip.textContent = status;
+  chip.textContent = statusWord(status);
   chip.className = "chip " + toneOfStatus(status);
   var running = status === "running" || status === "gate_waiting";
   byId("live-dot").className = "dot" + (running ? " live" : "");
-  byId("live-text").textContent = running ? status : (state.run ? status : "idle");
+  byId("live-text").textContent = state.run || running ? statusWord(status) : "idle";
   byId("cancel").disabled = !running;
   if (running) { byId("start").disabled = true; } else { refreshModes(); }
 }
@@ -1403,6 +1449,7 @@ function onStep(line) {
     try { feedback = JSON.parse(result.output); } catch (error) { feedback = null; }
     if (feedback && feedback.accepted === false) { byId("steps").appendChild(rejectionCard(feedback)); }
   });
+  noteNow(line, calls, results);
   scrollIntoRun(card);
 }
 
@@ -1563,6 +1610,8 @@ function gateParts(summary) {
 function onGate(request) {
   state.gate = request;
   setStatus("gate_waiting");
+  setNow("Scan complete. The verifier accepted the record; approve below to write it.");
+  drawFindings(state.submitted, false);
   var parts = gateParts(request.summary);
   var card = el("article", { class: "step gate-card", id: "gate-card", tabindex: "-1" });
   var waited = el("span", { class: "waited", text: "waiting 0 s" });
@@ -1620,6 +1669,7 @@ function onGate(request) {
         stopGateTicker();
         state.gateOpen = false;
         layout();
+        setNow(approved ? "Approved. Writing the record." : "Rejected. Nothing is written.");
         card.appendChild(el("p", {
           class: "hint",
           text: (approved ? "Approved" : "Rejected") + " after " + elapsed() + " s"
@@ -1627,7 +1677,7 @@ function onGate(request) {
               ? ", recipient kinds set: " + Object.keys(edits).map(function (name) {
                 return name + " " + words(edits[name]);
               }).join(", ")
-              : ", every recipient kind left unknown")
+              : (Object.keys(selects).length ? ", every recipient kind left unknown" : ""))
         }));
         if (approved) { pollRecord(); }
       }, function (error) {
@@ -1661,6 +1711,8 @@ function onCheckpoint(line) {
      page answered has its own card above, so this one only states the decision. It
      is laid out as the live card is: the rating, the record, then the block. */
   if (state.gate) { return; }
+  setNow("Checkpoint " + String(line.decision) + " by " + String(line.by) + ".");
+  drawFindings(state.submitted, false);
   var parts = gateParts(line.summary);
   var band = el("div", { class: "gate-risk risk-" + String(line.risk || "") }, [
     el("div", { class: "gate-band" }, [
@@ -1689,7 +1741,8 @@ function onRunEnd(line) {
   var card = el("article", { class: "step end-card" }, [
     el("div", { class: "step-head" }, [
       el("h3", { text: "Run finished" }),
-      el("span", { class: "chip " + (accepted ? "ok" : "danger"), text: words(line.stop_condition) })
+      el("span", { class: "chip " + (accepted ? "ok" : "danger"),
+        text: accepted ? "record written" : words(line.stop_condition) })
     ])
   ]);
   if (line.note) { card.appendChild(el("p", { class: "why", text: line.note })); }
@@ -1706,6 +1759,8 @@ function onRunEnd(line) {
   }
   byId("steps").appendChild(card);
   scrollIntoRun(card);
+  setNow(accepted ? "Finished. The record is written."
+    : "Stopped: " + words(line.stop_condition) + (line.note ? ". " + String(line.note) : "."));
   if (accepted) { pollRecord(); }
 }
 
@@ -1727,6 +1782,202 @@ function onDone(done) {
 
 function scrollIntoRun(node) {
   if (state.paced) { node.scrollIntoView({ block: "nearest", behavior: "auto" }); }
+}
+
+/* ---------- the simple view ---------- */
+
+var VIEW_KEY = "art30.view";
+
+function storedView() {
+  try { return window.localStorage.getItem(VIEW_KEY) === "details" ? "details" : "simple"; }
+  catch (error) { return "simple"; }
+}
+
+function setView(value) {
+  state.view = value === "details" ? "details" : "simple";
+  setRadio("view", state.view);
+  try { window.localStorage.setItem(VIEW_KEY, state.view); } catch (error) { /* a private window */ }
+  byId("simple").hidden = state.view !== "simple" || !state.run;
+  layout();
+}
+
+/* The server's status words are the loop's stop conditions. The chip says what they
+   mean to the person watching. */
+function statusWord(status) {
+  var text = String(status || "");
+  if (text === "running") { return "scanning"; }
+  if (text === "gate_waiting") { return "waiting for your approval"; }
+  if (text === "accepted") { return "finished"; }
+  if (text.indexOf("failed:") === 0) { return "failed: " + words(text.slice(7)); }
+  return words(text);
+}
+
+function relPath(path) {
+  var repo = state.run && state.run.repo ? String(state.run.repo) : "";
+  var text = String(path || "");
+  if (repo && text.indexOf(repo + "/") === 0) { return text.slice(repo.length + 1); }
+  if (repo && text === repo) { return "."; }
+  return text;
+}
+
+/* The api brain's tools and the CLI brains' tools, one word each. */
+function toolKind(name) {
+  var key = String(name || "").toLowerCase();
+  if (key === "read" || key === "read_file") { return "read"; }
+  if (key === "glob" || key === "list_tree") { return "map"; }
+  if (key === "grep") { return "grep"; }
+  if (key === "submit_record") { return "submit"; }
+  return "other";
+}
+
+function setNow(text) {
+  var node = byId("now-line");
+  clear(node);
+  append(node, prose(text));
+}
+
+function feedbackCount(feedback) {
+  return ["rejected_claims", "missing_stores", "missing_entry_points", "bad_citations", "schema_errors"]
+    .reduce(function (total, key) { return total + ((feedback[key] || []).length); }, 0);
+}
+
+function noteNow(line, calls, results) {
+  var read = [], patterns = [], submit = null, mapped = false;
+  calls.forEach(function (call) {
+    var kind = toolKind(call.name);
+    var input = call.input || {};
+    if (kind === "read") {
+      var path = relPath(input.file_path || input.path);
+      read.push(path);
+      if (state.filesRead.indexOf(path) < 0) { state.filesRead.push(path); }
+    } else if (kind === "grep") {
+      patterns.push((input.glob ? "`" + String(input.glob) + "` for " : "") + "`" + String(input.pattern || "") + "`");
+    }
+    else if (kind === "map") { mapped = true; }
+    else if (kind === "submit") { submit = call; }
+  });
+  var text;
+  if (submit) {
+    state.submitted = (submit.input || {}).record || state.submitted;
+    var feedback = null;
+    var result = results[submit.id];
+    if (result) { try { feedback = JSON.parse(result.output); } catch (error) { feedback = null; } }
+    var attempt = "attempt " + state.budget.submit;
+    if (feedback && feedback.accepted === true) {
+      text = "The verifier accepted the record on " + attempt + ": every claim in it resolved against the code.";
+    } else if (feedback && feedback.accepted === false) {
+      var n = feedbackCount(feedback);
+      text = "The verifier refused " + attempt + (n ? " with " + plural(n, "problem", "problems") : "")
+        + ". The agent is correcting the record.";
+    } else {
+      text = "Handing the record to the verifier, " + attempt + ".";
+    }
+  } else if (read.length) {
+    var shown = read.slice(0, 4).map(function (path) { return "`" + path + "`"; }).join(", ");
+    text = "Reading " + shown
+      + (read.length > 4 ? " and " + plural(read.length - 4, "more file", "more files") : "") + ".";
+  } else if (patterns.length) {
+    text = "Searching " + patterns.map(function (p) { return p.indexOf(" for ") > 0 ? p : "the code for " + p; }).join("; ") + ".";
+  } else if (mapped) {
+    text = "Mapping the repository tree.";
+  } else if (line.text) {
+    text = String(line.text);
+  } else {
+    text = "Working.";
+  }
+  setNow(text);
+  byId("now-progress").textContent = "Step " + line.step + " · "
+    + plural(state.budget.tool, "tool call", "tool calls") + " · "
+    + plural(state.filesRead.length, "file read", "files read");
+  var files = byId("now-files");
+  files.hidden = !state.filesRead.length;
+  files.textContent = state.filesRead.join("   ");
+}
+
+/* One card: which stores do not reach erasure, where, and why. Drawn from the
+   accepted submission while the gate waits, and again from record.json once it
+   is rendered. Every claim is cited; the citations open the source drawer. */
+function drawFindings(record, rendered) {
+  var card = byId("findings-card");
+  clear(card);
+  if (!record) { card.hidden = true; return; }
+  card.hidden = false;
+  var stores = orderedStores(record);
+  var entries = record.entry_points || [];
+  var problems = erasureRows(stores.filter(function (store) {
+    return REACHING.indexOf((store.erasure || {}).verdict) < 0;
+  }));
+  var fine = stores.filter(function (store) { return problems.indexOf(store) < 0; });
+
+  card.appendChild(el("span", { class: "label", text: rendered ? "What the scan found" : "What the scan found, for your approval" }));
+  var head;
+  if (!stores.length) { head = "No store of personal data was found in the code."; }
+  else if (!problems.length) { head = "Every store reaches erasure: " + plural(stores.length, "store", "stores") + " checked."; }
+  else {
+    head = problems.length + " of " + plural(stores.length, "store", "stores")
+      + (problems.length === 1 ? " is" : " are") + " not proven erased.";
+  }
+  card.appendChild(el("p", { class: "findings-head" + (stores.length && !problems.length ? " findings-ok" : ""), text: head }));
+  card.appendChild(el("p", { class: "hint", text: entries.length
+    ? "Checked against " + plural(entries.length, "erasure entry point", "erasure entry points") + ": "
+      + entries.map(function (entry) {
+        return String(entry.name) + " (" + String(entry.file) + ":" + String(entry.line)
+          + (entry.admin_only ? ", admin only" : "") + ")";
+      }).join(", ") + "."
+    : "No erasure entry point was found in the code, so no store can be shown to reach erasure." }));
+
+  problems.forEach(function (store) {
+    var block = store.erasure || {};
+    var row = el("div", { class: "finding" }, [
+      el("div", { class: "finding-row" }, [
+        el("span", { class: "finding-store", text: store.name }),
+        el("span", { class: "chip", text: words(store.kind) }),
+        verdictSpan(block),
+        cite(store.declared_at)
+      ]),
+      el("p", { class: "finding-why" }, prose(block.note || store.note || "No reason was given."))
+    ]);
+    var evidence = (block.evidence || []).filter(function (item) { return item && item.file; });
+    if (evidence.length) {
+      var cites = el("p", { class: "finding-evidence" }, el("span", { class: "hint", text: "Evidence" }));
+      evidence.forEach(function (item) { cites.appendChild(cite(item)); });
+      row.appendChild(cites);
+    }
+    card.appendChild(row);
+  });
+
+  if (fine.length) {
+    card.appendChild(el("p", { class: "hint" }, [
+      "Reaching erasure: ",
+      el("span", { class: "mono", text: fine.map(function (store) { return store.name; }).join(", ") }), "."
+    ]));
+  }
+  var timers = stores.filter(function (store) {
+    return store.erasure && store.erasure.timer_days !== null && store.erasure.timer_days !== undefined;
+  });
+  card.appendChild(el("p", { class: "hint", text: timers.length
+    ? "Retention timers found in the code: " + timers.map(function (store) {
+      return store.name + " " + plural(store.erasure.timer_days, "day", "days");
+    }).join(", ") + "."
+    : "No retention timer was found in the code for any store; the schedule is a policy for a person to set." }));
+  card.appendChild(el("p", { class: "hint", text: "The controller, purposes, legal basis and transfers"
+    + " cannot be read from code: those cells are rendered as " + HUMAN + "." }));
+
+  if (rendered) {
+    var links = el("div", { class: "record-links findings-links" });
+    var runId = state.run ? state.run.run_id : null;
+    if (runId) {
+      [["record.html", "Open the full record"], ["record.md", "record.md"]].forEach(function (pair) {
+        links.appendChild(el("a", {
+          class: "btn btn-quiet btn-small",
+          href: "/api/runs/" + runId + "/" + pair[0], target: "_blank", rel: "noopener"
+        }, pair[1]));
+      });
+    }
+    card.appendChild(links);
+  } else {
+    card.appendChild(el("p", { class: "hint", text: "Approve at the checkpoint below to write the record, or reject to stop without writing it." }));
+  }
 }
 
 /* ---------- the record ---------- */
@@ -1956,6 +2207,7 @@ function drawRecord(record) {
   chip.className = "chip";
   recordLinks(state.run ? state.run.run_id : null);
   state.recordShown = true;
+  drawFindings(record, true);
   layout();
 }
 
@@ -2719,6 +2971,12 @@ function boot() {
   wirePacing();
   wireSettings();
   byId("runs-refresh").addEventListener("click", function () { loadRuns(); });
+  wireArrows("view");
+  byId("view").addEventListener("click", function (event) {
+    var button = event.target.closest("button[data-value]");
+    if (button) { setView(button.dataset.value); }
+  });
+  setView(storedView());
   byId("drawer-close").addEventListener("click", closeDrawer);
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape" && !byId("drawer").hidden) { closeDrawer(); }
