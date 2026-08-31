@@ -1,0 +1,108 @@
+{
+  "case": "S05",
+  "arm": "advanced",
+  "seed": 3,
+  "split": "dev",
+  "mode": "live",
+  "manifest_sha256": "d23bc665e6fb13dba1e83e1506eb4de24ac6198bb2123a23dc77018ecf50411b",
+  "record_path": "/Users/tun/Documents/micro1-hackathon/results/runs/advanced/S05/s3/record.json",
+  "tp": 9,
+  "fp": 6,
+  "fn": 5,
+  "precision": 0.6,
+  "recall": 0.642857,
+  "f1": 0.62069,
+  "false_safe": 0,
+  "false_safe_tuples": [],
+  "unmatched_reaching_claims": 0,
+  "unmatched_reaching_tuples": [],
+  "draft": null,
+  "pass": false,
+  "missing": [
+    [
+      "mixpanel",
+      "email"
+    ],
+    [
+      "sendgrid",
+      "email"
+    ],
+    [
+      "sendgrid",
+      "full_name"
+    ],
+    [
+      "sentry",
+      "url"
+    ],
+    [
+      "session",
+      "email"
+    ]
+  ],
+  "spurious": [
+    [
+      "mixpanel",
+      "account_created"
+    ],
+    [
+      "mixpanel",
+      "user_email"
+    ],
+    [
+      "sendgrid",
+      "body"
+    ],
+    [
+      "sendgrid",
+      "to"
+    ],
+    [
+      "session",
+      "token"
+    ],
+    [
+      "session",
+      "user_email"
+    ]
+  ],
+  "wrong_verdict": [],
+  "unverified": 0,
+  "invalid_verdict_for_kind": [],
+  "duplicates": [],
+  "verdict_confusion": {
+    "erased": {
+      "erased": 4
+    },
+    "external_manual": {
+      "external_manual": 5
+    }
+  },
+  "citation_check": {
+    "checked": 15,
+    "bad": 0
+  },
+  "retention_check": {
+    "matched": 0,
+    "missing": 1,
+    "spurious": 1
+  },
+  "entry_point_check": {
+    "matched": 1,
+    "missing": 0,
+    "spurious": 0
+  },
+  "run": {
+    "stop_condition": "accepted",
+    "steps": 10,
+    "tool_calls": 20,
+    "submits": 3,
+    "verify_rounds": 2,
+    "cost_usd": 0.622156,
+    "gate": {
+      "risk": "high",
+      "decision": "approved",
+      "by": "simulated"
+    }
+  }
+}

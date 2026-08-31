@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="art30 run base-S10-s3-eb70870">
+<title>Record of processing — tidewharf</title>
+<style>
+:root { color-scheme: light; }
+body { background: #fff; color: #111; margin: 2rem auto; max-width: 60rem; padding: 0 1rem;
+       font-family: Georgia, "Times New Roman", serif; line-height: 1.5; }
+h1 { font-size: 1.6rem; } h2 { font-size: 1.25rem; margin-top: 2.5rem; } h3 { font-size: 1.05rem; }
+table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; font-size: 0.92rem; }
+caption { text-align: left; font-style: italic; padding-bottom: 0.3rem; }
+th, td { border: 1px solid #bbb; padding: 0.3rem 0.5rem; text-align: left; vertical-align: top; }
+th { background: #f2f2f2; }
+code { font-family: "DejaVu Sans Mono", Menlo, monospace; font-size: 0.86em; }
+code.cite { border-bottom: 1px dotted #666; }
+.boundary { border: 1px solid #444; padding: 0.8rem 1rem; margin: 1.2rem 0; }
+.verdict { font-weight: bold; letter-spacing: 0.02em; }
+.verdict.not-reaching { color: #8b0000; }
+tr.not-reaching td:first-child { border-left: 4px solid #8b0000; }
+.empty { font-style: italic; color: #444; }
+.footnotes { display: none; }
+@media print {
+  @page { size: A4; margin: 18mm 16mm 22mm 16mm; }
+  body { margin: 0; max-width: none; font-size: 10.5pt; }
+  section { break-before: page; }
+  .footnotes { display: block; font-size: 0.8rem; }
+  .running-footer { position: fixed; bottom: 0; left: 0; right: 0; font-size: 0.75rem;
+                    border-top: 1px solid #999; padding-top: 2mm; }
+}
+</style>
+</head>
+<body>
+<h1>Record of processing — tidewharf</h1>
+<nav><ol>
+<li><a href="#a-inventory">A. Data inventory</a></li>
+<li><a href="#b-recipients">B. Recipients</a></li>
+<li><a href="#c-retention">C. Retention</a></li>
+<li><a href="#d-erasure">D. Erasure</a></li>
+<li><a href="#e-observations">E. Observations from the code (not findings)</a></li>
+<li><a href="#f-human">F. Requires human completion</a></li>
+<li><a href="#g-verification">G. Verification appendix</a></li>
+<li><a href="#h-evidence">H. Evidence index</a></li>
+</ol></nav>
+<table>
+<caption>Provenance</caption>
+<tr><th></th><th></th></tr>
+<tr><td>Case</td><td>S10 (synthetic)</td></tr>
+<tr><td>Arm</td><td>baseline</td></tr>
+<tr><td>Model</td><td>Claude (your login) — claude-opus-5, effort high</td></tr>
+<tr><td>Run</td><td><code>base-S10-s3-eb70870</code></td></tr>
+<tr><td>Code read</td><td><code>evals/fixtures/synthetic/S10</code>, sha256 <code>fc7e6e53f234</code></td></tr>
+<tr><td>Instructions</td><td>sha256 <code>43c86cec9e8c</code></td></tr>
+<tr><td>Generated</td><td>2026-08-31 16:21:25 UTC</td></tr>
+<tr><td>Trace</td><td><code>/Users/tun/Documents/micro1-hackathon/traces/baseline/S10-s3.jsonl</code></td></tr>
+<tr><td>Verification</td><td>1 submission, accepted on attempt 1</td></tr>
+<tr><td>Cost</td><td>USD 0.334948 (estimate at list prices), 18 tool calls</td></tr>
+</table>
+<p class="boundary">This is the technical half of a record of processing activities under Article 30(1) GDPR. It was derived from source code by static reading, on the date above. It is not legal advice, it states no legal basis, and it is incomplete until the cells marked <code>requires human completion</code> are filled by a person. It covers Article 30(1) — the controller&#x27;s own record — for the repository named above; a processor&#x27;s record under Article 30(2), and any personal data held outside this repository, are not in it.</p>
+<section id="a-inventory">
+<h2>A. Data inventory</h2>
+<p>Data subjects:</p>
+<p>account holders — inferred from model name (<code class="cite" title="class User(Base):">models.py:11</code>).</p>
+<p>account holders — inferred from route name (<code class="cite" title="def signup(session, user_id):">api/profile.py:12</code>).</p>
+<h3>users — relational — <code class="cite" title="__tablename__ = &quot;users&quot;">models.py:12</code></h3>
+<p>SQLAlchemy table holding the account row.</p>
+<table>
+<caption>users — relational — <code class="cite" title="__tablename__ = &quot;users&quot;">models.py:12</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>email</code></td><td>contact</td><td><code class="cite" title="email = Column(String(255), nullable=False)">models.py:14</code></td><td></td></tr>
+<tr><td><code>full_name</code></td><td>identifier</td><td><code class="cite" title="full_name = Column(String(255))">models.py:15</code></td><td></td></tr>
+<tr><td><code>signup_ip</code></td><td>technical</td><td><code class="cite" title="signup_ip = Column(String(255))">models.py:16</code></td><td>IP address recorded at signup.</td></tr>
+<tr><td><code>last_seen_at</code></td><td>behavioural</td><td><code class="cite" title="last_seen_at = Column(DateTime)">models.py:17</code></td><td></td></tr>
+<tr><td><code>deleted_at</code></td><td>technical</td><td><code class="cite" title="deleted_at = Column(DateTime)">models.py:18</code></td><td>Soft-delete marker the close_account route writes and the purge job reads.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="class User(Base):">models.py:11</code>.</p>
+<h3>uploads — object_storage — <code class="cite" title="BUCKET = &quot;uploads&quot;">storage.py:7</code></h3>
+<p>S3 bucket written by upload_avatar under an avatars/ prefix.</p>
+<table>
+<caption>uploads — object_storage — <code class="cite" title="BUCKET = &quot;uploads&quot;">storage.py:7</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>avatar_key</code></td><td>identifier</td><td><code class="cite" title="def avatar_key(user_id):">storage.py:11</code></td><td>Object key is built as avatars/&lt;user_id&gt;.jpg, so the key carries the user id.</td></tr>
+<tr><td><code>original_filename</code></td><td>free_text_may_contain</td><td><code class="cite" title="&quot;original_filename&quot;: original_filename,">storage.py:23</code></td><td>The uploader&#x27;s own file name is stored as S3 object metadata.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="return f&quot;avatars/{user_id}.jpg&quot;">storage.py:12</code>.</p>
+<h3>nightly_backup — backup — <code class="cite" title="DUMP_PATH = f&quot;{BACKUP_NAME}.json&quot;">jobs/backup.py:10</code></h3>
+<p>JSON dump of the users table written to nightly_backup.json.</p>
+<table>
+<caption>nightly_backup — backup — <code class="cite" title="DUMP_PATH = f&quot;{BACKUP_NAME}.json&quot;">jobs/backup.py:10</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>email</code></td><td>contact</td><td><code class="cite" title="DUMP_COLUMNS = [&quot;email&quot;, &quot;full_name&quot;]">jobs/backup.py:9</code></td><td>Listed in DUMP_COLUMNS and read off each User row.</td></tr>
+<tr><td><code>full_name</code></td><td>identifier</td><td><code class="cite" title="DUMP_COLUMNS = [&quot;email&quot;, &quot;full_name&quot;]">jobs/backup.py:9</code></td><td>Listed in DUMP_COLUMNS and read off each User row.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="for table in (User,):">jobs/backup.py:18</code>.</p>
+<h3>stripe.Customer — third_party — <code class="cite" title="return stripe.Customer.create(">billing.py:11</code></h3>
+<p>Stripe customer created at signup.</p>
+<table>
+<caption>stripe.Customer — third_party — <code class="cite" title="return stripe.Customer.create(">billing.py:11</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>email</code></td><td>contact</td><td><code class="cite" title="email=user.email,">billing.py:12</code></td><td></td></tr>
+<tr><td><code>name</code></td><td>identifier</td><td><code class="cite" title="name=user.full_name,">billing.py:13</code></td><td>Passed the user&#x27;s full_name.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="email=user.email,">billing.py:12</code>.</p>
+<p>Not scanned:</p>
+<p><code>README.md</code> (not Python).</p>
+<p><code>requirements.txt</code> (not Python).</p>
+<ol class="footnotes">
+<li>models.py:11: class User(Base):</li>
+<li>api/profile.py:12: def signup(session, user_id):</li>
+<li>models.py:12: __tablename__ = &quot;users&quot;</li>
+<li>models.py:14: email = Column(String(255), nullable=False)</li>
+<li>models.py:15: full_name = Column(String(255))</li>
+<li>models.py:16: signup_ip = Column(String(255))</li>
+<li>models.py:17: last_seen_at = Column(DateTime)</li>
+<li>models.py:18: deleted_at = Column(DateTime)</li>
+<li>storage.py:7: BUCKET = &quot;uploads&quot;</li>
+<li>storage.py:11: def avatar_key(user_id):</li>
+<li>storage.py:23: &quot;original_filename&quot;: original_filename,</li>
+<li>storage.py:12: return f&quot;avatars/{user_id}.jpg&quot;</li>
+<li>jobs/backup.py:10: DUMP_PATH = f&quot;{BACKUP_NAME}.json&quot;</li>
+<li>jobs/backup.py:9: DUMP_COLUMNS = [&quot;email&quot;, &quot;full_name&quot;]</li>
+<li>jobs/backup.py:18: for table in (User,):</li>
+<li>billing.py:11: return stripe.Customer.create(</li>
+<li>billing.py:12: email=user.email,</li>
+<li>billing.py:13: name=user.full_name,</li>
+</ol>
+</section>
+<section id="b-recipients">
+<h2>B. Recipients</h2>
+<table>
+<caption>B. Recipients</caption>
+<tr><th>Recipient</th><th>Fields disclosed</th><th>Evidence</th><th>Recipient kind</th></tr>
+<tr><td>stripe.Customer</td><td><code>email</code> (contact), <code>name</code> (identifier)</td><td><code class="cite" title="email=user.email,">billing.py:12</code>, <code class="cite" title="name=user.full_name,">billing.py:13</code></td><td><span class="empty">UNKNOWN — requires human completion</span></td></tr>
+</table>
+<p>Personal data flows into the call at the cited lines. Whether this recipient acts as a processor on the controller&#x27;s instructions or as an independent controller, and whether a contract under Article 28(3) exists, is not visible in code.</p>
+<ol class="footnotes">
+<li>billing.py:12: email=user.email,</li>
+<li>billing.py:13: name=user.full_name,</li>
+</ol>
+</section>
+<section id="c-retention">
+<h2>C. Retention</h2>
+<table>
+<caption>C. Retention</caption>
+<tr><th>Store</th><th>Category</th><th>Envisaged limit</th><th>Evidence</th><th>Justification</th></tr>
+<tr><td>users</td><td>all categories</td><td>30 days rows whose deleted_at is older than the cutoff are deleted by the nightly purge task</td><td><code class="cite" title="RETENTION_DAYS = 30">jobs/purge.py:10</code></td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>uploads</td><td>—</td><td>NO TIMER EVIDENCED</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>nightly_backup</td><td>all categories</td><td>35 days</td><td><code class="cite" title="BACKUP_RETENTION_DAYS = 35">jobs/backup.py:12</code></td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>stripe.Customer</td><td>—</td><td>NO TIMER EVIDENCED</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+<p>A period found in code is evidence for a retention schedule. The schedule itself is a policy the controller sets, and the reason for each period belongs in the justification column.</p>
+<ol class="footnotes">
+<li>jobs/purge.py:10: RETENTION_DAYS = 30</li>
+<li>jobs/backup.py:12: BACKUP_RETENTION_DAYS = 35</li>
+</ol>
+</section>
+<section id="d-erasure">
+<h2>D. Erasure</h2>
+<p>Erasure entry points: <code>close_account</code> — route — <code class="cite" title="def close_account(session, user_id):">api/account.py:12</code> (Takes a session and a user id and writes a timestamp to the user row.).</p>
+<table>
+<caption>D. Erasure</caption>
+<tr><th>Store</th><th>Verdict</th><th>Evidence</th><th>Note</th></tr>
+<tr class="not-reaching"><td>uploads</td><td><span class="verdict not-reaching">NOT ERASED</span></td><td><code class="cite" title="user.deleted_at = datetime.now(timezone.utc)">api/account.py:15</code><br><code class="cite" title="s3.delete_object(Bucket=BUCKET, Key=avatar_key(user_id))">storage.py:30</code></td><td>cleanup_user_files is the only deletion call for this bucket and no module in the repository calls it; the close_account docstring says uploaded files are removed.</td></tr>
+<tr class="not-reaching"><td>stripe.Customer</td><td><span class="verdict not-reaching">EXTERNAL MANUAL</span></td><td><code class="cite" title="create_customer(user)">api/profile.py:14</code><br><code class="cite" title="return stripe.Customer.create(">billing.py:11</code></td><td>The signup route sends email and full name to Stripe; the repository contains no call that deletes or redacts the Stripe customer.</td></tr>
+<tr class="not-reaching"><td>nightly_backup</td><td><span class="verdict not-reaching">GOVERNED BY RETENTION (35 days)</span></td><td><code class="cite" title="SCHEDULE = &quot;0 3 * * *&quot;">jobs/backup.py:11</code><br><code class="cite" title="BACKUP_RETENTION_DAYS = 35">jobs/backup.py:12</code><br><code class="cite" title="json.dump(rows, handle, default=str)">jobs/backup.py:22</code></td><td>dump_database writes the JSON file; BACKUP_RETENTION_DAYS is declared beside the schedule but no code in the repository reads it or removes the file.</td></tr>
+<tr><td>users</td><td><span class="verdict reaching">ERASED AFTER TIMER (30 days)</span></td><td><code class="cite" title="user.deleted_at = datetime.now(timezone.utc)">api/account.py:15</code><br><code class="cite" title="&quot;task&quot;: &quot;jobs.purge.purge_closed_accounts&quot;,">config.py:16</code><br><code class="cite" title="RETENTION_DAYS = 30">jobs/purge.py:10</code><br><code class="cite" title="for row in session.query(User).filter(User.deleted_at &lt; cutoff).all():">jobs/purge.py:17</code><br><code class="cite" title="session.delete(row)">jobs/purge.py:18</code></td><td>close_account only sets deleted_at; the celery beat task purge_closed_accounts deletes rows whose deleted_at is older than RETENTION_DAYS.</td></tr>
+</table>
+<p>No erasure verdict is rendered for a store of kind backup; it carries a retention verdict instead. This tool reports the retention schedule it found in code and cites it; whether that schedule and the procedure applied to restored systems are adequate is not visible here.</p>
+<p>Object storage: where bucket versioning is enabled, a delete that passes no <code>versionId</code> leaves the previous version of the object in place.</p>
+<ol class="footnotes">
+<li>api/account.py:12: def close_account(session, user_id):</li>
+<li>api/account.py:15: user.deleted_at = datetime.now(timezone.utc)</li>
+<li>storage.py:30: s3.delete_object(Bucket=BUCKET, Key=avatar_key(user_id))</li>
+<li>api/profile.py:14: create_customer(user)</li>
+<li>billing.py:11: return stripe.Customer.create(</li>
+<li>jobs/backup.py:11: SCHEDULE = &quot;0 3 * * *&quot;</li>
+<li>jobs/backup.py:12: BACKUP_RETENTION_DAYS = 35</li>
+<li>jobs/backup.py:22: json.dump(rows, handle, default=str)</li>
+<li>config.py:16: &quot;task&quot;: &quot;jobs.purge.purge_closed_accounts&quot;,</li>
+<li>jobs/purge.py:10: RETENTION_DAYS = 30</li>
+<li>jobs/purge.py:17: for row in session.query(User).filter(User.deleted_at &lt; cutoff).all():</li>
+<li>jobs/purge.py:18: session.delete(row)</li>
+</ol>
+</section>
+<section id="e-observations">
+<h2>E. Observations from the code (not findings)</h2>
+<p>Module names. A module name says what the code was called, not what it is for. Article 30(1)(b) purposes are in section F.</p>
+<table>
+<caption>E. Observations from the code (not findings)</caption>
+<tr><th>Name</th><th>File</th></tr>
+<tr><td>billing</td><td><code>billing.py</code></td></tr>
+<tr><td>storage</td><td><code>storage.py</code></td></tr>
+<tr><td>jobs.backup</td><td><code>jobs/backup.py</code></td></tr>
+<tr><td>jobs.purge</td><td><code>jobs/purge.py</code></td></tr>
+<tr><td>api.account</td><td><code>api/account.py</code></td></tr>
+<tr><td>api.profile</td><td><code>api/profile.py</code></td></tr>
+</table>
+<p>Region hints. A region string says where a service was configured to run. It is not a finding about a transfer under Article 30(1)(e); that cell is in section F.</p>
+<table>
+<caption>E. Observations from the code (not findings)</caption>
+<tr><th>Value</th><th>Evidence</th></tr>
+<tr><td><code>eu-central-1</code></td><td><code class="cite" title="AWS_REGION = &quot;eu-central-1&quot;">config.py:11</code></td></tr>
+<tr><td><code>region_name</code></td><td><code class="cite" title="s3 = boto3.client(&quot;s3&quot;, region_name=AWS_REGION)">storage.py:8</code></td></tr>
+</table>
+<p>Security measures. Technical measures under Article 32(1)(a) only, one line each. The organisational half is in section F.</p>
+<table>
+<caption>E. Observations from the code (not findings)</caption>
+<tr><th>Measure</th><th>Evidence</th><th>Symbol</th></tr>
+<tr><td>encryption at rest</td><td><code class="cite" title="ServerSideEncryption=&quot;AES256&quot;,">storage.py:21</code></td><td><code>ServerSideEncryption</code></td></tr>
+</table>
+<ol class="footnotes">
+<li>config.py:11: AWS_REGION = &quot;eu-central-1&quot;</li>
+<li>storage.py:8: s3 = boto3.client(&quot;s3&quot;, region_name=AWS_REGION)</li>
+<li>storage.py:21: ServerSideEncryption=&quot;AES256&quot;,</li>
+</ol>
+</section>
+<section id="f-human">
+<h2>F. Requires human completion</h2>
+<table>
+<caption>F. Requires human completion</caption>
+<tr><th>Cell</th><th>Article 30(1)</th><th>Value</th></tr>
+<tr><td>Controller — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Joint controller — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Representative — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Data protection officer — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Purposes of the processing</td><td>(b)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Confirmation of data-subject categories</td><td>(c)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of personal data held outside this repository</td><td>(c)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Recipient kind — stripe.Customer</td><td>(d)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — occurs</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — countries</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — safeguards</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Justification for each retention period</td><td>(f)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Organisational security measures</td><td>(g)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Special categories of data (Article 9)</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Legal basis</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+<p>Processing activities. Article 30 records processing activities; this document records stores. No activity grouping is derived from code. The stores in section A are the input to the fiche below, one copy per activity.</p>
+<table>
+<caption>F. Requires human completion</caption>
+<tr><th>Fiche field</th><th>Value</th></tr>
+<tr><td>Activity name</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Purposes</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of data subjects</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of personal data</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of recipients</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfers outside the EU</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Retention</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Security measures</td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+</section>
+<section id="g-verification">
+<h2>G. Verification appendix</h2>
+<p>Verification: none. This record was accepted on schema validity alone.</p>
+</section>
+<section id="h-evidence">
+<h2>H. Evidence index</h2>
+<table>
+<caption>H. Evidence index</caption>
+<tr><th>Evidence</th><th>Symbol</th><th>Sections</th></tr>
+<tr><td><code class="cite" title="def close_account(session, user_id):">api/account.py:12</code></td><td><code>close_account</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="user.deleted_at = datetime.now(timezone.utc)">api/account.py:15</code></td><td><code>deleted_at</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="def signup(session, user_id):">api/profile.py:12</code></td><td>—</td><td>A</td></tr>
+<tr><td><code class="cite" title="create_customer(user)">api/profile.py:14</code></td><td><code>create_customer</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="return stripe.Customer.create(">billing.py:11</code></td><td><code>stripe.Customer.create</code></td><td>A, D</td></tr>
+<tr><td><code class="cite" title="email=user.email,">billing.py:12</code></td><td><code>email</code></td><td>A, B</td></tr>
+<tr><td><code class="cite" title="name=user.full_name,">billing.py:13</code></td><td><code>name</code></td><td>A, B</td></tr>
+<tr><td><code class="cite" title="AWS_REGION = &quot;eu-central-1&quot;">config.py:11</code></td><td><code>eu-central-1</code></td><td>E</td></tr>
+<tr><td><code class="cite" title="&quot;task&quot;: &quot;jobs.purge.purge_closed_accounts&quot;,">config.py:16</code></td><td><code>jobs.purge.purge_closed_accounts</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="DUMP_COLUMNS = [&quot;email&quot;, &quot;full_name&quot;]">jobs/backup.py:9</code></td><td><code>email</code>, <code>full_name</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="DUMP_PATH = f&quot;{BACKUP_NAME}.json&quot;">jobs/backup.py:10</code></td><td><code>DUMP_PATH</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="SCHEDULE = &quot;0 3 * * *&quot;">jobs/backup.py:11</code></td><td><code>SCHEDULE</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="BACKUP_RETENTION_DAYS = 35">jobs/backup.py:12</code></td><td><code>BACKUP_RETENTION_DAYS</code></td><td>C, D</td></tr>
+<tr><td><code class="cite" title="for table in (User,):">jobs/backup.py:18</code></td><td>—</td><td>A</td></tr>
+<tr><td><code class="cite" title="json.dump(rows, handle, default=str)">jobs/backup.py:22</code></td><td><code>json.dump</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="RETENTION_DAYS = 30">jobs/purge.py:10</code></td><td><code>RETENTION_DAYS</code></td><td>C, D</td></tr>
+<tr><td><code class="cite" title="for row in session.query(User).filter(User.deleted_at &lt; cutoff).all():">jobs/purge.py:17</code></td><td><code>deleted_at</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="session.delete(row)">jobs/purge.py:18</code></td><td><code>session.delete</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="class User(Base):">models.py:11</code></td><td>—</td><td>A</td></tr>
+<tr><td><code class="cite" title="__tablename__ = &quot;users&quot;">models.py:12</code></td><td><code>users</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="email = Column(String(255), nullable=False)">models.py:14</code></td><td><code>email</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="full_name = Column(String(255))">models.py:15</code></td><td><code>full_name</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="signup_ip = Column(String(255))">models.py:16</code></td><td><code>signup_ip</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="last_seen_at = Column(DateTime)">models.py:17</code></td><td><code>last_seen_at</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="deleted_at = Column(DateTime)">models.py:18</code></td><td><code>deleted_at</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="BUCKET = &quot;uploads&quot;">storage.py:7</code></td><td><code>BUCKET</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="s3 = boto3.client(&quot;s3&quot;, region_name=AWS_REGION)">storage.py:8</code></td><td><code>region_name</code></td><td>E</td></tr>
+<tr><td><code class="cite" title="def avatar_key(user_id):">storage.py:11</code></td><td><code>avatar_key</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="return f&quot;avatars/{user_id}.jpg&quot;">storage.py:12</code></td><td>—</td><td>A</td></tr>
+<tr><td><code class="cite" title="ServerSideEncryption=&quot;AES256&quot;,">storage.py:21</code></td><td><code>ServerSideEncryption</code></td><td>E</td></tr>
+<tr><td><code class="cite" title="&quot;original_filename&quot;: original_filename,">storage.py:23</code></td><td><code>original_filename</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="s3.delete_object(Bucket=BUCKET, Key=avatar_key(user_id))">storage.py:30</code></td><td><code>delete_object</code></td><td>D</td></tr>
+</table>
+<ol class="footnotes">
+<li>api/account.py:12: def close_account(session, user_id):</li>
+<li>api/account.py:15: user.deleted_at = datetime.now(timezone.utc)</li>
+<li>api/profile.py:12: def signup(session, user_id):</li>
+<li>api/profile.py:14: create_customer(user)</li>
+<li>billing.py:11: return stripe.Customer.create(</li>
+<li>billing.py:12: email=user.email,</li>
+<li>billing.py:13: name=user.full_name,</li>
+<li>config.py:11: AWS_REGION = &quot;eu-central-1&quot;</li>
+<li>config.py:16: &quot;task&quot;: &quot;jobs.purge.purge_closed_accounts&quot;,</li>
+<li>jobs/backup.py:9: DUMP_COLUMNS = [&quot;email&quot;, &quot;full_name&quot;]</li>
+<li>jobs/backup.py:10: DUMP_PATH = f&quot;{BACKUP_NAME}.json&quot;</li>
+<li>jobs/backup.py:11: SCHEDULE = &quot;0 3 * * *&quot;</li>
+<li>jobs/backup.py:12: BACKUP_RETENTION_DAYS = 35</li>
+<li>jobs/backup.py:18: for table in (User,):</li>
+<li>jobs/backup.py:22: json.dump(rows, handle, default=str)</li>
+<li>jobs/purge.py:10: RETENTION_DAYS = 30</li>
+<li>jobs/purge.py:17: for row in session.query(User).filter(User.deleted_at &lt; cutoff).all():</li>
+<li>jobs/purge.py:18: session.delete(row)</li>
+<li>models.py:11: class User(Base):</li>
+<li>models.py:12: __tablename__ = &quot;users&quot;</li>
+<li>models.py:14: email = Column(String(255), nullable=False)</li>
+<li>models.py:15: full_name = Column(String(255))</li>
+<li>models.py:16: signup_ip = Column(String(255))</li>
+<li>models.py:17: last_seen_at = Column(DateTime)</li>
+<li>models.py:18: deleted_at = Column(DateTime)</li>
+<li>storage.py:7: BUCKET = &quot;uploads&quot;</li>
+<li>storage.py:8: s3 = boto3.client(&quot;s3&quot;, region_name=AWS_REGION)</li>
+<li>storage.py:11: def avatar_key(user_id):</li>
+<li>storage.py:12: return f&quot;avatars/{user_id}.jpg&quot;</li>
+<li>storage.py:21: ServerSideEncryption=&quot;AES256&quot;,</li>
+<li>storage.py:23: &quot;original_filename&quot;: original_filename,</li>
+<li>storage.py:30: s3.delete_object(Bucket=BUCKET, Key=avatar_key(user_id))</li>
+</ol>
+</section>
+<div class="running-footer">base-S10-s3-eb70870 — not legal advice; the technical half of an Article 30(1) record.</div>
+</body>
+</html>

@@ -1,0 +1,55 @@
+{
+  "case": "S01",
+  "arm": "baseline",
+  "seed": 1,
+  "split": "dev",
+  "mode": "live",
+  "manifest_sha256": "eb22f317ca29e72fa294c5fde91b2adf3e2ddde9b46276e2283f8f5a7450e50e",
+  "record_path": "/Users/tun/Documents/micro1-hackathon/results/runs/baseline/S01/s1/record.json",
+  "tp": 6,
+  "fp": 0,
+  "fn": 0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1": 1.0,
+  "false_safe": 0,
+  "false_safe_tuples": [],
+  "unmatched_reaching_claims": 0,
+  "unmatched_reaching_tuples": [],
+  "draft": null,
+  "pass": true,
+  "missing": [],
+  "spurious": [],
+  "wrong_verdict": [],
+  "unverified": 0,
+  "invalid_verdict_for_kind": [],
+  "duplicates": [],
+  "verdict_confusion": {
+    "erased": {
+      "erased": 6
+    }
+  },
+  "citation_check": {
+    "checked": 6,
+    "bad": 0
+  },
+  "retention_check": {
+    "matched": 0,
+    "missing": 0,
+    "spurious": 0
+  },
+  "entry_point_check": {
+    "matched": 1,
+    "missing": 0,
+    "spurious": 0
+  },
+  "run": {
+    "stop_condition": "accepted",
+    "steps": 6,
+    "tool_calls": 12,
+    "submits": 1,
+    "verify_rounds": 0,
+    "cost_usd": 0.271617,
+    "gate": null
+  }
+}

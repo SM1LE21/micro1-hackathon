@@ -1,0 +1,347 @@
+{
+ "activities": [],
+ "data_subjects": [
+  {
+   "basis": "model_name",
+   "file": "gallery/models.py",
+   "label": "account holders",
+   "line": 9
+  }
+ ],
+ "entry_points": [
+  {
+   "admin_only": false,
+   "file": "gallery/views.py",
+   "kind": "view",
+   "line": 9,
+   "name": "delete_account",
+   "note": "HTTP route gallery/<int:pk>/delete/ maps to this view in slatecove/urls.py line 10."
+  },
+  {
+   "admin_only": true,
+   "file": "gallery/admin.py",
+   "kind": "admin",
+   "line": 7,
+   "name": "Account",
+   "note": "Account is registered with the default ModelAdmin, so the admin delete action is available to staff."
+  }
+ ],
+ "hints": {
+  "observed_module_names": [
+   {
+    "file": "gallery/models.py",
+    "name": "gallery"
+   },
+   {
+    "file": "catalog/models.py",
+    "name": "catalog"
+   }
+  ],
+  "observed_region_hints": [],
+  "security_evidence": [
+   {
+    "file": "slatecove/settings.py",
+    "line": 10,
+    "measure": "encryption_in_transit",
+    "symbol": "SECURE_SSL_REDIRECT"
+   }
+  ]
+ },
+ "human": {
+  "controller": {
+   "contact": null,
+   "name": null
+  },
+  "data_categories_outside_code": null,
+  "data_subject_categories_confirmed": null,
+  "dpo": {
+   "contact": null,
+   "name": null
+  },
+  "joint_controller": {
+   "contact": null,
+   "name": null
+  },
+  "legal_basis": null,
+  "purposes": null,
+  "representative": {
+   "contact": null,
+   "name": null
+  },
+  "retention_justification": null,
+  "security_organisational": null,
+  "special_categories": null,
+  "transfers": {
+   "countries": null,
+   "occurs": null,
+   "safeguards": null
+  }
+ },
+ "provenance": {
+  "arm": "baseline",
+  "brain": "claude",
+  "brain_label": "Claude (your login)",
+  "brain_model": "claude-opus-5",
+  "case": "S09",
+  "cli_total_cost_usd": 0.34866149999999996,
+  "config": {
+   "brain": "claude",
+   "max_tokens": 32000,
+   "overridden": [],
+   "submit_budget": 5,
+   "tool_budget": 60
+  },
+  "cost_source": "cli_estimate",
+  "cost_usd": 0.34866,
+  "effort": "high",
+  "finished_at": "2026-08-31T16:05:34Z",
+  "fixture": {
+   "id": "S09",
+   "path": "evals/fixtures/synthetic/S09",
+   "sha256": "8b63c6537a8d"
+  },
+  "gate": null,
+  "instruction_sha256": "43c86cec9e8c",
+  "mode": "live",
+  "model": "claude-opus-5",
+  "run_id": "base-S09-s1-55aeec9",
+  "seed": 1,
+  "started_at": "2026-08-31T16:04:25Z",
+  "tool_calls": 13,
+  "trace": "/Users/tun/Documents/micro1-hackathon/traces/baseline/S09-s1.jsonl"
+ },
+ "repository": "slatecove",
+ "retention": [],
+ "schema_version": "1",
+ "stores": [
+  {
+   "declared_at": {
+    "file": "gallery/models.py",
+    "line": 16,
+    "symbol": "gallery_account"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "gallery/views.py",
+      "line": 12,
+      "symbol": "account.delete"
+     },
+     {
+      "file": "gallery/models.py",
+      "line": 9,
+      "symbol": "Account"
+     }
+    ],
+    "note": "The view loads the Account row and calls delete() on it; the model does not override delete(), so the row is removed.",
+    "timer_days": null,
+    "verdict": "erased"
+   },
+   "fields": [
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "gallery/models.py",
+     "line": 11,
+     "name": "email",
+     "note": null
+    },
+    {
+     "category": "identifier",
+     "erasure": null,
+     "file": "gallery/models.py",
+     "line": 12,
+     "name": "full_name",
+     "note": null
+    },
+    {
+     "category": "behavioural",
+     "erasure": null,
+     "file": "gallery/models.py",
+     "line": 13,
+     "name": "joined_at",
+     "note": null
+    }
+   ],
+   "kind": "relational",
+   "name": "gallery_account",
+   "note": "Table holding one row per account holder.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "gallery/models.py",
+    "line": 9
+   }
+  },
+  {
+   "declared_at": {
+    "file": "gallery/models.py",
+    "line": 27,
+    "symbol": "gallery_photo"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "gallery/views.py",
+      "line": 12,
+      "symbol": "account.delete"
+     },
+     {
+      "file": "gallery/models.py",
+      "line": 24,
+      "symbol": "CASCADE"
+     }
+    ],
+    "note": "The foreign key to Account uses on_delete=models.CASCADE, so deleting the account row deletes the photo rows.",
+    "timer_days": null,
+    "verdict": "erased"
+   },
+   "fields": [
+    {
+     "category": "free_text_may_contain",
+     "erasure": null,
+     "file": "gallery/models.py",
+     "line": 22,
+     "name": "caption",
+     "note": "Free-text field a person types into; the schema does not constrain what it holds."
+    },
+    {
+     "category": "behavioural",
+     "erasure": null,
+     "file": "gallery/models.py",
+     "line": 23,
+     "name": "taken_at",
+     "note": "Timestamp on a row linked to an account."
+    }
+   ],
+   "kind": "relational",
+   "name": "gallery_photo",
+   "note": "Table holding photo rows, each pointing at one account.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "gallery/models.py",
+    "line": 24
+   }
+  },
+  {
+   "declared_at": {
+    "file": "gallery/models.py",
+    "line": 37,
+    "symbol": "gallery_comment"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "gallery/views.py",
+      "line": 12,
+      "symbol": "account.delete"
+     },
+     {
+      "file": "gallery/models.py",
+      "line": 34,
+      "symbol": "CASCADE"
+     }
+    ],
+    "note": "The foreign key to Account uses on_delete=models.CASCADE, so deleting the account row deletes the comment rows.",
+    "timer_days": null,
+    "verdict": "erased"
+   },
+   "fields": [
+    {
+     "category": "free_text_may_contain",
+     "erasure": null,
+     "file": "gallery/models.py",
+     "line": 32,
+     "name": "body",
+     "note": "Text field a person types into; the schema does not constrain what it holds."
+    },
+    {
+     "category": "behavioural",
+     "erasure": null,
+     "file": "gallery/models.py",
+     "line": 33,
+     "name": "posted_at",
+     "note": "Timestamp on a row linked to an account."
+    }
+   ],
+   "kind": "relational",
+   "name": "gallery_comment",
+   "note": "Table holding comment rows, each pointing at one account.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "gallery/models.py",
+    "line": 34
+   }
+  },
+  {
+   "declared_at": {
+    "file": "gallery/models.py",
+    "line": 21,
+    "symbol": "ImageField"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "gallery/signals.py",
+      "line": 9,
+      "symbol": "sender=Comment"
+     },
+     {
+      "file": "gallery/signals.py",
+      "line": 11,
+      "symbol": "instance.image.delete"
+     },
+     {
+      "file": "gallery/models.py",
+      "line": 21,
+      "symbol": "ImageField"
+     }
+    ],
+    "note": "The only receiver that deletes a file, delete_attached_image, is registered with sender=Comment, so deleting a Photo row never runs it and no other code calls storage delete; django_cleanup is not in INSTALLED_APPS.",
+    "timer_days": null,
+    "verdict": "not_erased"
+   },
+   "fields": [
+    {
+     "category": "free_text_may_contain",
+     "erasure": null,
+     "file": "gallery/models.py",
+     "line": 21,
+     "name": "image",
+     "note": "Uploaded file stored under photo/images/; its contents are whatever the account holder uploaded."
+    }
+   ],
+   "kind": "object_storage",
+   "name": "photo.image",
+   "note": "Files written by the ImageField on Photo under the upload_to prefix photo/images/.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "gallery/models.py",
+    "line": 24
+   }
+  }
+ ],
+ "unscanned": [
+  {
+   "path": "manage.py",
+   "reason": "generated_or_vendored"
+  },
+  {
+   "path": "README.md",
+   "reason": "not_python"
+  },
+  {
+   "path": "requirements.txt",
+   "reason": "not_python"
+  }
+ ],
+ "verification": {
+  "accepted_on_attempt": 1,
+  "bad_citations_resolved": [],
+  "conservative_divergences": [],
+  "missing_stores_resolved": [],
+  "rejected_history": [],
+  "rule_set_sha": null,
+  "submits": 1,
+  "unverified": []
+ }
+}

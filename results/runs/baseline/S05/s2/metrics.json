@@ -1,0 +1,127 @@
+{
+  "case": "S05",
+  "arm": "baseline",
+  "seed": 2,
+  "split": "dev",
+  "mode": "live",
+  "manifest_sha256": "d23bc665e6fb13dba1e83e1506eb4de24ac6198bb2123a23dc77018ecf50411b",
+  "record_path": "/Users/tun/Documents/micro1-hackathon/results/runs/baseline/S05/s2/record.json",
+  "tp": 7,
+  "fp": 9,
+  "fn": 7,
+  "precision": 0.4375,
+  "recall": 0.5,
+  "f1": 0.466667,
+  "false_safe": 0,
+  "false_safe_tuples": [],
+  "unmatched_reaching_claims": 0,
+  "unmatched_reaching_tuples": [],
+  "draft": null,
+  "pass": false,
+  "missing": [
+    [
+      "sendgrid",
+      "full_name"
+    ],
+    [
+      "sentry",
+      "local_variable"
+    ],
+    [
+      "sentry",
+      "query_string"
+    ],
+    [
+      "sentry",
+      "request_body"
+    ],
+    [
+      "sentry",
+      "url"
+    ],
+    [
+      "stripe",
+      "email"
+    ],
+    [
+      "stripe",
+      "name"
+    ]
+  ],
+  "spurious": [
+    [
+      "mixpanel",
+      "account_created"
+    ],
+    [
+      "sendgrid",
+      "body"
+    ],
+    [
+      "sentry_sdk",
+      "local_variable"
+    ],
+    [
+      "sentry_sdk",
+      "query_string"
+    ],
+    [
+      "sentry_sdk",
+      "request_body"
+    ],
+    [
+      "sentry_sdk",
+      "url"
+    ],
+    [
+      "session",
+      "token"
+    ],
+    [
+      "stripe_customer",
+      "email"
+    ],
+    [
+      "stripe_customer",
+      "name"
+    ]
+  ],
+  "wrong_verdict": [],
+  "unverified": 0,
+  "invalid_verdict_for_kind": [],
+  "duplicates": [],
+  "verdict_confusion": {
+    "erased": {
+      "erased": 4
+    },
+    "external_manual": {
+      "external_manual": 2
+    },
+    "not_erased": {
+      "not_erased": 1
+    }
+  },
+  "citation_check": {
+    "checked": 16,
+    "bad": 0
+  },
+  "retention_check": {
+    "matched": 0,
+    "missing": 1,
+    "spurious": 1
+  },
+  "entry_point_check": {
+    "matched": 1,
+    "missing": 0,
+    "spurious": 0
+  },
+  "run": {
+    "stop_condition": "accepted",
+    "steps": 9,
+    "tool_calls": 18,
+    "submits": 1,
+    "verify_rounds": 0,
+    "cost_usd": 0.439948,
+    "gate": null
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "case": "S08",
+  "arm": "advanced",
+  "seed": 2,
+  "split": "test",
+  "mode": "live",
+  "manifest_sha256": "71b0b39744cbafcd8c0101eb3c119db9045c42131d8892878842d3e509b31a40",
+  "record_path": "/Users/tun/Documents/micro1-hackathon/results/runs/advanced/S08/s2/record.json",
+  "tp": 12,
+  "fp": 2,
+  "fn": 1,
+  "precision": 0.857143,
+  "recall": 0.923077,
+  "f1": 0.888889,
+  "false_safe": 0,
+  "false_safe_tuples": [],
+  "unmatched_reaching_claims": 0,
+  "unmatched_reaching_tuples": [],
+  "draft": null,
+  "pass": false,
+  "missing": [
+    [
+      "upload",
+      "document_key"
+    ]
+  ],
+  "spurious": [
+    [
+      "upload",
+      "body"
+    ],
+    [
+      "upload",
+      "key"
+    ]
+  ],
+  "wrong_verdict": [],
+  "unverified": 0,
+  "invalid_verdict_for_kind": [],
+  "duplicates": [],
+  "verdict_confusion": {
+    "no_entry_point": {
+      "no_entry_point": 9
+    },
+    "no_schedule_evidenced": {
+      "no_schedule_evidenced": 3
+    }
+  },
+  "citation_check": {
+    "checked": 14,
+    "bad": 1
+  },
+  "retention_check": {
+    "matched": 0,
+    "missing": 0,
+    "spurious": 0
+  },
+  "entry_point_check": {
+    "matched": 0,
+    "missing": 0,
+    "spurious": 0
+  },
+  "run": {
+    "stop_condition": "render_failed",
+    "steps": 7,
+    "tool_calls": 16,
+    "submits": 1,
+    "verify_rounds": 0,
+    "cost_usd": 0.396245,
+    "gate": {
+      "risk": "high",
+      "decision": "approved",
+      "by": "simulated"
+    }
+  }
+}

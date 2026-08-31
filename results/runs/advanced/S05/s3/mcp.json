@@ -1,0 +1,29 @@
+{
+ "mcpServers": {
+  "art30": {
+   "type": "stdio",
+   "command": "/Users/tun/Documents/micro1-hackathon/.venv/bin/python3",
+   "args": [
+    "-m",
+    "art30.brains.mcp_server",
+    "--arm",
+    "advanced",
+    "--repo",
+    "/Users/tun/Documents/micro1-hackathon/evals/fixtures/synthetic/S05",
+    "--spool",
+    "/Users/tun/Documents/micro1-hackathon/results/runs/advanced/S05/s3/brain",
+    "--tool-budget",
+    "60",
+    "--submit-budget",
+    "5",
+    "--case",
+    "S05",
+    "--seed",
+    "3"
+   ],
+   "env": {
+    "PYTHONPATH": "/Users/tun/Documents/micro1-hackathon"
+   }
+  }
+ }
+}

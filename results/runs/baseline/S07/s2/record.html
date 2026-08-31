@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="art30 run base-S07-s2-c9dfb27">
+<title>Record of processing — quillrest</title>
+<style>
+:root { color-scheme: light; }
+body { background: #fff; color: #111; margin: 2rem auto; max-width: 60rem; padding: 0 1rem;
+       font-family: Georgia, "Times New Roman", serif; line-height: 1.5; }
+h1 { font-size: 1.6rem; } h2 { font-size: 1.25rem; margin-top: 2.5rem; } h3 { font-size: 1.05rem; }
+table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; font-size: 0.92rem; }
+caption { text-align: left; font-style: italic; padding-bottom: 0.3rem; }
+th, td { border: 1px solid #bbb; padding: 0.3rem 0.5rem; text-align: left; vertical-align: top; }
+th { background: #f2f2f2; }
+code { font-family: "DejaVu Sans Mono", Menlo, monospace; font-size: 0.86em; }
+code.cite { border-bottom: 1px dotted #666; }
+.boundary { border: 1px solid #444; padding: 0.8rem 1rem; margin: 1.2rem 0; }
+.verdict { font-weight: bold; letter-spacing: 0.02em; }
+.verdict.not-reaching { color: #8b0000; }
+tr.not-reaching td:first-child { border-left: 4px solid #8b0000; }
+.empty { font-style: italic; color: #444; }
+.footnotes { display: none; }
+@media print {
+  @page { size: A4; margin: 18mm 16mm 22mm 16mm; }
+  body { margin: 0; max-width: none; font-size: 10.5pt; }
+  section { break-before: page; }
+  .footnotes { display: block; font-size: 0.8rem; }
+  .running-footer { position: fixed; bottom: 0; left: 0; right: 0; font-size: 0.75rem;
+                    border-top: 1px solid #999; padding-top: 2mm; }
+}
+</style>
+</head>
+<body>
+<h1>Record of processing — quillrest</h1>
+<nav><ol>
+<li><a href="#a-inventory">A. Data inventory</a></li>
+<li><a href="#b-recipients">B. Recipients</a></li>
+<li><a href="#c-retention">C. Retention</a></li>
+<li><a href="#d-erasure">D. Erasure</a></li>
+<li><a href="#e-observations">E. Observations from the code (not findings)</a></li>
+<li><a href="#f-human">F. Requires human completion</a></li>
+<li><a href="#g-verification">G. Verification appendix</a></li>
+<li><a href="#h-evidence">H. Evidence index</a></li>
+</ol></nav>
+<table>
+<caption>Provenance</caption>
+<tr><th></th><th></th></tr>
+<tr><td>Case</td><td>S07 (synthetic)</td></tr>
+<tr><td>Arm</td><td>baseline</td></tr>
+<tr><td>Model</td><td>Claude (your login) — claude-opus-5, effort high</td></tr>
+<tr><td>Run</td><td><code>base-S07-s2-c9dfb27</code></td></tr>
+<tr><td>Code read</td><td><code>evals/fixtures/synthetic/S07</code>, sha256 <code>8cf9dccbd006</code></td></tr>
+<tr><td>Instructions</td><td>sha256 <code>43c86cec9e8c</code></td></tr>
+<tr><td>Generated</td><td>2026-08-31 15:52:16 UTC</td></tr>
+<tr><td>Trace</td><td><code>/Users/tun/Documents/micro1-hackathon/traces/baseline/S07-s2.jsonl</code></td></tr>
+<tr><td>Verification</td><td>1 submission, accepted on attempt 1</td></tr>
+<tr><td>Cost</td><td>USD 0.349494 (estimate at list prices), 15 tool calls</td></tr>
+</table>
+<p class="boundary">This is the technical half of a record of processing activities under Article 30(1) GDPR. It was derived from source code by static reading, on the date above. It is not legal advice, it states no legal basis, and it is incomplete until the cells marked <code>requires human completion</code> are filled by a person. It covers Article 30(1) — the controller&#x27;s own record — for the repository named above; a processor&#x27;s record under Article 30(2), and any personal data held outside this repository, are not in it.</p>
+<section id="a-inventory">
+<h2>A. Data inventory</h2>
+<p>Data subjects:</p>
+<p>account holders — inferred from model name (<code class="cite" title="class User(Base):">models.py:12</code>).</p>
+<p>support requesters — inferred from model name (<code class="cite" title="class SupportTicket(Base):">models.py:22</code>).</p>
+<h3>tickets — relational — <code class="cite" title="__tablename__ = &quot;tickets&quot;">models.py:23</code></h3>
+<p>Support tickets, each carrying a foreign key to the user.</p>
+<table>
+<caption>tickets — relational — <code class="cite" title="__tablename__ = &quot;tickets&quot;">models.py:23</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>subject</code></td><td>free_text_may_contain</td><td><code class="cite" title="subject = Column(String(255))">models.py:25</code></td><td></td></tr>
+<tr><td><code>notes</code></td><td>free_text_may_contain</td><td><code class="cite" title="notes = Column(Text)  # free text; may contain phone numbers">models.py:26</code></td><td>The comment on the column says the free text may contain phone numbers.</td></tr>
+<tr><td><code>opened_at</code></td><td>behavioural</td><td><code class="cite" title="opened_at = Column(DateTime)">models.py:27</code></td><td>Timestamp on a row carrying a foreign key to the user.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="user_id = Column(Integer, ForeignKey(&quot;users.id&quot;))">models.py:28</code>.</p>
+<h3>users — relational — <code class="cite" title="__tablename__ = &quot;users&quot;">models.py:13</code></h3>
+<p>Table of user accounts defined with SQLAlchemy.</p>
+<table>
+<caption>users — relational — <code class="cite" title="__tablename__ = &quot;users&quot;">models.py:13</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>email</code></td><td>contact</td><td><code class="cite" title="email = Column(String(255), nullable=False)">models.py:15</code></td><td></td></tr>
+<tr><td><code>full_name</code></td><td>identifier</td><td><code class="cite" title="full_name = Column(String(255))">models.py:16</code></td><td></td></tr>
+<tr><td><code>metadata_json</code></td><td>free_text_may_contain</td><td><code class="cite" title="metadata_json = Column(JSON)  # arbitrary key/value set by the client; support pastes contact details in here">models.py:17</code></td><td>The comment on the column says the value is an arbitrary key/value set by the client and that support pastes contact details into it.</td></tr>
+<tr><td><code>deleted_at</code></td><td>technical</td><td><code class="cite" title="deleted_at = Column(DateTime)">models.py:18</code></td><td>Soft-delete marker column on the user row.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="class User(Base):">models.py:12</code>.</p>
+<h3>request_log — log — <code class="cite" title="logger = logging.getLogger(&quot;request_log&quot;)">middleware.py:5</code></h3>
+<p>Python logging logger that records the client IP address and the request path for every request.</p>
+<table>
+<caption>request_log — log — <code class="cite" title="logger = logging.getLogger(&quot;request_log&quot;)">middleware.py:5</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>ip_address</code></td><td>technical</td><td><code class="cite" title="ip_address = request.client.host">middleware.py:9</code></td><td>Read from the request client host and written to the log line at middleware.py:11.</td></tr>
+</table>
+<p>No link to a data subject found in code.</p>
+<p>Not scanned:</p>
+<p><code>README.md</code> (not Python).</p>
+<p><code>requirements.txt</code> (not Python).</p>
+<ol class="footnotes">
+<li>models.py:12: class User(Base):</li>
+<li>models.py:22: class SupportTicket(Base):</li>
+<li>models.py:23: __tablename__ = &quot;tickets&quot;</li>
+<li>models.py:25: subject = Column(String(255))</li>
+<li>models.py:26: notes = Column(Text)  # free text; may contain phone numbers</li>
+<li>models.py:27: opened_at = Column(DateTime)</li>
+<li>models.py:28: user_id = Column(Integer, ForeignKey(&quot;users.id&quot;))</li>
+<li>models.py:13: __tablename__ = &quot;users&quot;</li>
+<li>models.py:15: email = Column(String(255), nullable=False)</li>
+<li>models.py:16: full_name = Column(String(255))</li>
+<li>models.py:17: metadata_json = Column(JSON)  # arbitrary key/value set by the client; support pastes contact details in here</li>
+<li>models.py:18: deleted_at = Column(DateTime)</li>
+<li>middleware.py:5: logger = logging.getLogger(&quot;request_log&quot;)</li>
+<li>middleware.py:9: ip_address = request.client.host</li>
+</ol>
+</section>
+<section id="b-recipients">
+<h2>B. Recipients</h2>
+<p>No store of kind third_party was found in the code.</p>
+</section>
+<section id="c-retention">
+<h2>C. Retention</h2>
+<table>
+<caption>C. Retention</caption>
+<tr><th>Store</th><th>Category</th><th>Envisaged limit</th><th>Evidence</th><th>Justification</th></tr>
+<tr><td>tickets</td><td>—</td><td>NO TIMER EVIDENCED</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>users</td><td>—</td><td>NO TIMER EVIDENCED</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>request_log</td><td>—</td><td>NO TIMER EVIDENCED</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+<p>A period found in code is evidence for a retention schedule. The schedule itself is a policy the controller sets, and the reason for each period belongs in the justification column.</p>
+</section>
+<section id="d-erasure">
+<h2>D. Erasure</h2>
+<p>Erasure entry points: <code>close_account</code> — route — <code class="cite" title="def close_account(session, user_id):">api/account.py:11</code> (Loads the user row, calls anonymize_user and commits.).</p>
+<table>
+<caption>D. Erasure</caption>
+<tr><th>Store</th><th>Verdict</th><th>Evidence</th><th>Note</th></tr>
+<tr class="not-reaching"><td>users</td><td><span class="verdict not-reaching">PSEUDONYMISED</span></td><td><code class="cite" title="def close_account(session, user_id):">api/account.py:11</code><br><code class="cite" title="anonymize_user(user)">api/account.py:14</code><br><code class="cite" title="session.commit()">api/account.py:15</code><br><code class="cite" title="user.email = hashlib.sha256(user.email.encode()).hexdigest()">privacy.py:9</code></td><td>close_account replaces email with its SHA-256 hash and leaves the row in place, so the row still points at the same person; no delete statement is issued anywhere in the repository.</td></tr>
+<tr><td>↳ <code>full_name</code></td><td><span class="verdict reaching">ANONYMISED</span></td><td><code class="cite" title="anonymize_user(user)">api/account.py:14</code><br><code class="cite" title="user.full_name = ANONYMISED_NAME">privacy.py:10</code></td><td>close_account overwrites full_name with the constant string &quot;removed&quot;, which does not carry the previous value.</td></tr>
+<tr class="not-reaching"><td>↳ <code>metadata_json</code></td><td><span class="verdict not-reaching">NOT ERASED</span></td><td><code class="cite" title="def anonymize_user(user):">privacy.py:8</code></td><td>anonymize_user writes only email and full_name; no code writes or clears metadata_json.</td></tr>
+<tr class="not-reaching"><td>↳ <code>deleted_at</code></td><td><span class="verdict not-reaching">NOT ERASED</span></td><td><code class="cite" title="anonymize_user(user)">api/account.py:14</code><br><code class="cite" title="deleted_at = Column(DateTime)">models.py:18</code></td><td>The column is declared but no code in the repository sets it, and no job reads it.</td></tr>
+<tr class="not-reaching"><td>request_log</td><td><span class="verdict not-reaching">NOT ERASED</span></td><td><code class="cite" title="def close_account(session, user_id):">api/account.py:11</code><br><code class="cite" title="logger.info(&quot;%s %s&quot;, ip_address, path)">middleware.py:11</code></td><td>The deletion route touches only the user row; nothing in the repository removes or rotates the log records written by log_request.</td></tr>
+<tr class="not-reaching"><td>tickets</td><td><span class="verdict not-reaching">NOT ERASED</span></td><td><code class="cite" title="anonymize_user(user)">api/account.py:14</code><br><code class="cite" title="tickets = relationship(&quot;SupportTicket&quot;)">models.py:19</code><br><code class="cite" title="user_id = Column(Integer, ForeignKey(&quot;users.id&quot;))">models.py:28</code></td><td>close_account deletes no row, and the User.tickets relationship carries no cascade argument, so the ticket rows and their columns stay as they are.</td></tr>
+</table>
+<ol class="footnotes">
+<li>api/account.py:11: def close_account(session, user_id):</li>
+<li>api/account.py:14: anonymize_user(user)</li>
+<li>api/account.py:15: session.commit()</li>
+<li>privacy.py:9: user.email = hashlib.sha256(user.email.encode()).hexdigest()</li>
+<li>privacy.py:10: user.full_name = ANONYMISED_NAME</li>
+<li>privacy.py:8: def anonymize_user(user):</li>
+<li>models.py:18: deleted_at = Column(DateTime)</li>
+<li>middleware.py:11: logger.info(&quot;%s %s&quot;, ip_address, path)</li>
+<li>models.py:19: tickets = relationship(&quot;SupportTicket&quot;)</li>
+<li>models.py:28: user_id = Column(Integer, ForeignKey(&quot;users.id&quot;))</li>
+</ol>
+</section>
+<section id="e-observations">
+<h2>E. Observations from the code (not findings)</h2>
+<p>Module names. A module name says what the code was called, not what it is for. Article 30(1)(b) purposes are in section F.</p>
+<table>
+<caption>E. Observations from the code (not findings)</caption>
+<tr><th>Name</th><th>File</th></tr>
+<tr><td>privacy</td><td><code>privacy.py</code></td></tr>
+<tr><td>api.account</td><td><code>api/account.py</code></td></tr>
+<tr><td>api.profile</td><td><code>api/profile.py</code></td></tr>
+<tr><td>middleware</td><td><code>middleware.py</code></td></tr>
+<tr><td>catalog</td><td><code>catalog.py</code></td></tr>
+</table>
+<p>Region hints. A region string says where a service was configured to run. It is not a finding about a transfer under Article 30(1)(e); that cell is in section F.</p>
+<table>
+<caption>E. Observations from the code (not findings)</caption>
+<tr><th>Value</th><th>Evidence</th></tr>
+<tr><td><code>eu-central-1</code></td><td><code class="cite" title="AWS_REGION = &quot;eu-central-1&quot;">config.py:7</code></td></tr>
+</table>
+<p>Security measures. Technical measures under Article 32(1)(a) only, one line each. The organisational half is in section F.</p>
+<table>
+<caption>E. Observations from the code (not findings)</caption>
+<tr><th>Measure</th><th>Evidence</th><th>Symbol</th></tr>
+<tr><td>pseudonymisation</td><td><code class="cite" title="user.email = hashlib.sha256(user.email.encode()).hexdigest()">privacy.py:9</code></td><td><code>sha256</code></td></tr>
+<tr><td>hashing</td><td><code class="cite" title="import hashlib">privacy.py:3</code></td><td><code>hashlib</code></td></tr>
+</table>
+<ol class="footnotes">
+<li>config.py:7: AWS_REGION = &quot;eu-central-1&quot;</li>
+<li>privacy.py:9: user.email = hashlib.sha256(user.email.encode()).hexdigest()</li>
+<li>privacy.py:3: import hashlib</li>
+</ol>
+</section>
+<section id="f-human">
+<h2>F. Requires human completion</h2>
+<table>
+<caption>F. Requires human completion</caption>
+<tr><th>Cell</th><th>Article 30(1)</th><th>Value</th></tr>
+<tr><td>Controller — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Joint controller — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Representative — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Data protection officer — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Purposes of the processing</td><td>(b)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Confirmation of data-subject categories</td><td>(c)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of personal data held outside this repository</td><td>(c)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — occurs</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — countries</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — safeguards</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Justification for each retention period</td><td>(f)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Organisational security measures</td><td>(g)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Special categories of data (Article 9)</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Legal basis</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+<p>Processing activities. Article 30 records processing activities; this document records stores. No activity grouping is derived from code. The stores in section A are the input to the fiche below, one copy per activity.</p>
+<table>
+<caption>F. Requires human completion</caption>
+<tr><th>Fiche field</th><th>Value</th></tr>
+<tr><td>Activity name</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Purposes</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of data subjects</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of personal data</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of recipients</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfers outside the EU</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Retention</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Security measures</td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+</section>
+<section id="g-verification">
+<h2>G. Verification appendix</h2>
+<p>Verification: none. This record was accepted on schema validity alone.</p>
+</section>
+<section id="h-evidence">
+<h2>H. Evidence index</h2>
+<table>
+<caption>H. Evidence index</caption>
+<tr><th>Evidence</th><th>Symbol</th><th>Sections</th></tr>
+<tr><td><code class="cite" title="def close_account(session, user_id):">api/account.py:11</code></td><td><code>close_account</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="anonymize_user(user)">api/account.py:14</code></td><td><code>anonymize_user</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="session.commit()">api/account.py:15</code></td><td><code>commit</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="AWS_REGION = &quot;eu-central-1&quot;">config.py:7</code></td><td><code>eu-central-1</code></td><td>E</td></tr>
+<tr><td><code class="cite" title="logger = logging.getLogger(&quot;request_log&quot;)">middleware.py:5</code></td><td><code>request_log</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="ip_address = request.client.host">middleware.py:9</code></td><td><code>ip_address</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="logger.info(&quot;%s %s&quot;, ip_address, path)">middleware.py:11</code></td><td><code>logger</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="class User(Base):">models.py:12</code></td><td>—</td><td>A</td></tr>
+<tr><td><code class="cite" title="__tablename__ = &quot;users&quot;">models.py:13</code></td><td><code>users</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="email = Column(String(255), nullable=False)">models.py:15</code></td><td><code>email</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="full_name = Column(String(255))">models.py:16</code></td><td><code>full_name</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="metadata_json = Column(JSON)  # arbitrary key/value set by the client; support pastes contact details in here">models.py:17</code></td><td><code>metadata_json</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="deleted_at = Column(DateTime)">models.py:18</code></td><td><code>deleted_at</code></td><td>A, D</td></tr>
+<tr><td><code class="cite" title="tickets = relationship(&quot;SupportTicket&quot;)">models.py:19</code></td><td><code>relationship</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="class SupportTicket(Base):">models.py:22</code></td><td>—</td><td>A</td></tr>
+<tr><td><code class="cite" title="__tablename__ = &quot;tickets&quot;">models.py:23</code></td><td><code>tickets</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="subject = Column(String(255))">models.py:25</code></td><td><code>subject</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="notes = Column(Text)  # free text; may contain phone numbers">models.py:26</code></td><td><code>notes</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="opened_at = Column(DateTime)">models.py:27</code></td><td><code>opened_at</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="user_id = Column(Integer, ForeignKey(&quot;users.id&quot;))">models.py:28</code></td><td><code>user_id</code></td><td>A, D</td></tr>
+<tr><td><code class="cite" title="import hashlib">privacy.py:3</code></td><td><code>hashlib</code></td><td>E</td></tr>
+<tr><td><code class="cite" title="def anonymize_user(user):">privacy.py:8</code></td><td><code>anonymize_user</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="user.email = hashlib.sha256(user.email.encode()).hexdigest()">privacy.py:9</code></td><td><code>hashlib</code>, <code>sha256</code></td><td>D, E</td></tr>
+<tr><td><code class="cite" title="user.full_name = ANONYMISED_NAME">privacy.py:10</code></td><td><code>ANONYMISED_NAME</code></td><td>D</td></tr>
+</table>
+<ol class="footnotes">
+<li>api/account.py:11: def close_account(session, user_id):</li>
+<li>api/account.py:14: anonymize_user(user)</li>
+<li>api/account.py:15: session.commit()</li>
+<li>config.py:7: AWS_REGION = &quot;eu-central-1&quot;</li>
+<li>middleware.py:5: logger = logging.getLogger(&quot;request_log&quot;)</li>
+<li>middleware.py:9: ip_address = request.client.host</li>
+<li>middleware.py:11: logger.info(&quot;%s %s&quot;, ip_address, path)</li>
+<li>models.py:12: class User(Base):</li>
+<li>models.py:13: __tablename__ = &quot;users&quot;</li>
+<li>models.py:15: email = Column(String(255), nullable=False)</li>
+<li>models.py:16: full_name = Column(String(255))</li>
+<li>models.py:17: metadata_json = Column(JSON)  # arbitrary key/value set by the client; support pastes contact details in here</li>
+<li>models.py:18: deleted_at = Column(DateTime)</li>
+<li>models.py:19: tickets = relationship(&quot;SupportTicket&quot;)</li>
+<li>models.py:22: class SupportTicket(Base):</li>
+<li>models.py:23: __tablename__ = &quot;tickets&quot;</li>
+<li>models.py:25: subject = Column(String(255))</li>
+<li>models.py:26: notes = Column(Text)  # free text; may contain phone numbers</li>
+<li>models.py:27: opened_at = Column(DateTime)</li>
+<li>models.py:28: user_id = Column(Integer, ForeignKey(&quot;users.id&quot;))</li>
+<li>privacy.py:3: import hashlib</li>
+<li>privacy.py:8: def anonymize_user(user):</li>
+<li>privacy.py:9: user.email = hashlib.sha256(user.email.encode()).hexdigest()</li>
+<li>privacy.py:10: user.full_name = ANONYMISED_NAME</li>
+</ol>
+</section>
+<div class="running-footer">base-S07-s2-c9dfb27 — not legal advice; the technical half of an Article 30(1) record.</div>
+</body>
+</html>

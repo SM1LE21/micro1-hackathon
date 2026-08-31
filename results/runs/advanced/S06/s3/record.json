@@ -1,0 +1,354 @@
+{
+ "activities": [],
+ "data_subjects": [
+  {
+   "basis": "model_name",
+   "file": "accounts/models.py",
+   "label": "account holders",
+   "line": 9
+  }
+ ],
+ "entry_points": [
+  {
+   "admin_only": false,
+   "file": "accounts/views.py",
+   "kind": "route",
+   "line": 9,
+   "name": "delete_account",
+   "note": "HTTP route accounts/<int:pk>/delete/ calls Account.delete() on the instance."
+  },
+  {
+   "admin_only": true,
+   "file": "accounts/admin.py",
+   "kind": "admin",
+   "line": 7,
+   "name": "register",
+   "note": "Account is registered in the Django admin, which offers its own delete action."
+  }
+ ],
+ "hints": {
+  "observed_module_names": [
+   {
+    "file": "accounts/models.py",
+    "name": "accounts"
+   },
+   {
+    "file": "catalog/models.py",
+    "name": "catalog"
+   }
+  ],
+  "observed_region_hints": [],
+  "security_evidence": [
+   {
+    "file": "northgate/settings.py",
+    "line": 10,
+    "measure": "encryption_in_transit",
+    "symbol": "SECURE_SSL_REDIRECT"
+   }
+  ]
+ },
+ "human": {
+  "controller": {
+   "contact": null,
+   "name": null
+  },
+  "data_categories_outside_code": null,
+  "data_subject_categories_confirmed": null,
+  "dpo": {
+   "contact": null,
+   "name": null
+  },
+  "joint_controller": {
+   "contact": null,
+   "name": null
+  },
+  "legal_basis": null,
+  "purposes": null,
+  "representative": {
+   "contact": null,
+   "name": null
+  },
+  "retention_justification": null,
+  "security_organisational": null,
+  "special_categories": null,
+  "transfers": {
+   "countries": null,
+   "occurs": null,
+   "safeguards": null
+  }
+ },
+ "provenance": {
+  "arm": "advanced",
+  "brain": "claude",
+  "brain_label": "Claude (your login)",
+  "brain_model": "claude-opus-5",
+  "case": "S06",
+  "cli_total_cost_usd": 0.368544,
+  "config": {
+   "brain": "claude",
+   "max_tokens": 32000,
+   "overridden": [],
+   "submit_budget": 5,
+   "tool_budget": 60
+  },
+  "cost_source": "cli_estimate",
+  "cost_usd": 0.368544,
+  "effort": "high",
+  "finished_at": "2026-08-31T15:49:03Z",
+  "fixture": {
+   "id": "S06",
+   "path": "evals/fixtures/synthetic/S06",
+   "sha256": "ccaec9511690"
+  },
+  "gate": {
+   "at": "2026-08-31T15:49:03Z",
+   "by": "simulated",
+   "decision": "approved",
+   "risk": "low",
+   "wait_s": 0.0
+  },
+  "instruction_sha256": "43c86cec9e8c",
+  "mode": "live",
+  "model": "claude-opus-5",
+  "run_id": "adv-S06-s3-7982908",
+  "seed": 3,
+  "started_at": "2026-08-31T15:47:56Z",
+  "tool_calls": 14,
+  "trace": "/Users/tun/Documents/micro1-hackathon/traces/advanced/S06-s3.jsonl"
+ },
+ "repository": "northgate",
+ "retention": [],
+ "schema_version": "1",
+ "stores": [
+  {
+   "declared_at": {
+    "file": "accounts/models.py",
+    "line": 17,
+    "symbol": "accounts_account"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "accounts/views.py",
+      "line": 12,
+      "symbol": "account.delete"
+     },
+     {
+      "file": "accounts/models.py",
+      "line": 9,
+      "symbol": "Account"
+     }
+    ],
+    "note": "The delete_account view loads the row and calls delete() on it, which removes the row.",
+    "timer_days": null,
+    "verdict": "erased"
+   },
+   "fields": [
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "accounts/models.py",
+     "line": 11,
+     "name": "email",
+     "note": null
+    },
+    {
+     "category": "identifier",
+     "erasure": null,
+     "file": "accounts/models.py",
+     "line": 12,
+     "name": "full_name",
+     "note": null
+    },
+    {
+     "category": "behavioural",
+     "erasure": null,
+     "file": "accounts/models.py",
+     "line": 14,
+     "name": "joined_at",
+     "note": null
+    }
+   ],
+   "kind": "relational",
+   "name": "accounts_account",
+   "note": "Table holding the account holder's name, email and join time.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "accounts/models.py",
+    "line": 9
+   }
+  },
+  {
+   "declared_at": {
+    "file": "accounts/models.py",
+    "line": 13,
+    "symbol": "avatar"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "accounts/views.py",
+      "line": 12,
+      "symbol": "account.delete"
+     },
+     {
+      "file": "accounts/signals.py",
+      "line": 9,
+      "symbol": "post_delete"
+     },
+     {
+      "file": "accounts/signals.py",
+      "line": 11,
+      "symbol": "instance.avatar.delete"
+     },
+     {
+      "file": "accounts/apps.py",
+      "line": 11,
+      "symbol": "signals"
+     }
+    ],
+    "note": "A post_delete receiver registered for sender=Account deletes the file, and the app config imports the signals module in ready().",
+    "timer_days": null,
+    "verdict": "erased"
+   },
+   "fields": [
+    {
+     "category": "identifier",
+     "erasure": null,
+     "file": "accounts/models.py",
+     "line": 13,
+     "name": "avatar",
+     "note": "Image file uploaded under account/avatars/ and stored outside the database row."
+    }
+   ],
+   "kind": "object_storage",
+   "name": "account.avatar",
+   "note": "Uploaded avatar image file for the account.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "accounts/models.py",
+    "line": 13
+   }
+  },
+  {
+   "declared_at": {
+    "file": "accounts/models.py",
+    "line": 27,
+    "symbol": "accounts_comment"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "accounts/views.py",
+      "line": 12,
+      "symbol": "account.delete"
+     },
+     {
+      "file": "accounts/models.py",
+      "line": 24,
+      "symbol": "DB_CASCADE"
+     }
+    ],
+    "note": "The foreign key uses on_delete=DB_CASCADE, so the database removes the comment rows with the account row and no post_delete signal is sent for them.",
+    "timer_days": null,
+    "verdict": "erased"
+   },
+   "fields": [
+    {
+     "category": "free_text_may_contain",
+     "erasure": null,
+     "file": "accounts/models.py",
+     "line": 22,
+     "name": "body",
+     "note": "Free text typed by the account holder; the schema does not constrain what it holds."
+    },
+    {
+     "category": "behavioural",
+     "erasure": null,
+     "file": "accounts/models.py",
+     "line": 23,
+     "name": "posted_at",
+     "note": null
+    }
+   ],
+   "kind": "relational",
+   "name": "accounts_comment",
+   "note": "Comments written by an account holder.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "accounts/models.py",
+    "line": 24
+   }
+  },
+  {
+   "declared_at": {
+    "file": "accounts/models.py",
+    "line": 37,
+    "symbol": "accounts_address"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "accounts/views.py",
+      "line": 12,
+      "symbol": "account.delete"
+     },
+     {
+      "file": "accounts/models.py",
+      "line": 34,
+      "symbol": "CASCADE"
+     }
+    ],
+    "note": "The foreign key uses on_delete=models.CASCADE, so Django's collector deletes the address rows with the account row.",
+    "timer_days": null,
+    "verdict": "erased"
+   },
+   "fields": [
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "accounts/models.py",
+     "line": 32,
+     "name": "street",
+     "note": null
+    },
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "accounts/models.py",
+     "line": 33,
+     "name": "postcode",
+     "note": null
+    }
+   ],
+   "kind": "relational",
+   "name": "accounts_address",
+   "note": "Postal address rows attached to an account.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "accounts/models.py",
+    "line": 34
+   }
+  }
+ ],
+ "unscanned": [
+  {
+   "path": "README.md",
+   "reason": "not_python"
+  },
+  {
+   "path": "requirements.txt",
+   "reason": "not_python"
+  }
+ ],
+ "verification": {
+  "accepted_on_attempt": 1,
+  "bad_citations_resolved": [],
+  "conservative_divergences": [],
+  "missing_stores_resolved": [],
+  "rejected_history": [],
+  "rule_set_sha": "e9a260adc28b",
+  "submits": 1,
+  "unverified": []
+ }
+}

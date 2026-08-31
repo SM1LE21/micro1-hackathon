@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="art30 run base-S05-s2-18d2007">
+<title>Record of processing — pulsedeck</title>
+<style>
+:root { color-scheme: light; }
+body { background: #fff; color: #111; margin: 2rem auto; max-width: 60rem; padding: 0 1rem;
+       font-family: Georgia, "Times New Roman", serif; line-height: 1.5; }
+h1 { font-size: 1.6rem; } h2 { font-size: 1.25rem; margin-top: 2.5rem; } h3 { font-size: 1.05rem; }
+table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; font-size: 0.92rem; }
+caption { text-align: left; font-style: italic; padding-bottom: 0.3rem; }
+th, td { border: 1px solid #bbb; padding: 0.3rem 0.5rem; text-align: left; vertical-align: top; }
+th { background: #f2f2f2; }
+code { font-family: "DejaVu Sans Mono", Menlo, monospace; font-size: 0.86em; }
+code.cite { border-bottom: 1px dotted #666; }
+.boundary { border: 1px solid #444; padding: 0.8rem 1rem; margin: 1.2rem 0; }
+.verdict { font-weight: bold; letter-spacing: 0.02em; }
+.verdict.not-reaching { color: #8b0000; }
+tr.not-reaching td:first-child { border-left: 4px solid #8b0000; }
+.empty { font-style: italic; color: #444; }
+.footnotes { display: none; }
+@media print {
+  @page { size: A4; margin: 18mm 16mm 22mm 16mm; }
+  body { margin: 0; max-width: none; font-size: 10.5pt; }
+  section { break-before: page; }
+  .footnotes { display: block; font-size: 0.8rem; }
+  .running-footer { position: fixed; bottom: 0; left: 0; right: 0; font-size: 0.75rem;
+                    border-top: 1px solid #999; padding-top: 2mm; }
+}
+</style>
+</head>
+<body>
+<h1>Record of processing — pulsedeck</h1>
+<nav><ol>
+<li><a href="#a-inventory">A. Data inventory</a></li>
+<li><a href="#b-recipients">B. Recipients</a></li>
+<li><a href="#c-retention">C. Retention</a></li>
+<li><a href="#d-erasure">D. Erasure</a></li>
+<li><a href="#e-observations">E. Observations from the code (not findings)</a></li>
+<li><a href="#f-human">F. Requires human completion</a></li>
+<li><a href="#g-verification">G. Verification appendix</a></li>
+<li><a href="#h-evidence">H. Evidence index</a></li>
+</ol></nav>
+<table>
+<caption>Provenance</caption>
+<tr><th></th><th></th></tr>
+<tr><td>Case</td><td>S05 (synthetic)</td></tr>
+<tr><td>Arm</td><td>baseline</td></tr>
+<tr><td>Model</td><td>Claude (your login) — claude-opus-5, effort high</td></tr>
+<tr><td>Run</td><td><code>base-S05-s2-18d2007</code></td></tr>
+<tr><td>Code read</td><td><code>evals/fixtures/synthetic/S05</code>, sha256 <code>1c7af597478a</code></td></tr>
+<tr><td>Instructions</td><td>sha256 <code>43c86cec9e8c</code></td></tr>
+<tr><td>Generated</td><td>2026-08-31 15:36:59 UTC</td></tr>
+<tr><td>Trace</td><td><code>/Users/tun/Documents/micro1-hackathon/traces/baseline/S05-s2.jsonl</code></td></tr>
+<tr><td>Verification</td><td>1 submission, accepted on attempt 1</td></tr>
+<tr><td>Cost</td><td>USD 0.439948 (estimate at list prices), 18 tool calls</td></tr>
+</table>
+<p class="boundary">This is the technical half of a record of processing activities under Article 30(1) GDPR. It was derived from source code by static reading, on the date above. It is not legal advice, it states no legal basis, and it is incomplete until the cells marked <code>requires human completion</code> are filled by a person. It covers Article 30(1) — the controller&#x27;s own record — for the repository named above; a processor&#x27;s record under Article 30(2), and any personal data held outside this repository, are not in it.</p>
+<section id="a-inventory">
+<h2>A. Data inventory</h2>
+<p>Data subjects:</p>
+<p>account holders — inferred from model name (<code class="cite" title="class User(Base):">models.py:11</code>).</p>
+<p>account holders — inferred from route name (<code class="cite" title="def delete_account(session, user_id):">api/account.py:10</code>).</p>
+<h3>users — relational — <code class="cite" title="__tablename__ = &quot;users&quot;">models.py:12</code></h3>
+<p>SQLAlchemy table holding the account row.</p>
+<table>
+<caption>users — relational — <code class="cite" title="__tablename__ = &quot;users&quot;">models.py:12</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>email</code></td><td>contact</td><td><code class="cite" title="email = Column(String(255), nullable=False)">models.py:14</code></td><td></td></tr>
+<tr><td><code>full_name</code></td><td>identifier</td><td><code class="cite" title="full_name = Column(String(255))">models.py:15</code></td><td></td></tr>
+<tr><td><code>marketing_opt_in</code></td><td>behavioural</td><td><code class="cite" title="marketing_opt_in = Column(Boolean)">models.py:16</code></td><td></td></tr>
+<tr><td><code>created_at</code></td><td>behavioural</td><td><code class="cite" title="created_at = Column(DateTime)">models.py:17</code></td><td></td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="class User(Base):">models.py:11</code>.</p>
+<h3>sessions: — cache — <code class="cite" title="cache.setex(f&quot;sessions:{user.email}&quot;, SESSION_TTL_SECONDS, token)">cache.py:12</code></h3>
+<p>Redis key namespace written on login with the session token.</p>
+<table>
+<caption>sessions: — cache — <code class="cite" title="cache.setex(f&quot;sessions:{user.email}&quot;, SESSION_TTL_SECONDS, token)">cache.py:12</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>email</code></td><td>contact</td><td><code class="cite" title="cache.setex(f&quot;sessions:{user.email}&quot;, SESSION_TTL_SECONDS, token)">cache.py:12</code></td><td>The cache key is built from the user&#x27;s email address.</td></tr>
+<tr><td><code>token</code></td><td>technical</td><td><code class="cite" title="cache.setex(f&quot;sessions:{user.email}&quot;, SESSION_TTL_SECONDS, token)">cache.py:12</code></td><td>The session token stored as the value under that key.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="cache.setex(f&quot;sessions:{user.email}&quot;, SESSION_TTL_SECONDS, token)">cache.py:12</code>.</p>
+<h3>mixpanel — third_party — <code class="cite" title="mp.track(user.email, &quot;account_created&quot;)">analytics.py:11</code></h3>
+<p>Mixpanel event stream written at signup.</p>
+<table>
+<caption>mixpanel — third_party — <code class="cite" title="mp.track(user.email, &quot;account_created&quot;)">analytics.py:11</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>email</code></td><td>contact</td><td><code class="cite" title="mp.track(user.email, &quot;account_created&quot;)">analytics.py:11</code></td><td>The email address is passed as the distinct id of the tracked event.</td></tr>
+<tr><td><code>account_created</code></td><td>behavioural</td><td><code class="cite" title="mp.track(user.email, &quot;account_created&quot;)">analytics.py:11</code></td><td>The event name recorded against that person.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="mp.track(user.email, &quot;account_created&quot;)">analytics.py:11</code>.</p>
+<h3>sendgrid — third_party — <code class="cite" title="sg.send(to=user.email, subject=&quot;Welcome&quot;, body=body)">mail.py:12</code></h3>
+<p>Transactional mail sent through the SendGrid API client.</p>
+<table>
+<caption>sendgrid — third_party — <code class="cite" title="sg.send(to=user.email, subject=&quot;Welcome&quot;, body=body)">mail.py:12</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>email</code></td><td>contact</td><td><code class="cite" title="sg.send(to=user.email, subject=&quot;Welcome&quot;, body=body)">mail.py:12</code></td><td></td></tr>
+<tr><td><code>body</code></td><td>free_text_may_contain</td><td><code class="cite" title="body = f&quot;Welcome, {user.full_name}.&quot;">mail.py:11</code></td><td>The message body is built from the user&#x27;s full name.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="sg.send(to=user.email, subject=&quot;Welcome&quot;, body=body)">mail.py:12</code>.</p>
+<h3>sentry_sdk — third_party — <code class="cite" title="sentry_sdk.init(dsn=SENTRY_DSN)">app.py:18</code></h3>
+<p>Error tracker initialised when app.py is imported.</p>
+<table>
+<caption>sentry_sdk — third_party — <code class="cite" title="sentry_sdk.init(dsn=SENTRY_DSN)">app.py:18</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>url</code></td><td>technical</td><td><code class="cite" title="&quot;url&quot;,">app.py:9</code></td><td>Listed in the module&#x27;s own SENTRY_DEFAULT_FIELDS as sent by default.</td></tr>
+<tr><td><code>query_string</code></td><td>technical</td><td><code class="cite" title="&quot;query_string&quot;,">app.py:10</code></td><td>Listed in the module&#x27;s own SENTRY_DEFAULT_FIELDS as sent by default.</td></tr>
+<tr><td><code>request_body</code></td><td>free_text_may_contain</td><td><code class="cite" title="&quot;request_body&quot;,">app.py:11</code></td><td>Listed in the module&#x27;s own SENTRY_DEFAULT_FIELDS as sent by default.</td></tr>
+<tr><td><code>local_variables</code></td><td>free_text_may_contain</td><td><code class="cite" title="&quot;local_variables&quot;,">app.py:12</code></td><td>Listed in the module&#x27;s own SENTRY_DEFAULT_FIELDS as sent by default.</td></tr>
+</table>
+<p>No link to a data subject found in code.</p>
+<h3>stripe.Customer — third_party — <code class="cite" title="return stripe.Customer.create(">billing.py:11</code></h3>
+<p>Stripe customer record created at signup.</p>
+<table>
+<caption>stripe.Customer — third_party — <code class="cite" title="return stripe.Customer.create(">billing.py:11</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>email</code></td><td>contact</td><td><code class="cite" title="email=user.email,">billing.py:12</code></td><td></td></tr>
+<tr><td><code>name</code></td><td>identifier</td><td><code class="cite" title="name=user.full_name,">billing.py:13</code></td><td>The user&#x27;s full name is sent as the customer name.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="email=user.email,">billing.py:12</code>.</p>
+<p>Not scanned:</p>
+<p><code>README.md</code> (not Python).</p>
+<p><code>requirements.txt</code> (not Python).</p>
+<ol class="footnotes">
+<li>models.py:11: class User(Base):</li>
+<li>api/account.py:10: def delete_account(session, user_id):</li>
+<li>models.py:12: __tablename__ = &quot;users&quot;</li>
+<li>models.py:14: email = Column(String(255), nullable=False)</li>
+<li>models.py:15: full_name = Column(String(255))</li>
+<li>models.py:16: marketing_opt_in = Column(Boolean)</li>
+<li>models.py:17: created_at = Column(DateTime)</li>
+<li>cache.py:12: cache.setex(f&quot;sessions:{user.email}&quot;, SESSION_TTL_SECONDS, token)</li>
+<li>analytics.py:11: mp.track(user.email, &quot;account_created&quot;)</li>
+<li>mail.py:12: sg.send(to=user.email, subject=&quot;Welcome&quot;, body=body)</li>
+<li>mail.py:11: body = f&quot;Welcome, {user.full_name}.&quot;</li>
+<li>app.py:18: sentry_sdk.init(dsn=SENTRY_DSN)</li>
+<li>app.py:9: &quot;url&quot;,</li>
+<li>app.py:10: &quot;query_string&quot;,</li>
+<li>app.py:11: &quot;request_body&quot;,</li>
+<li>app.py:12: &quot;local_variables&quot;,</li>
+<li>billing.py:11: return stripe.Customer.create(</li>
+<li>billing.py:12: email=user.email,</li>
+<li>billing.py:13: name=user.full_name,</li>
+</ol>
+</section>
+<section id="b-recipients">
+<h2>B. Recipients</h2>
+<table>
+<caption>B. Recipients</caption>
+<tr><th>Recipient</th><th>Fields disclosed</th><th>Evidence</th><th>Recipient kind</th></tr>
+<tr><td>mixpanel</td><td><code>email</code> (contact), <code>account_created</code> (behavioural)</td><td><code class="cite" title="mp.track(user.email, &quot;account_created&quot;)">analytics.py:11</code>, <code class="cite" title="mp.track(user.email, &quot;account_created&quot;)">analytics.py:11</code></td><td><span class="empty">UNKNOWN — requires human completion</span></td></tr>
+<tr><td>sendgrid</td><td><code>email</code> (contact), <code>body</code> (free_text_may_contain)</td><td><code class="cite" title="sg.send(to=user.email, subject=&quot;Welcome&quot;, body=body)">mail.py:12</code>, <code class="cite" title="body = f&quot;Welcome, {user.full_name}.&quot;">mail.py:11</code></td><td><span class="empty">UNKNOWN — requires human completion</span></td></tr>
+<tr><td>sentry_sdk</td><td><code>url</code> (technical), <code>query_string</code> (technical), <code>request_body</code> (free_text_may_contain), <code>local_variables</code> (free_text_may_contain)</td><td><code class="cite" title="&quot;url&quot;,">app.py:9</code>, <code class="cite" title="&quot;query_string&quot;,">app.py:10</code>, <code class="cite" title="&quot;request_body&quot;,">app.py:11</code>, <code class="cite" title="&quot;local_variables&quot;,">app.py:12</code></td><td><span class="empty">UNKNOWN — requires human completion</span></td></tr>
+<tr><td>stripe.Customer</td><td><code>email</code> (contact), <code>name</code> (identifier)</td><td><code class="cite" title="email=user.email,">billing.py:12</code>, <code class="cite" title="name=user.full_name,">billing.py:13</code></td><td><span class="empty">UNKNOWN — requires human completion</span></td></tr>
+</table>
+<p>Personal data flows into the call at the cited lines. Whether this recipient acts as a processor on the controller&#x27;s instructions or as an independent controller, and whether a contract under Article 28(3) exists, is not visible in code.</p>
+<ol class="footnotes">
+<li>analytics.py:11: mp.track(user.email, &quot;account_created&quot;)</li>
+<li>mail.py:12: sg.send(to=user.email, subject=&quot;Welcome&quot;, body=body)</li>
+<li>mail.py:11: body = f&quot;Welcome, {user.full_name}.&quot;</li>
+<li>app.py:9: &quot;url&quot;,</li>
+<li>app.py:10: &quot;query_string&quot;,</li>
+<li>app.py:11: &quot;request_body&quot;,</li>
+<li>app.py:12: &quot;local_variables&quot;,</li>
+<li>billing.py:12: email=user.email,</li>
+<li>billing.py:13: name=user.full_name,</li>
+</ol>
+</section>
+<section id="c-retention">
+<h2>C. Retention</h2>
+<table>
+<caption>C. Retention</caption>
+<tr><th>Store</th><th>Category</th><th>Envisaged limit</th><th>Evidence</th><th>Justification</th></tr>
+<tr><td>users</td><td>—</td><td>NO TIMER EVIDENCED</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>sessions:</td><td>all categories</td><td>1 days Session keys are written with a 86400 second expiry (SESSION_TTL_SECONDS).</td><td><code class="cite" title="SESSION_TTL_SECONDS = 86400">cache.py:7</code></td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>mixpanel</td><td>—</td><td>NO TIMER EVIDENCED</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>sendgrid</td><td>—</td><td>NO TIMER EVIDENCED</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>sentry_sdk</td><td>—</td><td>NO TIMER EVIDENCED</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>stripe.Customer</td><td>—</td><td>NO TIMER EVIDENCED</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+<p>A period found in code is evidence for a retention schedule. The schedule itself is a policy the controller sets, and the reason for each period belongs in the justification column.</p>
+<ol class="footnotes">
+<li>cache.py:7: SESSION_TTL_SECONDS = 86400</li>
+</ol>
+</section>
+<section id="d-erasure">
+<h2>D. Erasure</h2>
+<p>Erasure entry points: <code>delete_account</code> — route — <code class="cite" title="def delete_account(session, user_id):">api/account.py:10</code> (Takes a session and a user id, loads the User row and deletes it.).</p>
+<table>
+<caption>D. Erasure</caption>
+<tr><th>Store</th><th>Verdict</th><th>Evidence</th><th>Note</th></tr>
+<tr class="not-reaching"><td>sessions:</td><td><span class="verdict not-reaching">NOT ERASED</span></td><td><code class="cite" title="session.delete(user)">api/account.py:13</code><br><code class="cite" title="def purge_session(user):">cache.py:15</code></td><td>purge_session deletes the key but no code in the repository calls it; the delete_account route touches only the database row.</td></tr>
+<tr class="not-reaching"><td>mixpanel</td><td><span class="verdict not-reaching">EXTERNAL MANUAL</span></td><td><code class="cite" title="mp.track(user.email, &quot;account_created&quot;)">analytics.py:11</code></td><td>The repository sends the event and contains no Mixpanel deletion call.</td></tr>
+<tr class="not-reaching"><td>sendgrid</td><td><span class="verdict not-reaching">EXTERNAL MANUAL</span></td><td><code class="cite" title="sg.send(to=user.email, subject=&quot;Welcome&quot;, body=body)">mail.py:12</code></td><td>The repository sends the message through the SendGrid client and contains no call that removes it there.</td></tr>
+<tr class="not-reaching"><td>sentry_sdk</td><td><span class="verdict not-reaching">EXTERNAL MANUAL</span></td><td><code class="cite" title="sentry_sdk.init(dsn=SENTRY_DSN)">app.py:18</code></td><td>Sentry is initialised at import time and the repository contains no call that deletes events there.</td></tr>
+<tr class="not-reaching"><td>stripe.Customer</td><td><span class="verdict not-reaching">EXTERNAL MANUAL</span></td><td><code class="cite" title="return stripe.Customer.create(">billing.py:11</code></td><td>The repository creates the Stripe customer and contains no call that deletes or redacts it.</td></tr>
+<tr><td>users</td><td><span class="verdict reaching">ERASED</span></td><td><code class="cite" title="def delete_account(session, user_id):">api/account.py:10</code><br><code class="cite" title="session.delete(user)">api/account.py:13</code><br><code class="cite" title="session.commit()">api/account.py:14</code></td><td>The route calls session.delete on the User row and commits, so the row is removed.</td></tr>
+</table>
+<ol class="footnotes">
+<li>api/account.py:10: def delete_account(session, user_id):</li>
+<li>api/account.py:13: session.delete(user)</li>
+<li>cache.py:15: def purge_session(user):</li>
+<li>analytics.py:11: mp.track(user.email, &quot;account_created&quot;)</li>
+<li>mail.py:12: sg.send(to=user.email, subject=&quot;Welcome&quot;, body=body)</li>
+<li>app.py:18: sentry_sdk.init(dsn=SENTRY_DSN)</li>
+<li>billing.py:11: return stripe.Customer.create(</li>
+<li>api/account.py:14: session.commit()</li>
+</ol>
+</section>
+<section id="e-observations">
+<h2>E. Observations from the code (not findings)</h2>
+<p>Module names. A module name says what the code was called, not what it is for. Article 30(1)(b) purposes are in section F.</p>
+<table>
+<caption>E. Observations from the code (not findings)</caption>
+<tr><th>Name</th><th>File</th></tr>
+<tr><td>analytics</td><td><code>analytics.py</code></td></tr>
+<tr><td>billing</td><td><code>billing.py</code></td></tr>
+<tr><td>mail</td><td><code>mail.py</code></td></tr>
+<tr><td>cache</td><td><code>cache.py</code></td></tr>
+<tr><td>catalog</td><td><code>catalog.py</code></td></tr>
+</table>
+<p>Region hints. A region string says where a service was configured to run. It is not a finding about a transfer under Article 30(1)(e); that cell is in section F.</p>
+<table>
+<caption>E. Observations from the code (not findings)</caption>
+<tr><th>Value</th><th>Evidence</th></tr>
+<tr><td><code>eu-central-1</code></td><td><code class="cite" title="AWS_REGION = &quot;eu-central-1&quot;">config.py:9</code></td></tr>
+<tr><td><code>redis://localhost:6379/0</code></td><td><code class="cite" title="REDIS_URL = os.environ.get(&quot;REDIS_URL&quot;, &quot;redis://localhost:6379/0&quot;)">config.py:10</code></td></tr>
+<tr><td><code>sqlite:///./pulsedeck.db</code></td><td><code class="cite" title="DATABASE_URL = &quot;sqlite:///./pulsedeck.db&quot;">config.py:5</code></td></tr>
+</table>
+<p>Security measures. Technical measures under Article 32(1)(a) only, one line each. The organisational half is in section F.</p>
+<p>None.</p>
+<ol class="footnotes">
+<li>config.py:9: AWS_REGION = &quot;eu-central-1&quot;</li>
+<li>config.py:10: REDIS_URL = os.environ.get(&quot;REDIS_URL&quot;, &quot;redis://localhost:6379/0&quot;)</li>
+<li>config.py:5: DATABASE_URL = &quot;sqlite:///./pulsedeck.db&quot;</li>
+</ol>
+</section>
+<section id="f-human">
+<h2>F. Requires human completion</h2>
+<table>
+<caption>F. Requires human completion</caption>
+<tr><th>Cell</th><th>Article 30(1)</th><th>Value</th></tr>
+<tr><td>Controller — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Joint controller — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Representative — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Data protection officer — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Purposes of the processing</td><td>(b)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Confirmation of data-subject categories</td><td>(c)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of personal data held outside this repository</td><td>(c)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Recipient kind — mixpanel</td><td>(d)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Recipient kind — sendgrid</td><td>(d)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Recipient kind — sentry_sdk</td><td>(d)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Recipient kind — stripe.Customer</td><td>(d)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — occurs</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — countries</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — safeguards</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Justification for each retention period</td><td>(f)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Organisational security measures</td><td>(g)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Special categories of data (Article 9)</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Legal basis</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+<p>Processing activities. Article 30 records processing activities; this document records stores. No activity grouping is derived from code. The stores in section A are the input to the fiche below, one copy per activity.</p>
+<table>
+<caption>F. Requires human completion</caption>
+<tr><th>Fiche field</th><th>Value</th></tr>
+<tr><td>Activity name</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Purposes</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of data subjects</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of personal data</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of recipients</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfers outside the EU</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Retention</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Security measures</td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+</section>
+<section id="g-verification">
+<h2>G. Verification appendix</h2>
+<p>Verification: none. This record was accepted on schema validity alone.</p>
+</section>
+<section id="h-evidence">
+<h2>H. Evidence index</h2>
+<table>
+<caption>H. Evidence index</caption>
+<tr><th>Evidence</th><th>Symbol</th><th>Sections</th></tr>
+<tr><td><code class="cite" title="mp.track(user.email, &quot;account_created&quot;)">analytics.py:11</code></td><td><code>mp.track</code>, <code>email</code>, <code>account_created</code></td><td>A, B, D</td></tr>
+<tr><td><code class="cite" title="def delete_account(session, user_id):">api/account.py:10</code></td><td><code>delete_account</code></td><td>A, D</td></tr>
+<tr><td><code class="cite" title="session.delete(user)">api/account.py:13</code></td><td><code>session.delete</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="session.commit()">api/account.py:14</code></td><td><code>session.commit</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="&quot;url&quot;,">app.py:9</code></td><td><code>url</code></td><td>A, B</td></tr>
+<tr><td><code class="cite" title="&quot;query_string&quot;,">app.py:10</code></td><td><code>query_string</code></td><td>A, B</td></tr>
+<tr><td><code class="cite" title="&quot;request_body&quot;,">app.py:11</code></td><td><code>request_body</code></td><td>A, B</td></tr>
+<tr><td><code class="cite" title="&quot;local_variables&quot;,">app.py:12</code></td><td><code>local_variables</code></td><td>A, B</td></tr>
+<tr><td><code class="cite" title="sentry_sdk.init(dsn=SENTRY_DSN)">app.py:18</code></td><td><code>sentry_sdk.init</code></td><td>A, D</td></tr>
+<tr><td><code class="cite" title="return stripe.Customer.create(">billing.py:11</code></td><td><code>stripe.Customer.create</code></td><td>A, D</td></tr>
+<tr><td><code class="cite" title="email=user.email,">billing.py:12</code></td><td><code>email</code></td><td>A, B</td></tr>
+<tr><td><code class="cite" title="name=user.full_name,">billing.py:13</code></td><td><code>name</code></td><td>A, B</td></tr>
+<tr><td><code class="cite" title="SESSION_TTL_SECONDS = 86400">cache.py:7</code></td><td>—</td><td>C</td></tr>
+<tr><td><code class="cite" title="cache.setex(f&quot;sessions:{user.email}&quot;, SESSION_TTL_SECONDS, token)">cache.py:12</code></td><td><code>sessions:</code>, <code>email</code>, <code>token</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="def purge_session(user):">cache.py:15</code></td><td><code>purge_session</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="DATABASE_URL = &quot;sqlite:///./pulsedeck.db&quot;">config.py:5</code></td><td><code>sqlite:///./pulsedeck.db</code></td><td>E</td></tr>
+<tr><td><code class="cite" title="AWS_REGION = &quot;eu-central-1&quot;">config.py:9</code></td><td><code>eu-central-1</code></td><td>E</td></tr>
+<tr><td><code class="cite" title="REDIS_URL = os.environ.get(&quot;REDIS_URL&quot;, &quot;redis://localhost:6379/0&quot;)">config.py:10</code></td><td><code>redis://localhost:6379/0</code></td><td>E</td></tr>
+<tr><td><code class="cite" title="body = f&quot;Welcome, {user.full_name}.&quot;">mail.py:11</code></td><td><code>body</code></td><td>A, B</td></tr>
+<tr><td><code class="cite" title="sg.send(to=user.email, subject=&quot;Welcome&quot;, body=body)">mail.py:12</code></td><td><code>sg.send</code>, <code>email</code></td><td>A, B, D</td></tr>
+<tr><td><code class="cite" title="class User(Base):">models.py:11</code></td><td>—</td><td>A</td></tr>
+<tr><td><code class="cite" title="__tablename__ = &quot;users&quot;">models.py:12</code></td><td><code>users</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="email = Column(String(255), nullable=False)">models.py:14</code></td><td><code>email</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="full_name = Column(String(255))">models.py:15</code></td><td><code>full_name</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="marketing_opt_in = Column(Boolean)">models.py:16</code></td><td><code>marketing_opt_in</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="created_at = Column(DateTime)">models.py:17</code></td><td><code>created_at</code></td><td>A</td></tr>
+</table>
+<ol class="footnotes">
+<li>analytics.py:11: mp.track(user.email, &quot;account_created&quot;)</li>
+<li>api/account.py:10: def delete_account(session, user_id):</li>
+<li>api/account.py:13: session.delete(user)</li>
+<li>api/account.py:14: session.commit()</li>
+<li>app.py:9: &quot;url&quot;,</li>
+<li>app.py:10: &quot;query_string&quot;,</li>
+<li>app.py:11: &quot;request_body&quot;,</li>
+<li>app.py:12: &quot;local_variables&quot;,</li>
+<li>app.py:18: sentry_sdk.init(dsn=SENTRY_DSN)</li>
+<li>billing.py:11: return stripe.Customer.create(</li>
+<li>billing.py:12: email=user.email,</li>
+<li>billing.py:13: name=user.full_name,</li>
+<li>cache.py:7: SESSION_TTL_SECONDS = 86400</li>
+<li>cache.py:12: cache.setex(f&quot;sessions:{user.email}&quot;, SESSION_TTL_SECONDS, token)</li>
+<li>cache.py:15: def purge_session(user):</li>
+<li>config.py:5: DATABASE_URL = &quot;sqlite:///./pulsedeck.db&quot;</li>
+<li>config.py:9: AWS_REGION = &quot;eu-central-1&quot;</li>
+<li>config.py:10: REDIS_URL = os.environ.get(&quot;REDIS_URL&quot;, &quot;redis://localhost:6379/0&quot;)</li>
+<li>mail.py:11: body = f&quot;Welcome, {user.full_name}.&quot;</li>
+<li>mail.py:12: sg.send(to=user.email, subject=&quot;Welcome&quot;, body=body)</li>
+<li>models.py:11: class User(Base):</li>
+<li>models.py:12: __tablename__ = &quot;users&quot;</li>
+<li>models.py:14: email = Column(String(255), nullable=False)</li>
+<li>models.py:15: full_name = Column(String(255))</li>
+<li>models.py:16: marketing_opt_in = Column(Boolean)</li>
+<li>models.py:17: created_at = Column(DateTime)</li>
+</ol>
+</section>
+<div class="running-footer">base-S05-s2-18d2007 — not legal advice; the technical half of an Article 30(1) record.</div>
+</body>
+</html>

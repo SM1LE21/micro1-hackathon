@@ -1,0 +1,403 @@
+{
+ "activities": [],
+ "data_subjects": [
+  {
+   "basis": "model_name",
+   "file": "models.py",
+   "label": "account holders",
+   "line": 12
+  },
+  {
+   "basis": "route_name",
+   "file": "api/account.py",
+   "label": "account holders",
+   "line": 12
+  }
+ ],
+ "entry_points": [
+  {
+   "admin_only": false,
+   "file": "api/account.py",
+   "kind": "route",
+   "line": 12,
+   "name": "close_account",
+   "note": "Sets deleted_at on the user row and commits; the docstring says rows are removed by the nightly purge."
+  },
+  {
+   "admin_only": false,
+   "file": "jobs/purge.py",
+   "kind": "task",
+   "line": 14,
+   "name": "purge_closed_accounts",
+   "note": "Celery task that deletes User rows whose deleted_at is older than the cutoff."
+  }
+ ],
+ "hints": {
+  "observed_module_names": [
+   {
+    "file": "api/account.py",
+    "name": "api.account"
+   },
+   {
+    "file": "api/profile.py",
+    "name": "api.profile"
+   },
+   {
+    "file": "jobs/purge.py",
+    "name": "jobs.purge"
+   },
+   {
+    "file": "jobs/backup.py",
+    "name": "jobs.backup"
+   }
+  ],
+  "observed_region_hints": [
+   {
+    "file": "config.py",
+    "line": 9,
+    "symbol": "eu-central-1"
+   }
+  ],
+  "security_evidence": [
+   {
+    "file": "jobs/backup.py",
+    "line": 11,
+    "measure": "backup_configuration",
+    "symbol": "SCHEDULE"
+   }
+  ]
+ },
+ "human": {
+  "controller": {
+   "contact": null,
+   "name": null
+  },
+  "data_categories_outside_code": null,
+  "data_subject_categories_confirmed": null,
+  "dpo": {
+   "contact": null,
+   "name": null
+  },
+  "joint_controller": {
+   "contact": null,
+   "name": null
+  },
+  "legal_basis": null,
+  "purposes": null,
+  "representative": {
+   "contact": null,
+   "name": null
+  },
+  "retention_justification": null,
+  "security_organisational": null,
+  "special_categories": null,
+  "transfers": {
+   "countries": null,
+   "occurs": null,
+   "safeguards": null
+  }
+ },
+ "provenance": {
+  "arm": "advanced",
+  "brain": "claude",
+  "brain_label": "Claude (your login)",
+  "brain_model": "claude-opus-5",
+  "case": "S03",
+  "cli_total_cost_usd": 0.38067100000000004,
+  "config": {
+   "brain": "claude",
+   "max_tokens": 32000,
+   "overridden": [],
+   "submit_budget": 5,
+   "tool_budget": 60
+  },
+  "cost_source": "cli_estimate",
+  "cost_usd": 0.380672,
+  "effort": "high",
+  "finished_at": "2026-08-31T15:22:29Z",
+  "fixture": {
+   "id": "S03",
+   "path": "evals/fixtures/synthetic/S03",
+   "sha256": "6e14bf39f53f"
+  },
+  "gate": {
+   "at": "2026-08-31T15:22:29Z",
+   "by": "simulated",
+   "decision": "approved",
+   "risk": "low",
+   "wait_s": 0.0
+  },
+  "instruction_sha256": "43c86cec9e8c",
+  "mode": "live",
+  "model": "claude-opus-5",
+  "run_id": "adv-S03-s1-8835b2a",
+  "seed": 1,
+  "started_at": "2026-08-31T15:21:16Z",
+  "tool_calls": 13,
+  "trace": "/Users/tun/Documents/micro1-hackathon/traces/advanced/S03-s1.jsonl"
+ },
+ "repository": "atlaslane",
+ "retention": [
+  {
+   "category": null,
+   "criteria": "rows whose deleted_at is older than the cutoff are deleted by purge_closed_accounts",
+   "days": 30,
+   "file": "jobs/purge.py",
+   "justification": null,
+   "line": 10,
+   "store": "users"
+  },
+  {
+   "category": null,
+   "criteria": "the comment on the reference column says the purge job does not touch this table",
+   "days": null,
+   "file": "models.py",
+   "justification": null,
+   "line": 25,
+   "store": "invoices"
+  },
+  {
+   "category": null,
+   "criteria": "constant named BACKUP_RETENTION_DAYS, read by no code in the repository",
+   "days": 35,
+   "file": "jobs/backup.py",
+   "justification": null,
+   "line": 12,
+   "store": "nightly_backup"
+  }
+ ],
+ "schema_version": "1",
+ "stores": [
+  {
+   "declared_at": {
+    "file": "models.py",
+    "line": 13,
+    "symbol": "users"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "api/account.py",
+      "line": 15,
+      "symbol": "deleted_at"
+     },
+     {
+      "file": "config.py",
+      "line": 13,
+      "symbol": "jobs.purge.purge_closed_accounts"
+     },
+     {
+      "file": "jobs/purge.py",
+      "line": 10,
+      "symbol": "RETENTION_DAYS"
+     },
+     {
+      "file": "jobs/purge.py",
+      "line": 17,
+      "symbol": "deleted_at"
+     },
+     {
+      "file": "jobs/purge.py",
+      "line": 18,
+      "symbol": "delete"
+     }
+    ],
+    "note": "The route writes a timestamp and leaves the row; the Celery beat entry runs purge_closed_accounts, which calls session.delete on users whose deleted_at is older than 30 days.",
+    "timer_days": 30,
+    "verdict": "erased_after_timer"
+   },
+   "fields": [
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "models.py",
+     "line": 15,
+     "name": "email",
+     "note": null
+    },
+    {
+     "category": "identifier",
+     "erasure": null,
+     "file": "models.py",
+     "line": 16,
+     "name": "full_name",
+     "note": null
+    },
+    {
+     "category": "technical",
+     "erasure": null,
+     "file": "models.py",
+     "line": 17,
+     "name": "deleted_at",
+     "note": "The column the close_account route writes and the purge job filters on."
+    }
+   ],
+   "kind": "relational",
+   "name": "users",
+   "note": "Table holding one row per account.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "models.py",
+    "line": 12
+   }
+  },
+  {
+   "declared_at": {
+    "file": "models.py",
+    "line": 22,
+    "symbol": "invoices"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "models.py",
+      "line": 18,
+      "symbol": "relationship"
+     },
+     {
+      "file": "models.py",
+      "line": 27,
+      "symbol": "ondelete"
+     },
+     {
+      "file": "config.py",
+      "line": 5,
+      "symbol": "sqlite:///./atlaslane.db"
+     },
+     {
+      "file": "jobs/purge.py",
+      "line": 18,
+      "symbol": "delete"
+     }
+    ],
+    "note": "The User.invoices relationship carries no cascade argument, so the ORM delete does not propagate; the only delete path is the database-level ondelete=CASCADE, and the engine URL is SQLite with no PRAGMA foreign_keys listener in the repository, so it cannot be read off the code whether foreign keys are enforced.",
+    "timer_days": null,
+    "verdict": "unverified"
+   },
+   "fields": [
+    {
+     "category": "financial",
+     "erasure": null,
+     "file": "models.py",
+     "line": 24,
+     "name": "billing_name",
+     "note": "The name carried on the invoice."
+    },
+    {
+     "category": "financial",
+     "erasure": null,
+     "file": "models.py",
+     "line": 25,
+     "name": "reference",
+     "note": "The comment on this line says the row is kept for the accounting period and that the purge job does not touch this table."
+    },
+    {
+     "category": "financial",
+     "erasure": null,
+     "file": "models.py",
+     "line": 26,
+     "name": "amount_cents",
+     "note": null
+    }
+   ],
+   "kind": "relational",
+   "name": "invoices",
+   "note": "Table of invoices, each carrying a user_id foreign key.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "models.py",
+    "line": 27
+   }
+  },
+  {
+   "declared_at": {
+    "file": "jobs/backup.py",
+    "line": 10,
+    "symbol": "DUMP_PATH"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "jobs/backup.py",
+      "line": 11,
+      "symbol": "SCHEDULE"
+     },
+     {
+      "file": "jobs/backup.py",
+      "line": 12,
+      "symbol": "BACKUP_RETENTION_DAYS"
+     },
+     {
+      "file": "jobs/backup.py",
+      "line": 21,
+      "symbol": "open"
+     }
+    ],
+    "note": "dump_database writes the rows to a JSON file on a daily cron string; the module sets BACKUP_RETENTION_DAYS to 35, and no code in the repository reads that constant or deletes the file.",
+    "timer_days": 35,
+    "verdict": "governed_by_retention"
+   },
+   "fields": [
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "jobs/backup.py",
+     "line": 9,
+     "name": "email",
+     "note": "Named in DUMP_COLUMNS and read off each User row into the dump file."
+    },
+    {
+     "category": "identifier",
+     "erasure": null,
+     "file": "jobs/backup.py",
+     "line": 9,
+     "name": "full_name",
+     "note": "Named in DUMP_COLUMNS and read off each User row into the dump file."
+    },
+    {
+     "category": "financial",
+     "erasure": null,
+     "file": "jobs/backup.py",
+     "line": 9,
+     "name": "reference",
+     "note": "Named in DUMP_COLUMNS and read off each Invoice row into the dump file."
+    }
+   ],
+   "kind": "backup",
+   "name": "nightly_backup",
+   "note": "JSON file written by the nightly dump job from the users and invoices tables.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "jobs/backup.py",
+    "line": 18
+   }
+  }
+ ],
+ "unscanned": [
+  {
+   "path": "README.md",
+   "reason": "not_python"
+  },
+  {
+   "path": "requirements.txt",
+   "reason": "not_python"
+  }
+ ],
+ "verification": {
+  "accepted_on_attempt": 1,
+  "bad_citations_resolved": [],
+  "conservative_divergences": [],
+  "missing_stores_resolved": [],
+  "rejected_history": [],
+  "rule_set_sha": "e9a260adc28b",
+  "submits": 1,
+  "unverified": [
+   {
+    "claim": "erasure.verdict=unverified",
+    "expected": "keep the verdict, or cite a path the verifier can resolve for invoices",
+    "reason": "ondelete=\"CASCADE\" is DDL only; no evidence that the engine the session is bound to enforces foreign keys",
+    "store": "invoices"
+   }
+  ]
+ }
+}

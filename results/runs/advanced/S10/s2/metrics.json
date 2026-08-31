@@ -1,0 +1,96 @@
+{
+  "case": "S10",
+  "arm": "advanced",
+  "seed": 2,
+  "split": "test",
+  "mode": "live",
+  "manifest_sha256": "257b779953aded5d035519c95e7897ab7599717816de1961b088716eb1814a5e",
+  "record_path": "/Users/tun/Documents/micro1-hackathon/results/runs/advanced/S10/s2/record.json",
+  "tp": 7,
+  "fp": 4,
+  "fn": 4,
+  "precision": 0.636364,
+  "recall": 0.636364,
+  "f1": 0.636364,
+  "false_safe": 0,
+  "false_safe_tuples": [],
+  "unmatched_reaching_claims": 0,
+  "unmatched_reaching_tuples": [],
+  "draft": null,
+  "pass": false,
+  "missing": [
+    [
+      "stripe",
+      "email"
+    ],
+    [
+      "stripe",
+      "name"
+    ],
+    [
+      "upload",
+      "avatar_key"
+    ],
+    [
+      "upload",
+      "original_filename"
+    ]
+  ],
+  "spurious": [
+    [
+      "stripe_customer",
+      "email"
+    ],
+    [
+      "stripe_customer",
+      "name"
+    ],
+    [
+      "uploads_avatar",
+      "avatar_key"
+    ],
+    [
+      "uploads_avatar",
+      "original_filename"
+    ]
+  ],
+  "wrong_verdict": [],
+  "unverified": 0,
+  "invalid_verdict_for_kind": [],
+  "duplicates": [],
+  "verdict_confusion": {
+    "erased_after_timer": {
+      "erased_after_timer": 5
+    },
+    "governed_by_retention": {
+      "governed_by_retention": 2
+    }
+  },
+  "citation_check": {
+    "checked": 11,
+    "bad": 0
+  },
+  "retention_check": {
+    "matched": 0,
+    "missing": 2,
+    "spurious": 2
+  },
+  "entry_point_check": {
+    "matched": 1,
+    "missing": 0,
+    "spurious": 1
+  },
+  "run": {
+    "stop_condition": "accepted",
+    "steps": 9,
+    "tool_calls": 19,
+    "submits": 2,
+    "verify_rounds": 1,
+    "cost_usd": 0.54052,
+    "gate": {
+      "risk": "high",
+      "decision": "approved",
+      "by": "simulated"
+    }
+  }
+}

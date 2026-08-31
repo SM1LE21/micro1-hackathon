@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="art30 run base-S03-s2-5c014a5">
+<title>Record of processing — atlaslane</title>
+<style>
+:root { color-scheme: light; }
+body { background: #fff; color: #111; margin: 2rem auto; max-width: 60rem; padding: 0 1rem;
+       font-family: Georgia, "Times New Roman", serif; line-height: 1.5; }
+h1 { font-size: 1.6rem; } h2 { font-size: 1.25rem; margin-top: 2.5rem; } h3 { font-size: 1.05rem; }
+table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; font-size: 0.92rem; }
+caption { text-align: left; font-style: italic; padding-bottom: 0.3rem; }
+th, td { border: 1px solid #bbb; padding: 0.3rem 0.5rem; text-align: left; vertical-align: top; }
+th { background: #f2f2f2; }
+code { font-family: "DejaVu Sans Mono", Menlo, monospace; font-size: 0.86em; }
+code.cite { border-bottom: 1px dotted #666; }
+.boundary { border: 1px solid #444; padding: 0.8rem 1rem; margin: 1.2rem 0; }
+.verdict { font-weight: bold; letter-spacing: 0.02em; }
+.verdict.not-reaching { color: #8b0000; }
+tr.not-reaching td:first-child { border-left: 4px solid #8b0000; }
+.empty { font-style: italic; color: #444; }
+.footnotes { display: none; }
+@media print {
+  @page { size: A4; margin: 18mm 16mm 22mm 16mm; }
+  body { margin: 0; max-width: none; font-size: 10.5pt; }
+  section { break-before: page; }
+  .footnotes { display: block; font-size: 0.8rem; }
+  .running-footer { position: fixed; bottom: 0; left: 0; right: 0; font-size: 0.75rem;
+                    border-top: 1px solid #999; padding-top: 2mm; }
+}
+</style>
+</head>
+<body>
+<h1>Record of processing — atlaslane</h1>
+<nav><ol>
+<li><a href="#a-inventory">A. Data inventory</a></li>
+<li><a href="#b-recipients">B. Recipients</a></li>
+<li><a href="#c-retention">C. Retention</a></li>
+<li><a href="#d-erasure">D. Erasure</a></li>
+<li><a href="#e-observations">E. Observations from the code (not findings)</a></li>
+<li><a href="#f-human">F. Requires human completion</a></li>
+<li><a href="#g-verification">G. Verification appendix</a></li>
+<li><a href="#h-evidence">H. Evidence index</a></li>
+</ol></nav>
+<table>
+<caption>Provenance</caption>
+<tr><th></th><th></th></tr>
+<tr><td>Case</td><td>S03 (synthetic)</td></tr>
+<tr><td>Arm</td><td>baseline</td></tr>
+<tr><td>Model</td><td>Claude (your login) — claude-opus-5, effort high</td></tr>
+<tr><td>Run</td><td><code>base-S03-s2-5c014a5</code></td></tr>
+<tr><td>Code read</td><td><code>evals/fixtures/synthetic/S03</code>, sha256 <code>6e14bf39f53f</code></td></tr>
+<tr><td>Instructions</td><td>sha256 <code>43c86cec9e8c</code></td></tr>
+<tr><td>Generated</td><td>2026-08-31 15:23:44 UTC</td></tr>
+<tr><td>Trace</td><td><code>/Users/tun/Documents/micro1-hackathon/traces/baseline/S03-s2.jsonl</code></td></tr>
+<tr><td>Verification</td><td>1 submission, accepted on attempt 1</td></tr>
+<tr><td>Cost</td><td>USD 0.372942 (estimate at list prices), 13 tool calls</td></tr>
+</table>
+<p class="boundary">This is the technical half of a record of processing activities under Article 30(1) GDPR. It was derived from source code by static reading, on the date above. It is not legal advice, it states no legal basis, and it is incomplete until the cells marked <code>requires human completion</code> are filled by a person. It covers Article 30(1) — the controller&#x27;s own record — for the repository named above; a processor&#x27;s record under Article 30(2), and any personal data held outside this repository, are not in it.</p>
+<section id="a-inventory">
+<h2>A. Data inventory</h2>
+<p>Data subjects: account holders — inferred from model name (<code class="cite" title="class User(Base):">models.py:12</code>).</p>
+<h3>invoices — relational — <code class="cite" title="__tablename__ = &quot;invoices&quot;">models.py:22</code></h3>
+<p>Invoice rows joined to a user by user_id; a comment on the reference column says the purge job does not touch this table.</p>
+<table>
+<caption>invoices — relational — <code class="cite" title="__tablename__ = &quot;invoices&quot;">models.py:22</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>billing_name</code></td><td>financial</td><td><code class="cite" title="billing_name = Column(String(255))">models.py:24</code></td><td></td></tr>
+<tr><td><code>reference</code></td><td>financial</td><td><code class="cite" title="reference = Column(String(255))  # kept for the statutory accounting period; the purge job does not touch this table">models.py:25</code></td><td></td></tr>
+<tr><td><code>amount_cents</code></td><td>financial</td><td><code class="cite" title="amount_cents = Column(Integer)">models.py:26</code></td><td></td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="user_id = Column(Integer, ForeignKey(&quot;users.id&quot;, ondelete=&quot;CASCADE&quot;))">models.py:27</code>.</p>
+<h3>users — relational — <code class="cite" title="__tablename__ = &quot;users&quot;">models.py:13</code></h3>
+<p>The user table, written by the account and profile routes.</p>
+<table>
+<caption>users — relational — <code class="cite" title="__tablename__ = &quot;users&quot;">models.py:13</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>id</code></td><td>identifier</td><td><code class="cite" title="id = Column(Integer, primary_key=True)">models.py:14</code></td><td></td></tr>
+<tr><td><code>email</code></td><td>contact</td><td><code class="cite" title="email = Column(String(255), nullable=False)">models.py:15</code></td><td></td></tr>
+<tr><td><code>full_name</code></td><td>identifier</td><td><code class="cite" title="full_name = Column(String(255))">models.py:16</code></td><td></td></tr>
+<tr><td><code>deleted_at</code></td><td>technical</td><td><code class="cite" title="deleted_at = Column(DateTime)">models.py:17</code></td><td>The column the close_account route writes and the purge job filters on.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="class User(Base):">models.py:12</code>.</p>
+<h3>nightly_backup — backup — <code class="cite" title="DUMP_PATH = f&quot;{BACKUP_NAME}.json&quot;">jobs/backup.py:10</code></h3>
+<p>A JSON dump of selected user and invoice columns written to a file on disk.</p>
+<table>
+<caption>nightly_backup — backup — <code class="cite" title="DUMP_PATH = f&quot;{BACKUP_NAME}.json&quot;">jobs/backup.py:10</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>email</code></td><td>contact</td><td><code class="cite" title="DUMP_COLUMNS = [&quot;email&quot;, &quot;full_name&quot;, &quot;reference&quot;]">jobs/backup.py:9</code></td><td>Named in DUMP_COLUMNS and read off each row with getattr before being written to the JSON file.</td></tr>
+<tr><td><code>full_name</code></td><td>identifier</td><td><code class="cite" title="DUMP_COLUMNS = [&quot;email&quot;, &quot;full_name&quot;, &quot;reference&quot;]">jobs/backup.py:9</code></td><td></td></tr>
+<tr><td><code>reference</code></td><td>financial</td><td><code class="cite" title="DUMP_COLUMNS = [&quot;email&quot;, &quot;full_name&quot;, &quot;reference&quot;]">jobs/backup.py:9</code></td><td>The invoice reference column, copied into the same dump.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="for table in (User, Invoice):">jobs/backup.py:18</code>.</p>
+<p>Not scanned:</p>
+<p><code>README.md</code> (not Python).</p>
+<p><code>requirements.txt</code> (not Python).</p>
+<ol class="footnotes">
+<li>models.py:12: class User(Base):</li>
+<li>models.py:22: __tablename__ = &quot;invoices&quot;</li>
+<li>models.py:24: billing_name = Column(String(255))</li>
+<li>models.py:25: reference = Column(String(255))  # kept for the statutory accounting period; the purge job does not touch this table</li>
+<li>models.py:26: amount_cents = Column(Integer)</li>
+<li>models.py:27: user_id = Column(Integer, ForeignKey(&quot;users.id&quot;, ondelete=&quot;CASCADE&quot;))</li>
+<li>models.py:13: __tablename__ = &quot;users&quot;</li>
+<li>models.py:14: id = Column(Integer, primary_key=True)</li>
+<li>models.py:15: email = Column(String(255), nullable=False)</li>
+<li>models.py:16: full_name = Column(String(255))</li>
+<li>models.py:17: deleted_at = Column(DateTime)</li>
+<li>jobs/backup.py:10: DUMP_PATH = f&quot;{BACKUP_NAME}.json&quot;</li>
+<li>jobs/backup.py:9: DUMP_COLUMNS = [&quot;email&quot;, &quot;full_name&quot;, &quot;reference&quot;]</li>
+<li>jobs/backup.py:18: for table in (User, Invoice):</li>
+</ol>
+</section>
+<section id="b-recipients">
+<h2>B. Recipients</h2>
+<p>No store of kind third_party was found in the code.</p>
+</section>
+<section id="c-retention">
+<h2>C. Retention</h2>
+<table>
+<caption>C. Retention</caption>
+<tr><th>Store</th><th>Category</th><th>Envisaged limit</th><th>Evidence</th><th>Justification</th></tr>
+<tr><td>invoices</td><td>all categories</td><td>no job in the repository selects rows from this table for deletion</td><td><code class="cite" title="reference = Column(String(255))  # kept for the statutory accounting period; the purge job does not touch this table">models.py:25</code></td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>users</td><td>all categories</td><td>30 days</td><td><code class="cite" title="RETENTION_DAYS = 30">jobs/purge.py:10</code></td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>nightly_backup</td><td>all categories</td><td>35 days</td><td><code class="cite" title="BACKUP_RETENTION_DAYS = 35">jobs/backup.py:12</code></td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+<p>A period found in code is evidence for a retention schedule. The schedule itself is a policy the controller sets, and the reason for each period belongs in the justification column.</p>
+<ol class="footnotes">
+<li>models.py:25: reference = Column(String(255))  # kept for the statutory accounting period; the purge job does not touch this table</li>
+<li>jobs/purge.py:10: RETENTION_DAYS = 30</li>
+<li>jobs/backup.py:12: BACKUP_RETENTION_DAYS = 35</li>
+</ol>
+</section>
+<section id="d-erasure">
+<h2>D. Erasure</h2>
+<p>Erasure entry points: <code>close_account</code> — route — <code class="cite" title="def close_account(session, user_id):">api/account.py:12</code> (Sets a deleted_at timestamp on the user row and commits; it issues no delete.).</p>
+<table>
+<caption>D. Erasure</caption>
+<tr><th>Store</th><th>Verdict</th><th>Evidence</th><th>Note</th></tr>
+<tr class="not-reaching"><td>nightly_backup</td><td><span class="verdict not-reaching">GOVERNED BY RETENTION (35 days)</span></td><td><code class="cite" title="SCHEDULE = &quot;0 3 * * *&quot;">jobs/backup.py:11</code><br><code class="cite" title="BACKUP_RETENTION_DAYS = 35">jobs/backup.py:12</code><br><code class="cite" title="with open(DUMP_PATH, &quot;w&quot;) as handle:">jobs/backup.py:21</code></td><td>The module declares a 35-day backup retention and a nightly cron string, but no code in this repository reads BACKUP_RETENTION_DAYS or removes the dump file; dump_database rewrites nightly_backup.json in place.</td></tr>
+<tr class="not-reaching"><td>invoices</td><td><span class="verdict not-reaching">UNVERIFIED</span></td><td><code class="cite" title="DATABASE_URL = &quot;sqlite:///./atlaslane.db&quot;">config.py:5</code><br><code class="cite" title="session.delete(row)">jobs/purge.py:18</code><br><code class="cite" title="invoices = relationship(&quot;Invoice&quot;)">models.py:18</code><br><code class="cite" title="user_id = Column(Integer, ForeignKey(&quot;users.id&quot;, ondelete=&quot;CASCADE&quot;))">models.py:27</code></td><td>The User.invoices relationship carries no cascade string, so the ORM delete in the purge job does not propagate; the only delete path is the database-level ondelete=&quot;CASCADE&quot;, and the SQLite URL in config.py comes with no PRAGMA foreign_keys=ON listener anywhere in the repository, so the source does not settle whether the child rows go.</td></tr>
+<tr><td>users</td><td><span class="verdict reaching">ERASED AFTER TIMER (30 days)</span></td><td><code class="cite" title="user.deleted_at = datetime.now(timezone.utc)">api/account.py:15</code><br><code class="cite" title="&quot;task&quot;: &quot;jobs.purge.purge_closed_accounts&quot;,">config.py:13</code><br><code class="cite" title="RETENTION_DAYS = 30">jobs/purge.py:10</code><br><code class="cite" title="for row in session.query(User).filter(User.deleted_at &lt; cutoff).all():">jobs/purge.py:17</code><br><code class="cite" title="session.delete(row)">jobs/purge.py:18</code></td><td>The route only stamps deleted_at; the Celery beat task purge_closed_accounts selects users whose deleted_at is older than 30 days and calls session.delete on each row.</td></tr>
+</table>
+<p>No erasure verdict is rendered for a store of kind backup; it carries a retention verdict instead. This tool reports the retention schedule it found in code and cites it; whether that schedule and the procedure applied to restored systems are adequate is not visible here.</p>
+<ol class="footnotes">
+<li>api/account.py:12: def close_account(session, user_id):</li>
+<li>jobs/backup.py:11: SCHEDULE = &quot;0 3 * * *&quot;</li>
+<li>jobs/backup.py:12: BACKUP_RETENTION_DAYS = 35</li>
+<li>jobs/backup.py:21: with open(DUMP_PATH, &quot;w&quot;) as handle:</li>
+<li>config.py:5: DATABASE_URL = &quot;sqlite:///./atlaslane.db&quot;</li>
+<li>jobs/purge.py:18: session.delete(row)</li>
+<li>models.py:18: invoices = relationship(&quot;Invoice&quot;)</li>
+<li>models.py:27: user_id = Column(Integer, ForeignKey(&quot;users.id&quot;, ondelete=&quot;CASCADE&quot;))</li>
+<li>api/account.py:15: user.deleted_at = datetime.now(timezone.utc)</li>
+<li>config.py:13: &quot;task&quot;: &quot;jobs.purge.purge_closed_accounts&quot;,</li>
+<li>jobs/purge.py:10: RETENTION_DAYS = 30</li>
+<li>jobs/purge.py:17: for row in session.query(User).filter(User.deleted_at &lt; cutoff).all():</li>
+</ol>
+</section>
+<section id="e-observations">
+<h2>E. Observations from the code (not findings)</h2>
+<p>Module names. A module name says what the code was called, not what it is for. Article 30(1)(b) purposes are in section F.</p>
+<table>
+<caption>E. Observations from the code (not findings)</caption>
+<tr><th>Name</th><th>File</th></tr>
+<tr><td>api.account</td><td><code>api/account.py</code></td></tr>
+<tr><td>api.profile</td><td><code>api/profile.py</code></td></tr>
+<tr><td>jobs.purge</td><td><code>jobs/purge.py</code></td></tr>
+<tr><td>jobs.backup</td><td><code>jobs/backup.py</code></td></tr>
+</table>
+<p>Region hints. A region string says where a service was configured to run. It is not a finding about a transfer under Article 30(1)(e); that cell is in section F.</p>
+<table>
+<caption>E. Observations from the code (not findings)</caption>
+<tr><th>Value</th><th>Evidence</th></tr>
+<tr><td><code>eu-central-1</code></td><td><code class="cite" title="AWS_REGION = &quot;eu-central-1&quot;">config.py:9</code></td></tr>
+</table>
+<p>Security measures. Technical measures under Article 32(1)(a) only, one line each. The organisational half is in section F.</p>
+<table>
+<caption>E. Observations from the code (not findings)</caption>
+<tr><th>Measure</th><th>Evidence</th><th>Symbol</th></tr>
+<tr><td>backup configuration</td><td><code class="cite" title="SCHEDULE = &quot;0 3 * * *&quot;">jobs/backup.py:11</code></td><td><code>SCHEDULE</code></td></tr>
+</table>
+<ol class="footnotes">
+<li>config.py:9: AWS_REGION = &quot;eu-central-1&quot;</li>
+<li>jobs/backup.py:11: SCHEDULE = &quot;0 3 * * *&quot;</li>
+</ol>
+</section>
+<section id="f-human">
+<h2>F. Requires human completion</h2>
+<table>
+<caption>F. Requires human completion</caption>
+<tr><th>Cell</th><th>Article 30(1)</th><th>Value</th></tr>
+<tr><td>Controller — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Joint controller — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Representative — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Data protection officer — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Purposes of the processing</td><td>(b)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Confirmation of data-subject categories</td><td>(c)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of personal data held outside this repository</td><td>(c)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — occurs</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — countries</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — safeguards</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Justification for each retention period</td><td>(f)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Organisational security measures</td><td>(g)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Special categories of data (Article 9)</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Legal basis</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+<p>Processing activities. Article 30 records processing activities; this document records stores. No activity grouping is derived from code. The stores in section A are the input to the fiche below, one copy per activity.</p>
+<table>
+<caption>F. Requires human completion</caption>
+<tr><th>Fiche field</th><th>Value</th></tr>
+<tr><td>Activity name</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Purposes</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of data subjects</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of personal data</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of recipients</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfers outside the EU</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Retention</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Security measures</td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+</section>
+<section id="g-verification">
+<h2>G. Verification appendix</h2>
+<p>Verification: none. This record was accepted on schema validity alone.</p>
+</section>
+<section id="h-evidence">
+<h2>H. Evidence index</h2>
+<table>
+<caption>H. Evidence index</caption>
+<tr><th>Evidence</th><th>Symbol</th><th>Sections</th></tr>
+<tr><td><code class="cite" title="def close_account(session, user_id):">api/account.py:12</code></td><td><code>close_account</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="user.deleted_at = datetime.now(timezone.utc)">api/account.py:15</code></td><td><code>deleted_at</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="DATABASE_URL = &quot;sqlite:///./atlaslane.db&quot;">config.py:5</code></td><td><code>DATABASE_URL</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="AWS_REGION = &quot;eu-central-1&quot;">config.py:9</code></td><td><code>eu-central-1</code></td><td>E</td></tr>
+<tr><td><code class="cite" title="&quot;task&quot;: &quot;jobs.purge.purge_closed_accounts&quot;,">config.py:13</code></td><td><code>jobs.purge.purge_closed_accounts</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="DUMP_COLUMNS = [&quot;email&quot;, &quot;full_name&quot;, &quot;reference&quot;]">jobs/backup.py:9</code></td><td><code>email</code>, <code>full_name</code>, <code>reference</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="DUMP_PATH = f&quot;{BACKUP_NAME}.json&quot;">jobs/backup.py:10</code></td><td><code>DUMP_PATH</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="SCHEDULE = &quot;0 3 * * *&quot;">jobs/backup.py:11</code></td><td><code>SCHEDULE</code></td><td>D, E</td></tr>
+<tr><td><code class="cite" title="BACKUP_RETENTION_DAYS = 35">jobs/backup.py:12</code></td><td><code>BACKUP_RETENTION_DAYS</code></td><td>C, D</td></tr>
+<tr><td><code class="cite" title="for table in (User, Invoice):">jobs/backup.py:18</code></td><td>—</td><td>A</td></tr>
+<tr><td><code class="cite" title="with open(DUMP_PATH, &quot;w&quot;) as handle:">jobs/backup.py:21</code></td><td><code>open</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="RETENTION_DAYS = 30">jobs/purge.py:10</code></td><td><code>RETENTION_DAYS</code></td><td>C, D</td></tr>
+<tr><td><code class="cite" title="for row in session.query(User).filter(User.deleted_at &lt; cutoff).all():">jobs/purge.py:17</code></td><td><code>deleted_at</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="session.delete(row)">jobs/purge.py:18</code></td><td><code>session.delete</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="class User(Base):">models.py:12</code></td><td>—</td><td>A</td></tr>
+<tr><td><code class="cite" title="__tablename__ = &quot;users&quot;">models.py:13</code></td><td><code>users</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="id = Column(Integer, primary_key=True)">models.py:14</code></td><td><code>id</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="email = Column(String(255), nullable=False)">models.py:15</code></td><td><code>email</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="full_name = Column(String(255))">models.py:16</code></td><td><code>full_name</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="deleted_at = Column(DateTime)">models.py:17</code></td><td><code>deleted_at</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="invoices = relationship(&quot;Invoice&quot;)">models.py:18</code></td><td><code>relationship</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="__tablename__ = &quot;invoices&quot;">models.py:22</code></td><td><code>invoices</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="billing_name = Column(String(255))">models.py:24</code></td><td><code>billing_name</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="reference = Column(String(255))  # kept for the statutory accounting period; the purge job does not touch this table">models.py:25</code></td><td><code>reference</code></td><td>A, C</td></tr>
+<tr><td><code class="cite" title="amount_cents = Column(Integer)">models.py:26</code></td><td><code>amount_cents</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="user_id = Column(Integer, ForeignKey(&quot;users.id&quot;, ondelete=&quot;CASCADE&quot;))">models.py:27</code></td><td><code>ondelete</code></td><td>A, D</td></tr>
+</table>
+<ol class="footnotes">
+<li>api/account.py:12: def close_account(session, user_id):</li>
+<li>api/account.py:15: user.deleted_at = datetime.now(timezone.utc)</li>
+<li>config.py:5: DATABASE_URL = &quot;sqlite:///./atlaslane.db&quot;</li>
+<li>config.py:9: AWS_REGION = &quot;eu-central-1&quot;</li>
+<li>config.py:13: &quot;task&quot;: &quot;jobs.purge.purge_closed_accounts&quot;,</li>
+<li>jobs/backup.py:9: DUMP_COLUMNS = [&quot;email&quot;, &quot;full_name&quot;, &quot;reference&quot;]</li>
+<li>jobs/backup.py:10: DUMP_PATH = f&quot;{BACKUP_NAME}.json&quot;</li>
+<li>jobs/backup.py:11: SCHEDULE = &quot;0 3 * * *&quot;</li>
+<li>jobs/backup.py:12: BACKUP_RETENTION_DAYS = 35</li>
+<li>jobs/backup.py:18: for table in (User, Invoice):</li>
+<li>jobs/backup.py:21: with open(DUMP_PATH, &quot;w&quot;) as handle:</li>
+<li>jobs/purge.py:10: RETENTION_DAYS = 30</li>
+<li>jobs/purge.py:17: for row in session.query(User).filter(User.deleted_at &lt; cutoff).all():</li>
+<li>jobs/purge.py:18: session.delete(row)</li>
+<li>models.py:12: class User(Base):</li>
+<li>models.py:13: __tablename__ = &quot;users&quot;</li>
+<li>models.py:14: id = Column(Integer, primary_key=True)</li>
+<li>models.py:15: email = Column(String(255), nullable=False)</li>
+<li>models.py:16: full_name = Column(String(255))</li>
+<li>models.py:17: deleted_at = Column(DateTime)</li>
+<li>models.py:18: invoices = relationship(&quot;Invoice&quot;)</li>
+<li>models.py:22: __tablename__ = &quot;invoices&quot;</li>
+<li>models.py:24: billing_name = Column(String(255))</li>
+<li>models.py:25: reference = Column(String(255))  # kept for the statutory accounting period; the purge job does not touch this table</li>
+<li>models.py:26: amount_cents = Column(Integer)</li>
+<li>models.py:27: user_id = Column(Integer, ForeignKey(&quot;users.id&quot;, ondelete=&quot;CASCADE&quot;))</li>
+</ol>
+</section>
+<div class="running-footer">base-S03-s2-5c014a5 — not legal advice; the technical half of an Article 30(1) record.</div>
+</body>
+</html>

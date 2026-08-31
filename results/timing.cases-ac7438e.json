@@ -1,0 +1,20 @@
+{
+  "recorded_at": "2026-08-31T14:48:51Z",
+  "git_sha": "cdbf9dd",
+  "per_case": {
+    "S01": {
+      "baseline": {
+        "wall_s_mean": 43.1,
+        "wall_s_std": 0.0,
+        "n": 1
+      }
+    }
+  },
+  "per_arm": {
+    "baseline": {
+      "wall_s_mean": 43.1,
+      "wall_s_std": 0.0,
+      "n": 1
+    }
+  }
+}

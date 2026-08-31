@@ -1,0 +1,489 @@
+{
+ "activities": [],
+ "data_subjects": [
+  {
+   "basis": "model_name",
+   "file": "models.py",
+   "label": "account holders",
+   "line": 11
+  },
+  {
+   "basis": "route_name",
+   "file": "api/profile.py",
+   "label": "account holders",
+   "line": 14
+  }
+ ],
+ "entry_points": [
+  {
+   "admin_only": false,
+   "file": "api/account.py",
+   "kind": "route",
+   "line": 10,
+   "name": "delete_account",
+   "note": "Loads the User row by id and deletes it through the SQLAlchemy session."
+  }
+ ],
+ "hints": {
+  "observed_module_names": [
+   {
+    "file": "billing.py",
+    "name": "billing"
+   },
+   {
+    "file": "analytics.py",
+    "name": "analytics"
+   },
+   {
+    "file": "mail.py",
+    "name": "mail"
+   },
+   {
+    "file": "cache.py",
+    "name": "cache"
+   },
+   {
+    "file": "catalog.py",
+    "name": "catalog"
+   },
+   {
+    "file": "api/account.py",
+    "name": "api.account"
+   },
+   {
+    "file": "api/profile.py",
+    "name": "api.profile"
+   }
+  ],
+  "observed_region_hints": [
+   {
+    "file": "config.py",
+    "line": 9,
+    "symbol": "eu-central-1"
+   },
+   {
+    "file": "config.py",
+    "line": 5,
+    "symbol": "sqlite:///./pulsedeck.db"
+   },
+   {
+    "file": "config.py",
+    "line": 10,
+    "symbol": "redis://localhost:6379/0"
+   }
+  ],
+  "security_evidence": []
+ },
+ "human": {
+  "controller": {
+   "contact": null,
+   "name": null
+  },
+  "data_categories_outside_code": null,
+  "data_subject_categories_confirmed": null,
+  "dpo": {
+   "contact": null,
+   "name": null
+  },
+  "joint_controller": {
+   "contact": null,
+   "name": null
+  },
+  "legal_basis": null,
+  "purposes": null,
+  "representative": {
+   "contact": null,
+   "name": null
+  },
+  "retention_justification": null,
+  "security_organisational": null,
+  "special_categories": null,
+  "transfers": {
+   "countries": null,
+   "occurs": null,
+   "safeguards": null
+  }
+ },
+ "provenance": {
+  "arm": "baseline",
+  "brain": "claude",
+  "brain_label": "Claude (your login)",
+  "brain_model": "claude-opus-5",
+  "case": "S05",
+  "cli_total_cost_usd": 0.373989,
+  "config": {
+   "brain": "claude",
+   "max_tokens": 32000,
+   "overridden": [],
+   "submit_budget": 5,
+   "tool_budget": 60
+  },
+  "cost_source": "cli_estimate",
+  "cost_usd": 0.373988,
+  "effort": "high",
+  "finished_at": "2026-08-31T15:39:18Z",
+  "fixture": {
+   "id": "S05",
+   "path": "evals/fixtures/synthetic/S05",
+   "sha256": "1c7af597478a"
+  },
+  "gate": null,
+  "instruction_sha256": "43c86cec9e8c",
+  "mode": "live",
+  "model": "claude-opus-5",
+  "run_id": "base-S05-s3-06a9963",
+  "seed": 3,
+  "started_at": "2026-08-31T15:38:14Z",
+  "tool_calls": 18,
+  "trace": "/Users/tun/Documents/micro1-hackathon/traces/baseline/S05-s3.jsonl"
+ },
+ "repository": "pulsedeck",
+ "retention": [
+  {
+   "category": null,
+   "criteria": "Redis key written with SESSION_TTL_SECONDS = 86400 seconds of expiry.",
+   "days": 1,
+   "file": "cache.py",
+   "justification": null,
+   "line": 7,
+   "store": "sessions:"
+  }
+ ],
+ "schema_version": "1",
+ "stores": [
+  {
+   "declared_at": {
+    "file": "models.py",
+    "line": 12,
+    "symbol": "__tablename__"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "api/account.py",
+      "line": 13,
+      "symbol": "session.delete"
+     },
+     {
+      "file": "api/account.py",
+      "line": 14,
+      "symbol": "session.commit"
+     }
+    ],
+    "note": "The delete_account route calls session.delete on the User row and commits.",
+    "timer_days": null,
+    "verdict": "erased"
+   },
+   "fields": [
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "models.py",
+     "line": 14,
+     "name": "email",
+     "note": null
+    },
+    {
+     "category": "identifier",
+     "erasure": null,
+     "file": "models.py",
+     "line": 15,
+     "name": "full_name",
+     "note": null
+    },
+    {
+     "category": "behavioural",
+     "erasure": null,
+     "file": "models.py",
+     "line": 16,
+     "name": "marketing_opt_in",
+     "note": null
+    },
+    {
+     "category": "behavioural",
+     "erasure": null,
+     "file": "models.py",
+     "line": 17,
+     "name": "created_at",
+     "note": null
+    }
+   ],
+   "kind": "relational",
+   "name": "users",
+   "note": "SQLAlchemy table holding the account row.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "models.py",
+    "line": 11
+   }
+  },
+  {
+   "declared_at": {
+    "file": "cache.py",
+    "line": 12,
+    "symbol": "setex"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "cache.py",
+      "line": 15,
+      "symbol": "purge_session"
+     },
+     {
+      "file": "api/account.py",
+      "line": 13,
+      "symbol": "session.delete"
+     }
+    ],
+    "note": "purge_session is defined in cache.py but no module in this repository calls it, and delete_account touches only the database row.",
+    "timer_days": null,
+    "verdict": "not_erased"
+   },
+   "fields": [
+    {
+     "category": "technical",
+     "erasure": null,
+     "file": "cache.py",
+     "line": 12,
+     "name": "token",
+     "note": "The session token is stored as the value under a key built from the user's email address."
+    },
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "cache.py",
+     "line": 12,
+     "name": "user.email",
+     "note": "The email address is part of the Redis key."
+    }
+   ],
+   "kind": "cache",
+   "name": "sessions:",
+   "note": "Redis key namespace written on login with a 86400 second expiry.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "cache.py",
+    "line": 12
+   }
+  },
+  {
+   "declared_at": {
+    "file": "billing.py",
+    "line": 11,
+    "symbol": "stripe.Customer.create"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "billing.py",
+      "line": 11,
+      "symbol": "stripe.Customer.create"
+     }
+    ],
+    "note": "The signup route creates a Stripe customer from the user's email and name; this repository contains no Stripe deletion call.",
+    "timer_days": null,
+    "verdict": "external_manual"
+   },
+   "fields": [
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "billing.py",
+     "line": 12,
+     "name": "email",
+     "note": null
+    },
+    {
+     "category": "identifier",
+     "erasure": null,
+     "file": "billing.py",
+     "line": 13,
+     "name": "name",
+     "note": null
+    }
+   ],
+   "kind": "third_party",
+   "name": "stripe.Customer",
+   "note": "Stripe customer created during signup.",
+   "recipient_kind": "unknown",
+   "subject_link": {
+    "file": "api/profile.py",
+    "line": 16
+   }
+  },
+  {
+   "declared_at": {
+    "file": "analytics.py",
+    "line": 11,
+    "symbol": "mp.track"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "analytics.py",
+      "line": 11,
+      "symbol": "mp.track"
+     }
+    ],
+    "note": "track_signup sends the event to Mixpanel; no deletion call to Mixpanel exists in this repository.",
+    "timer_days": null,
+    "verdict": "external_manual"
+   },
+   "fields": [
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "analytics.py",
+     "line": 11,
+     "name": "user.email",
+     "note": "The email address is passed as the Mixpanel distinct id."
+    },
+    {
+     "category": "behavioural",
+     "erasure": null,
+     "file": "analytics.py",
+     "line": 11,
+     "name": "account_created",
+     "note": "The event name records that the person created an account."
+    }
+   ],
+   "kind": "third_party",
+   "name": "mixpanel",
+   "note": "Product analytics call made from the signup route.",
+   "recipient_kind": "unknown",
+   "subject_link": {
+    "file": "api/profile.py",
+    "line": 17
+   }
+  },
+  {
+   "declared_at": {
+    "file": "mail.py",
+    "line": 12,
+    "symbol": "sg.send"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "mail.py",
+      "line": 12,
+      "symbol": "sg.send"
+     }
+    ],
+    "note": "send_welcome hands the address and the body to the SendGrid client; this repository has no call that removes them.",
+    "timer_days": null,
+    "verdict": "external_manual"
+   },
+   "fields": [
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "mail.py",
+     "line": 12,
+     "name": "to",
+     "note": "The recipient address is the user's email."
+    },
+    {
+     "category": "identifier",
+     "erasure": null,
+     "file": "mail.py",
+     "line": 11,
+     "name": "body",
+     "note": "The message body is built from the user's full name."
+    }
+   ],
+   "kind": "third_party",
+   "name": "sendgrid",
+   "note": "Transactional mail sent during signup.",
+   "recipient_kind": "unknown",
+   "subject_link": {
+    "file": "api/profile.py",
+    "line": 18
+   }
+  },
+  {
+   "declared_at": {
+    "file": "app.py",
+    "line": 18,
+    "symbol": "sentry_sdk.init"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "app.py",
+      "line": 18,
+      "symbol": "sentry_sdk.init"
+     },
+     {
+      "file": "app.py",
+      "line": 21,
+      "symbol": "init_observability"
+     }
+    ],
+    "note": "init_observability runs at import and initialises the Sentry client; no deletion call to Sentry exists in this repository.",
+    "timer_days": null,
+    "verdict": "external_manual"
+   },
+   "fields": [
+    {
+     "category": "technical",
+     "erasure": null,
+     "file": "app.py",
+     "line": 9,
+     "name": "url",
+     "note": "Listed in this module as a field Sentry sends by default."
+    },
+    {
+     "category": "free_text_may_contain",
+     "erasure": null,
+     "file": "app.py",
+     "line": 10,
+     "name": "query_string",
+     "note": "Listed in this module as a field Sentry sends by default."
+    },
+    {
+     "category": "free_text_may_contain",
+     "erasure": null,
+     "file": "app.py",
+     "line": 11,
+     "name": "request_body",
+     "note": "Listed in this module as a field Sentry sends by default."
+    },
+    {
+     "category": "free_text_may_contain",
+     "erasure": null,
+     "file": "app.py",
+     "line": 12,
+     "name": "local_variables",
+     "note": "Stack-frame locals listed in this module as a field Sentry sends by default."
+    }
+   ],
+   "kind": "third_party",
+   "name": "sentry_sdk",
+   "note": "Error tracker initialised when app.py is imported.",
+   "recipient_kind": "unknown",
+   "subject_link": null
+  }
+ ],
+ "unscanned": [
+  {
+   "path": "requirements.txt",
+   "reason": "not_python"
+  },
+  {
+   "path": "README.md",
+   "reason": "not_python"
+  }
+ ],
+ "verification": {
+  "accepted_on_attempt": 1,
+  "bad_citations_resolved": [],
+  "conservative_divergences": [],
+  "missing_stores_resolved": [],
+  "rejected_history": [],
+  "rule_set_sha": null,
+  "submits": 1,
+  "unverified": []
+ }
+}

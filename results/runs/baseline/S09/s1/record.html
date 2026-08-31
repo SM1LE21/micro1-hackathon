@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="art30 run base-S09-s1-55aeec9">
+<title>Record of processing — slatecove</title>
+<style>
+:root { color-scheme: light; }
+body { background: #fff; color: #111; margin: 2rem auto; max-width: 60rem; padding: 0 1rem;
+       font-family: Georgia, "Times New Roman", serif; line-height: 1.5; }
+h1 { font-size: 1.6rem; } h2 { font-size: 1.25rem; margin-top: 2.5rem; } h3 { font-size: 1.05rem; }
+table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; font-size: 0.92rem; }
+caption { text-align: left; font-style: italic; padding-bottom: 0.3rem; }
+th, td { border: 1px solid #bbb; padding: 0.3rem 0.5rem; text-align: left; vertical-align: top; }
+th { background: #f2f2f2; }
+code { font-family: "DejaVu Sans Mono", Menlo, monospace; font-size: 0.86em; }
+code.cite { border-bottom: 1px dotted #666; }
+.boundary { border: 1px solid #444; padding: 0.8rem 1rem; margin: 1.2rem 0; }
+.verdict { font-weight: bold; letter-spacing: 0.02em; }
+.verdict.not-reaching { color: #8b0000; }
+tr.not-reaching td:first-child { border-left: 4px solid #8b0000; }
+.empty { font-style: italic; color: #444; }
+.footnotes { display: none; }
+@media print {
+  @page { size: A4; margin: 18mm 16mm 22mm 16mm; }
+  body { margin: 0; max-width: none; font-size: 10.5pt; }
+  section { break-before: page; }
+  .footnotes { display: block; font-size: 0.8rem; }
+  .running-footer { position: fixed; bottom: 0; left: 0; right: 0; font-size: 0.75rem;
+                    border-top: 1px solid #999; padding-top: 2mm; }
+}
+</style>
+</head>
+<body>
+<h1>Record of processing — slatecove</h1>
+<nav><ol>
+<li><a href="#a-inventory">A. Data inventory</a></li>
+<li><a href="#b-recipients">B. Recipients</a></li>
+<li><a href="#c-retention">C. Retention</a></li>
+<li><a href="#d-erasure">D. Erasure</a></li>
+<li><a href="#e-observations">E. Observations from the code (not findings)</a></li>
+<li><a href="#f-human">F. Requires human completion</a></li>
+<li><a href="#g-verification">G. Verification appendix</a></li>
+<li><a href="#h-evidence">H. Evidence index</a></li>
+</ol></nav>
+<table>
+<caption>Provenance</caption>
+<tr><th></th><th></th></tr>
+<tr><td>Case</td><td>S09 (synthetic)</td></tr>
+<tr><td>Arm</td><td>baseline</td></tr>
+<tr><td>Model</td><td>Claude (your login) — claude-opus-5, effort high</td></tr>
+<tr><td>Run</td><td><code>base-S09-s1-55aeec9</code></td></tr>
+<tr><td>Code read</td><td><code>evals/fixtures/synthetic/S09</code>, sha256 <code>8b63c6537a8d</code></td></tr>
+<tr><td>Instructions</td><td>sha256 <code>43c86cec9e8c</code></td></tr>
+<tr><td>Generated</td><td>2026-08-31 16:05:34 UTC</td></tr>
+<tr><td>Trace</td><td><code>/Users/tun/Documents/micro1-hackathon/traces/baseline/S09-s1.jsonl</code></td></tr>
+<tr><td>Verification</td><td>1 submission, accepted on attempt 1</td></tr>
+<tr><td>Cost</td><td>USD 0.34866 (estimate at list prices), 13 tool calls</td></tr>
+</table>
+<p class="boundary">This is the technical half of a record of processing activities under Article 30(1) GDPR. It was derived from source code by static reading, on the date above. It is not legal advice, it states no legal basis, and it is incomplete until the cells marked <code>requires human completion</code> are filled by a person. It covers Article 30(1) — the controller&#x27;s own record — for the repository named above; a processor&#x27;s record under Article 30(2), and any personal data held outside this repository, are not in it.</p>
+<section id="a-inventory">
+<h2>A. Data inventory</h2>
+<p>Data subjects: account holders — inferred from model name (<code class="cite" title="class Account(models.Model):">gallery/models.py:9</code>).</p>
+<h3>gallery_account — relational — <code class="cite" title="db_table = &quot;gallery_account&quot;">gallery/models.py:16</code></h3>
+<p>Table holding one row per account holder.</p>
+<table>
+<caption>gallery_account — relational — <code class="cite" title="db_table = &quot;gallery_account&quot;">gallery/models.py:16</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>email</code></td><td>contact</td><td><code class="cite" title="email = models.EmailField(max_length=255)">gallery/models.py:11</code></td><td></td></tr>
+<tr><td><code>full_name</code></td><td>identifier</td><td><code class="cite" title="full_name = models.CharField(max_length=255)">gallery/models.py:12</code></td><td></td></tr>
+<tr><td><code>joined_at</code></td><td>behavioural</td><td><code class="cite" title="joined_at = models.DateTimeField(auto_now_add=True)">gallery/models.py:13</code></td><td></td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="class Account(models.Model):">gallery/models.py:9</code>.</p>
+<h3>gallery_comment — relational — <code class="cite" title="db_table = &quot;gallery_comment&quot;">gallery/models.py:37</code></h3>
+<p>Table holding comment rows, each pointing at one account.</p>
+<table>
+<caption>gallery_comment — relational — <code class="cite" title="db_table = &quot;gallery_comment&quot;">gallery/models.py:37</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>body</code></td><td>free_text_may_contain</td><td><code class="cite" title="body = models.TextField()">gallery/models.py:32</code></td><td>Text field a person types into; the schema does not constrain what it holds.</td></tr>
+<tr><td><code>posted_at</code></td><td>behavioural</td><td><code class="cite" title="posted_at = models.DateTimeField(auto_now_add=True)">gallery/models.py:33</code></td><td>Timestamp on a row linked to an account.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="account = models.ForeignKey(Account, on_delete=models.CASCADE)">gallery/models.py:34</code>.</p>
+<h3>gallery_photo — relational — <code class="cite" title="db_table = &quot;gallery_photo&quot;">gallery/models.py:27</code></h3>
+<p>Table holding photo rows, each pointing at one account.</p>
+<table>
+<caption>gallery_photo — relational — <code class="cite" title="db_table = &quot;gallery_photo&quot;">gallery/models.py:27</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>caption</code></td><td>free_text_may_contain</td><td><code class="cite" title="caption = models.CharField(max_length=255)">gallery/models.py:22</code></td><td>Free-text field a person types into; the schema does not constrain what it holds.</td></tr>
+<tr><td><code>taken_at</code></td><td>behavioural</td><td><code class="cite" title="taken_at = models.DateTimeField(auto_now_add=True)">gallery/models.py:23</code></td><td>Timestamp on a row linked to an account.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="account = models.ForeignKey(Account, on_delete=models.CASCADE)">gallery/models.py:24</code>.</p>
+<h3>photo.image — object_storage — <code class="cite" title="image = models.ImageField(upload_to=&quot;photo/images/&quot;)">gallery/models.py:21</code></h3>
+<p>Files written by the ImageField on Photo under the upload_to prefix photo/images/.</p>
+<table>
+<caption>photo.image — object_storage — <code class="cite" title="image = models.ImageField(upload_to=&quot;photo/images/&quot;)">gallery/models.py:21</code></caption>
+<tr><th>Field</th><th>Category</th><th>Evidence</th><th>Note</th></tr>
+<tr><td><code>image</code></td><td>free_text_may_contain</td><td><code class="cite" title="image = models.ImageField(upload_to=&quot;photo/images/&quot;)">gallery/models.py:21</code></td><td>Uploaded file stored under photo/images/; its contents are whatever the account holder uploaded.</td></tr>
+</table>
+<p>Linked to the data subject at <code class="cite" title="account = models.ForeignKey(Account, on_delete=models.CASCADE)">gallery/models.py:24</code>.</p>
+<p>Not scanned:</p>
+<p><code>manage.py</code> (generated or vendored).</p>
+<p><code>README.md</code> (not Python).</p>
+<p><code>requirements.txt</code> (not Python).</p>
+<ol class="footnotes">
+<li>gallery/models.py:9: class Account(models.Model):</li>
+<li>gallery/models.py:16: db_table = &quot;gallery_account&quot;</li>
+<li>gallery/models.py:11: email = models.EmailField(max_length=255)</li>
+<li>gallery/models.py:12: full_name = models.CharField(max_length=255)</li>
+<li>gallery/models.py:13: joined_at = models.DateTimeField(auto_now_add=True)</li>
+<li>gallery/models.py:37: db_table = &quot;gallery_comment&quot;</li>
+<li>gallery/models.py:32: body = models.TextField()</li>
+<li>gallery/models.py:33: posted_at = models.DateTimeField(auto_now_add=True)</li>
+<li>gallery/models.py:34: account = models.ForeignKey(Account, on_delete=models.CASCADE)</li>
+<li>gallery/models.py:27: db_table = &quot;gallery_photo&quot;</li>
+<li>gallery/models.py:22: caption = models.CharField(max_length=255)</li>
+<li>gallery/models.py:23: taken_at = models.DateTimeField(auto_now_add=True)</li>
+<li>gallery/models.py:24: account = models.ForeignKey(Account, on_delete=models.CASCADE)</li>
+<li>gallery/models.py:21: image = models.ImageField(upload_to=&quot;photo/images/&quot;)</li>
+</ol>
+</section>
+<section id="b-recipients">
+<h2>B. Recipients</h2>
+<p>No store of kind third_party was found in the code.</p>
+</section>
+<section id="c-retention">
+<h2>C. Retention</h2>
+<table>
+<caption>C. Retention</caption>
+<tr><th>Store</th><th>Category</th><th>Envisaged limit</th><th>Evidence</th><th>Justification</th></tr>
+<tr><td>gallery_account</td><td>—</td><td>NO TIMER EVIDENCED</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>gallery_comment</td><td>—</td><td>NO TIMER EVIDENCED</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>gallery_photo</td><td>—</td><td>NO TIMER EVIDENCED</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>photo.image</td><td>—</td><td>NO TIMER EVIDENCED</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+<p>A period found in code is evidence for a retention schedule. The schedule itself is a policy the controller sets, and the reason for each period belongs in the justification column.</p>
+</section>
+<section id="d-erasure">
+<h2>D. Erasure</h2>
+<p>Erasure entry points:</p>
+<p><code>delete_account</code> — view — <code class="cite" title="def delete_account(request, pk):">gallery/views.py:9</code> (HTTP route gallery/&lt;int:pk&gt;/delete/ maps to this view in slatecove/urls.py line 10.).</p>
+<p><code>Account</code> — admin — <code class="cite" title="admin.site.register(Account)">gallery/admin.py:7</code>, admin only (Account is registered with the default ModelAdmin, so the admin delete action is available to staff.).</p>
+<table>
+<caption>D. Erasure</caption>
+<tr><th>Store</th><th>Verdict</th><th>Evidence</th><th>Note</th></tr>
+<tr class="not-reaching"><td>photo.image</td><td><span class="verdict not-reaching">NOT ERASED</span></td><td><code class="cite" title="image = models.ImageField(upload_to=&quot;photo/images/&quot;)">gallery/models.py:21</code><br><code class="cite" title="@receiver(post_delete, sender=Comment)">gallery/signals.py:9</code><br><code class="cite" title="instance.image.delete(save=False)">gallery/signals.py:11</code></td><td>The only receiver that deletes a file, delete_attached_image, is registered with sender=Comment, so deleting a Photo row never runs it and no other code calls storage delete; django_cleanup is not in INSTALLED_APPS.</td></tr>
+<tr><td>gallery_account</td><td><span class="verdict reaching">ERASED</span></td><td><code class="cite" title="class Account(models.Model):">gallery/models.py:9</code><br><code class="cite" title="account.delete()">gallery/views.py:12</code></td><td>The view loads the Account row and calls delete() on it; the model does not override delete(), so the row is removed.</td></tr>
+<tr><td>gallery_comment</td><td><span class="verdict reaching">ERASED</span></td><td><code class="cite" title="account = models.ForeignKey(Account, on_delete=models.CASCADE)">gallery/models.py:34</code><br><code class="cite" title="account.delete()">gallery/views.py:12</code></td><td>The foreign key to Account uses on_delete=models.CASCADE, so deleting the account row deletes the comment rows.</td></tr>
+<tr><td>gallery_photo</td><td><span class="verdict reaching">ERASED</span></td><td><code class="cite" title="account = models.ForeignKey(Account, on_delete=models.CASCADE)">gallery/models.py:24</code><br><code class="cite" title="account.delete()">gallery/views.py:12</code></td><td>The foreign key to Account uses on_delete=models.CASCADE, so deleting the account row deletes the photo rows.</td></tr>
+</table>
+<p>Object storage: where bucket versioning is enabled, a delete that passes no <code>versionId</code> leaves the previous version of the object in place.</p>
+<ol class="footnotes">
+<li>gallery/views.py:9: def delete_account(request, pk):</li>
+<li>gallery/admin.py:7: admin.site.register(Account)</li>
+<li>gallery/models.py:21: image = models.ImageField(upload_to=&quot;photo/images/&quot;)</li>
+<li>gallery/signals.py:9: @receiver(post_delete, sender=Comment)</li>
+<li>gallery/signals.py:11: instance.image.delete(save=False)</li>
+<li>gallery/models.py:9: class Account(models.Model):</li>
+<li>gallery/views.py:12: account.delete()</li>
+<li>gallery/models.py:34: account = models.ForeignKey(Account, on_delete=models.CASCADE)</li>
+<li>gallery/models.py:24: account = models.ForeignKey(Account, on_delete=models.CASCADE)</li>
+</ol>
+</section>
+<section id="e-observations">
+<h2>E. Observations from the code (not findings)</h2>
+<p>Module names. A module name says what the code was called, not what it is for. Article 30(1)(b) purposes are in section F.</p>
+<table>
+<caption>E. Observations from the code (not findings)</caption>
+<tr><th>Name</th><th>File</th></tr>
+<tr><td>gallery</td><td><code>gallery/models.py</code></td></tr>
+<tr><td>catalog</td><td><code>catalog/models.py</code></td></tr>
+</table>
+<p>Region hints. A region string says where a service was configured to run. It is not a finding about a transfer under Article 30(1)(e); that cell is in section F.</p>
+<p>None.</p>
+<p>Security measures. Technical measures under Article 32(1)(a) only, one line each. The organisational half is in section F.</p>
+<table>
+<caption>E. Observations from the code (not findings)</caption>
+<tr><th>Measure</th><th>Evidence</th><th>Symbol</th></tr>
+<tr><td>encryption in transit</td><td><code class="cite" title="SECURE_SSL_REDIRECT = True">slatecove/settings.py:10</code></td><td><code>SECURE_SSL_REDIRECT</code></td></tr>
+</table>
+<ol class="footnotes">
+<li>slatecove/settings.py:10: SECURE_SSL_REDIRECT = True</li>
+</ol>
+</section>
+<section id="f-human">
+<h2>F. Requires human completion</h2>
+<table>
+<caption>F. Requires human completion</caption>
+<tr><th>Cell</th><th>Article 30(1)</th><th>Value</th></tr>
+<tr><td>Controller — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Joint controller — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Representative — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Data protection officer — name, contact</td><td>(a)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Purposes of the processing</td><td>(b)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Confirmation of data-subject categories</td><td>(c)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of personal data held outside this repository</td><td>(c)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — occurs</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — countries</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfer to a third country — safeguards</td><td>(e)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Justification for each retention period</td><td>(f)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Organisational security measures</td><td>(g)</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Special categories of data (Article 9)</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Legal basis</td><td>—</td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+<p>Processing activities. Article 30 records processing activities; this document records stores. No activity grouping is derived from code. The stores in section A are the input to the fiche below, one copy per activity.</p>
+<table>
+<caption>F. Requires human completion</caption>
+<tr><th>Fiche field</th><th>Value</th></tr>
+<tr><td>Activity name</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Purposes</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of data subjects</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of personal data</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Categories of recipients</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Transfers outside the EU</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Retention</td><td><span class="empty">requires human completion</span></td></tr>
+<tr><td>Security measures</td><td><span class="empty">requires human completion</span></td></tr>
+</table>
+</section>
+<section id="g-verification">
+<h2>G. Verification appendix</h2>
+<p>Verification: none. This record was accepted on schema validity alone.</p>
+</section>
+<section id="h-evidence">
+<h2>H. Evidence index</h2>
+<table>
+<caption>H. Evidence index</caption>
+<tr><th>Evidence</th><th>Symbol</th><th>Sections</th></tr>
+<tr><td><code class="cite" title="admin.site.register(Account)">gallery/admin.py:7</code></td><td><code>Account</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="class Account(models.Model):">gallery/models.py:9</code></td><td><code>Account</code></td><td>A, D</td></tr>
+<tr><td><code class="cite" title="email = models.EmailField(max_length=255)">gallery/models.py:11</code></td><td><code>email</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="full_name = models.CharField(max_length=255)">gallery/models.py:12</code></td><td><code>full_name</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="joined_at = models.DateTimeField(auto_now_add=True)">gallery/models.py:13</code></td><td><code>joined_at</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="db_table = &quot;gallery_account&quot;">gallery/models.py:16</code></td><td><code>gallery_account</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="image = models.ImageField(upload_to=&quot;photo/images/&quot;)">gallery/models.py:21</code></td><td><code>ImageField</code>, <code>image</code></td><td>A, D</td></tr>
+<tr><td><code class="cite" title="caption = models.CharField(max_length=255)">gallery/models.py:22</code></td><td><code>caption</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="taken_at = models.DateTimeField(auto_now_add=True)">gallery/models.py:23</code></td><td><code>taken_at</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="account = models.ForeignKey(Account, on_delete=models.CASCADE)">gallery/models.py:24</code></td><td><code>CASCADE</code></td><td>A, D</td></tr>
+<tr><td><code class="cite" title="db_table = &quot;gallery_photo&quot;">gallery/models.py:27</code></td><td><code>gallery_photo</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="body = models.TextField()">gallery/models.py:32</code></td><td><code>body</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="posted_at = models.DateTimeField(auto_now_add=True)">gallery/models.py:33</code></td><td><code>posted_at</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="account = models.ForeignKey(Account, on_delete=models.CASCADE)">gallery/models.py:34</code></td><td><code>CASCADE</code></td><td>A, D</td></tr>
+<tr><td><code class="cite" title="db_table = &quot;gallery_comment&quot;">gallery/models.py:37</code></td><td><code>gallery_comment</code></td><td>A</td></tr>
+<tr><td><code class="cite" title="@receiver(post_delete, sender=Comment)">gallery/signals.py:9</code></td><td><code>sender=Comment</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="instance.image.delete(save=False)">gallery/signals.py:11</code></td><td><code>instance.image.delete</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="def delete_account(request, pk):">gallery/views.py:9</code></td><td><code>delete_account</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="account.delete()">gallery/views.py:12</code></td><td><code>account.delete</code></td><td>D</td></tr>
+<tr><td><code class="cite" title="SECURE_SSL_REDIRECT = True">slatecove/settings.py:10</code></td><td><code>SECURE_SSL_REDIRECT</code></td><td>E</td></tr>
+</table>
+<ol class="footnotes">
+<li>gallery/admin.py:7: admin.site.register(Account)</li>
+<li>gallery/models.py:9: class Account(models.Model):</li>
+<li>gallery/models.py:11: email = models.EmailField(max_length=255)</li>
+<li>gallery/models.py:12: full_name = models.CharField(max_length=255)</li>
+<li>gallery/models.py:13: joined_at = models.DateTimeField(auto_now_add=True)</li>
+<li>gallery/models.py:16: db_table = &quot;gallery_account&quot;</li>
+<li>gallery/models.py:21: image = models.ImageField(upload_to=&quot;photo/images/&quot;)</li>
+<li>gallery/models.py:22: caption = models.CharField(max_length=255)</li>
+<li>gallery/models.py:23: taken_at = models.DateTimeField(auto_now_add=True)</li>
+<li>gallery/models.py:24: account = models.ForeignKey(Account, on_delete=models.CASCADE)</li>
+<li>gallery/models.py:27: db_table = &quot;gallery_photo&quot;</li>
+<li>gallery/models.py:32: body = models.TextField()</li>
+<li>gallery/models.py:33: posted_at = models.DateTimeField(auto_now_add=True)</li>
+<li>gallery/models.py:34: account = models.ForeignKey(Account, on_delete=models.CASCADE)</li>
+<li>gallery/models.py:37: db_table = &quot;gallery_comment&quot;</li>
+<li>gallery/signals.py:9: @receiver(post_delete, sender=Comment)</li>
+<li>gallery/signals.py:11: instance.image.delete(save=False)</li>
+<li>gallery/views.py:9: def delete_account(request, pk):</li>
+<li>gallery/views.py:12: account.delete()</li>
+<li>slatecove/settings.py:10: SECURE_SSL_REDIRECT = True</li>
+</ol>
+</section>
+<div class="running-footer">base-S09-s1-55aeec9 — not legal advice; the technical half of an Article 30(1) record.</div>
+</body>
+</html>

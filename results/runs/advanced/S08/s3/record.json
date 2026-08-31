@@ -1,0 +1,424 @@
+{
+ "activities": [],
+ "data_subjects": [
+  {
+   "basis": "model_name",
+   "file": "models.py",
+   "label": "account holders",
+   "line": 12
+  },
+  {
+   "basis": "model_name",
+   "file": "models.py",
+   "label": "document authors",
+   "line": 22
+  }
+ ],
+ "entry_points": [],
+ "hints": {
+  "observed_module_names": [
+   {
+    "file": "api/account.py",
+    "name": "api.account"
+   },
+   {
+    "file": "jobs/dump.py",
+    "name": "jobs.dump"
+   },
+   {
+    "file": "search.py",
+    "name": "search"
+   },
+   {
+    "file": "queue.py",
+    "name": "queue"
+   },
+   {
+    "file": "storage.py",
+    "name": "storage"
+   },
+   {
+    "file": "catalog.py",
+    "name": "catalog"
+   }
+  ],
+  "observed_region_hints": [
+   {
+    "file": "config.py",
+    "line": 9,
+    "symbol": "eu-central-1"
+   },
+   {
+    "file": "config.py",
+    "line": 10,
+    "symbol": "http://localhost:9200"
+   },
+   {
+    "file": "config.py",
+    "line": 11,
+    "symbol": "amqp://localhost"
+   }
+  ],
+  "security_evidence": [
+   {
+    "file": "storage.py",
+    "line": 21,
+    "measure": "encryption_at_rest",
+    "symbol": "ServerSideEncryption"
+   }
+  ]
+ },
+ "human": {
+  "controller": {
+   "contact": null,
+   "name": null
+  },
+  "data_categories_outside_code": null,
+  "data_subject_categories_confirmed": null,
+  "dpo": {
+   "contact": null,
+   "name": null
+  },
+  "joint_controller": {
+   "contact": null,
+   "name": null
+  },
+  "legal_basis": null,
+  "purposes": null,
+  "representative": {
+   "contact": null,
+   "name": null
+  },
+  "retention_justification": null,
+  "security_organisational": null,
+  "special_categories": null,
+  "transfers": {
+   "countries": null,
+   "occurs": null,
+   "safeguards": null
+  }
+ },
+ "provenance": {
+  "arm": "advanced",
+  "brain": "claude",
+  "brain_label": "Claude (your login)",
+  "brain_model": "claude-opus-5",
+  "case": "S08",
+  "cli_total_cost_usd": 0.5143245000000001,
+  "config": {
+   "brain": "claude",
+   "max_tokens": 32000,
+   "overridden": [],
+   "submit_budget": 5,
+   "tool_budget": 60
+  },
+  "cost_source": "cli_estimate",
+  "cost_usd": 0.514323,
+  "effort": "high",
+  "finished_at": "2026-08-31T16:04:25Z",
+  "fixture": {
+   "id": "S08",
+   "path": "evals/fixtures/synthetic/S08",
+   "sha256": "11b624f57f0e"
+  },
+  "gate": {
+   "at": "2026-08-31T16:04:25Z",
+   "by": "simulated",
+   "decision": "approved",
+   "risk": "high",
+   "wait_s": 0.0
+  },
+  "instruction_sha256": "43c86cec9e8c",
+  "mode": "live",
+  "model": "claude-opus-5",
+  "run_id": "adv-S08-s3-ca88dd3",
+  "seed": 3,
+  "started_at": "2026-08-31T16:02:46Z",
+  "tool_calls": 19,
+  "trace": "/Users/tun/Documents/micro1-hackathon/traces/advanced/S08-s3.jsonl"
+ },
+ "repository": "civicbeam",
+ "retention": [],
+ "schema_version": "1",
+ "stores": [
+  {
+   "declared_at": {
+    "file": "models.py",
+    "line": 13,
+    "symbol": "users"
+   },
+   "erasure": {
+    "evidence": [],
+    "note": "No route, command, task or admin action in the repository deletes a user; the only delete token in the source is the relationship cascade on models.py line 19, which nothing calls.",
+    "timer_days": null,
+    "verdict": "no_entry_point"
+   },
+   "fields": [
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "models.py",
+     "line": 15,
+     "name": "email",
+     "note": null
+    },
+    {
+     "category": "identifier",
+     "erasure": null,
+     "file": "models.py",
+     "line": 16,
+     "name": "full_name",
+     "note": null
+    },
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "models.py",
+     "line": 17,
+     "name": "phone",
+     "note": null
+    },
+    {
+     "category": "behavioural",
+     "erasure": null,
+     "file": "models.py",
+     "line": 18,
+     "name": "created_at",
+     "note": null
+    }
+   ],
+   "kind": "relational",
+   "name": "users",
+   "note": "SQLAlchemy table holding the account holder row.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "models.py",
+    "line": 12
+   }
+  },
+  {
+   "declared_at": {
+    "file": "models.py",
+    "line": 23,
+    "symbol": "documents"
+   },
+   "erasure": {
+    "evidence": [],
+    "note": "The relationship on models.py line 19 carries the delete token, but no code path in the repository deletes a User row for it to propagate from.",
+    "timer_days": null,
+    "verdict": "no_entry_point"
+   },
+   "fields": [
+    {
+     "category": "free_text_may_contain",
+     "erasure": null,
+     "file": "models.py",
+     "line": 25,
+     "name": "title",
+     "note": "Title typed by the person who creates the document; the schema constrains only its length."
+    },
+    {
+     "category": "free_text_may_contain",
+     "erasure": null,
+     "file": "models.py",
+     "line": 26,
+     "name": "body",
+     "note": null
+    }
+   ],
+   "kind": "relational",
+   "name": "documents",
+   "note": "SQLAlchemy table whose user_id column points at the users table.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "models.py",
+    "line": 27
+   }
+  },
+  {
+   "declared_at": {
+    "file": "storage.py",
+    "line": 7,
+    "symbol": "BUCKET"
+   },
+   "erasure": {
+    "evidence": [],
+    "note": "storage.py defines put_object only; there is no delete_object call and no account deletion path to reach one.",
+    "timer_days": null,
+    "verdict": "no_entry_point"
+   },
+   "fields": [
+    {
+     "category": "identifier",
+     "erasure": null,
+     "file": "storage.py",
+     "line": 16,
+     "name": "key",
+     "note": "document_key on storage.py line 12 builds the object key from the user id, so the key points at the person."
+    },
+    {
+     "category": "free_text_may_contain",
+     "erasure": null,
+     "file": "storage.py",
+     "line": 20,
+     "name": "Body",
+     "note": "The uploaded document bytes are passed straight through from the route; the code does not constrain their contents."
+    }
+   ],
+   "kind": "object_storage",
+   "name": "uploads",
+   "note": "S3 bucket written by upload_document.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "storage.py",
+    "line": 12
+   }
+  },
+  {
+   "declared_at": {
+    "file": "search.py",
+    "line": 7,
+    "symbol": "INDEX"
+   },
+   "erasure": {
+    "evidence": [],
+    "note": "The module calls es.index and nothing else; no deletion path in the repository reaches the index.",
+    "timer_days": null,
+    "verdict": "no_entry_point"
+   },
+   "fields": [
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "search.py",
+     "line": 15,
+     "name": "owner_email",
+     "note": null
+    },
+    {
+     "category": "free_text_may_contain",
+     "erasure": null,
+     "file": "search.py",
+     "line": 16,
+     "name": "title",
+     "note": null
+    }
+   ],
+   "kind": "search_index",
+   "name": "doc_search",
+   "note": "Elasticsearch index written by index_document.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "search.py",
+    "line": 15
+   }
+  },
+  {
+   "declared_at": {
+    "file": "queue.py",
+    "line": 9,
+    "symbol": "QUEUE"
+   },
+   "erasure": {
+    "evidence": [],
+    "note": "Messages are published by publish_document_created; the repository has no account deletion path and no consumer or purge call.",
+    "timer_days": null,
+    "verdict": "no_entry_point"
+   },
+   "fields": [
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "queue.py",
+     "line": 20,
+     "name": "email",
+     "note": "The user email is serialised into the message body."
+    }
+   ],
+   "kind": "queue",
+   "name": "events",
+   "note": "RabbitMQ queue that publish_document_created writes to.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "queue.py",
+    "line": 20
+   }
+  },
+  {
+   "declared_at": {
+    "file": "jobs/dump.py",
+    "line": 8,
+    "symbol": "BACKUP_NAME"
+   },
+   "erasure": {
+    "evidence": [],
+    "note": "The module docstring calls the dump nightly and write_dump runs under __main__, but no cron entry, scheduler or retention period for the dump file appears anywhere in the repository.",
+    "timer_days": null,
+    "verdict": "no_schedule_evidenced"
+   },
+   "fields": [
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "jobs/dump.py",
+     "line": 9,
+     "name": "email",
+     "note": null
+    },
+    {
+     "category": "identifier",
+     "erasure": null,
+     "file": "jobs/dump.py",
+     "line": 9,
+     "name": "full_name",
+     "note": null
+    },
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "jobs/dump.py",
+     "line": 9,
+     "name": "phone",
+     "note": null
+    }
+   ],
+   "kind": "backup",
+   "name": "nightly_dump",
+   "note": "JSON file written to nightly_dump.json from the users and documents tables.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "jobs/dump.py",
+    "line": 16
+   }
+  }
+ ],
+ "unscanned": [
+  {
+   "path": "README.md",
+   "reason": "not_python"
+  },
+  {
+   "path": "requirements.txt",
+   "reason": "not_python"
+  }
+ ],
+ "verification": {
+  "accepted_on_attempt": 2,
+  "bad_citations_resolved": [
+   {
+    "attempt": 1,
+    "expected": "cite the line where key appears, or drop the claim",
+    "file": "storage.py",
+    "line": 12,
+    "problem": "line 12 does not contain 'key'",
+    "symbol": "key"
+   }
+  ],
+  "conservative_divergences": [],
+  "missing_stores_resolved": [],
+  "rejected_history": [],
+  "rule_set_sha": "e9a260adc28b",
+  "submits": 2,
+  "unverified": []
+ }
+}

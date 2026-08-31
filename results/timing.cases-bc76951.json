@@ -1,0 +1,54 @@
+{
+  "recorded_at": "2026-08-31T16:23:02Z",
+  "git_sha": "80681be",
+  "per_case": {
+    "S08": {
+      "advanced": {
+        "wall_s_mean": 83.3,
+        "wall_s_std": 11.4,
+        "n": 3
+      },
+      "baseline": {
+        "wall_s_mean": 72.9,
+        "wall_s_std": 2.9,
+        "n": 3
+      }
+    },
+    "S09": {
+      "advanced": {
+        "wall_s_mean": 112.6,
+        "wall_s_std": 35.1,
+        "n": 3
+      },
+      "baseline": {
+        "wall_s_mean": 65.8,
+        "wall_s_std": 5.8,
+        "n": 3
+      }
+    },
+    "S10": {
+      "advanced": {
+        "wall_s_mean": 101.5,
+        "wall_s_std": 3.0,
+        "n": 3
+      },
+      "baseline": {
+        "wall_s_mean": 92.2,
+        "wall_s_std": 26.4,
+        "n": 3
+      }
+    }
+  },
+  "per_arm": {
+    "advanced": {
+      "wall_s_mean": 99.1,
+      "wall_s_std": 24.5,
+      "n": 9
+    },
+    "baseline": {
+      "wall_s_mean": 77.0,
+      "wall_s_std": 19.2,
+      "n": 9
+    }
+  }
+}

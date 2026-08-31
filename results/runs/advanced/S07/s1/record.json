@@ -1,0 +1,379 @@
+{
+ "activities": [],
+ "data_subjects": [
+  {
+   "basis": "model_name",
+   "file": "models.py",
+   "label": "account holders",
+   "line": 12
+  },
+  {
+   "basis": "model_name",
+   "file": "models.py",
+   "label": "support requesters",
+   "line": 22
+  }
+ ],
+ "entry_points": [
+  {
+   "admin_only": false,
+   "file": "api/account.py",
+   "kind": "route",
+   "line": 11,
+   "name": "close_account",
+   "note": "Registered through the api.account module listed in ROUTES in app.py."
+  }
+ ],
+ "hints": {
+  "observed_module_names": [
+   {
+    "file": "privacy.py",
+    "name": "privacy"
+   },
+   {
+    "file": "api/account.py",
+    "name": "account"
+   },
+   {
+    "file": "api/profile.py",
+    "name": "profile"
+   },
+   {
+    "file": "middleware.py",
+    "name": "middleware"
+   }
+  ],
+  "observed_region_hints": [
+   {
+    "file": "config.py",
+    "line": 7,
+    "symbol": "eu-central-1"
+   }
+  ],
+  "security_evidence": [
+   {
+    "file": "privacy.py",
+    "line": 9,
+    "measure": "pseudonymisation",
+    "symbol": "hashlib"
+   }
+  ]
+ },
+ "human": {
+  "controller": {
+   "contact": null,
+   "name": null
+  },
+  "data_categories_outside_code": null,
+  "data_subject_categories_confirmed": null,
+  "dpo": {
+   "contact": null,
+   "name": null
+  },
+  "joint_controller": {
+   "contact": null,
+   "name": null
+  },
+  "legal_basis": null,
+  "purposes": null,
+  "representative": {
+   "contact": null,
+   "name": null
+  },
+  "retention_justification": null,
+  "security_organisational": null,
+  "special_categories": null,
+  "transfers": {
+   "countries": null,
+   "occurs": null,
+   "safeguards": null
+  }
+ },
+ "provenance": {
+  "arm": "advanced",
+  "brain": "claude",
+  "brain_label": "Claude (your login)",
+  "brain_model": "claude-opus-5",
+  "case": "S07",
+  "cli_total_cost_usd": 0.3703185,
+  "config": {
+   "brain": "claude",
+   "max_tokens": 32000,
+   "overridden": [],
+   "submit_budget": 5,
+   "tool_budget": 60
+  },
+  "cost_source": "cli_estimate",
+  "cost_usd": 0.370318,
+  "effort": "high",
+  "finished_at": "2026-08-31T15:51:13Z",
+  "fixture": {
+   "id": "S07",
+   "path": "evals/fixtures/synthetic/S07",
+   "sha256": "8cf9dccbd006"
+  },
+  "gate": {
+   "at": "2026-08-31T15:51:13Z",
+   "by": "simulated",
+   "decision": "approved",
+   "risk": "high",
+   "wait_s": 0.0
+  },
+  "instruction_sha256": "43c86cec9e8c",
+  "mode": "live",
+  "model": "claude-opus-5",
+  "run_id": "adv-S07-s1-9a532c3",
+  "seed": 1,
+  "started_at": "2026-08-31T15:50:04Z",
+  "tool_calls": 15,
+  "trace": "/Users/tun/Documents/micro1-hackathon/traces/advanced/S07-s1.jsonl"
+ },
+ "repository": "quillrest",
+ "retention": [],
+ "schema_version": "1",
+ "stores": [
+  {
+   "declared_at": {
+    "file": "models.py",
+    "line": 13,
+    "symbol": "users"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "api/account.py",
+      "line": 13,
+      "symbol": "session.get"
+     },
+     {
+      "file": "api/account.py",
+      "line": 14,
+      "symbol": "anonymize_user"
+     },
+     {
+      "file": "privacy.py",
+      "line": 9,
+      "symbol": "hashlib"
+     },
+     {
+      "file": "privacy.py",
+      "line": 10,
+      "symbol": "ANONYMISED_NAME"
+     },
+     {
+      "file": "api/account.py",
+      "line": 15,
+      "symbol": "commit"
+     }
+    ],
+    "note": "close_account overwrites email with its SHA-256 hash and full_name with the constant \"removed\"; the row and its primary key stay, and the hashed email still points at the same person.",
+    "timer_days": null,
+    "verdict": "pseudonymised"
+   },
+   "fields": [
+    {
+     "category": "contact",
+     "erasure": null,
+     "file": "models.py",
+     "line": 15,
+     "name": "email",
+     "note": null
+    },
+    {
+     "category": "identifier",
+     "erasure": null,
+     "file": "models.py",
+     "line": 16,
+     "name": "full_name",
+     "note": null
+    },
+    {
+     "category": "free_text_may_contain",
+     "erasure": {
+      "evidence": [
+       {
+        "file": "api/account.py",
+        "line": 14,
+        "symbol": "anonymize_user"
+       },
+       {
+        "file": "privacy.py",
+        "line": 9,
+        "symbol": "hashlib"
+       },
+       {
+        "file": "models.py",
+        "line": 17,
+        "symbol": "metadata_json"
+       }
+      ],
+      "note": "anonymize_user writes only email and full_name, so this column keeps whatever the client and support wrote into it.",
+      "timer_days": null,
+      "verdict": "not_erased"
+     },
+     "file": "models.py",
+     "line": 17,
+     "name": "metadata_json",
+     "note": "A comment on the column says the client sets arbitrary key/value pairs and that support pastes contact details into it."
+    },
+    {
+     "category": "technical",
+     "erasure": {
+      "evidence": [
+       {
+        "file": "api/account.py",
+        "line": 14,
+        "symbol": "anonymize_user"
+       },
+       {
+        "file": "models.py",
+        "line": 18,
+        "symbol": "deleted_at"
+       }
+      ],
+      "note": "No code in the repository assigns deleted_at, and the row is never deleted.",
+      "timer_days": null,
+      "verdict": "not_erased"
+     },
+     "file": "models.py",
+     "line": 18,
+     "name": "deleted_at",
+     "note": "The application's own state column for the row."
+    }
+   ],
+   "kind": "relational",
+   "name": "users",
+   "note": "Table holding the account holder record.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "models.py",
+    "line": 12
+   }
+  },
+  {
+   "declared_at": {
+    "file": "models.py",
+    "line": 23,
+    "symbol": "tickets"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "api/account.py",
+      "line": 14,
+      "symbol": "anonymize_user"
+     },
+     {
+      "file": "privacy.py",
+      "line": 10,
+      "symbol": "ANONYMISED_NAME"
+     },
+     {
+      "file": "models.py",
+      "line": 19,
+      "symbol": "relationship"
+     }
+    ],
+    "note": "close_account touches only two columns on the user row and deletes nothing, and the User.tickets relationship carries no cascade argument, so ticket rows stay with their text and their user_id.",
+    "timer_days": null,
+    "verdict": "not_erased"
+   },
+   "fields": [
+    {
+     "category": "free_text_may_contain",
+     "erasure": null,
+     "file": "models.py",
+     "line": 25,
+     "name": "subject",
+     "note": null
+    },
+    {
+     "category": "free_text_may_contain",
+     "erasure": null,
+     "file": "models.py",
+     "line": 26,
+     "name": "notes",
+     "note": "A comment on the column says the free text may contain phone numbers."
+    },
+    {
+     "category": "behavioural",
+     "erasure": null,
+     "file": "models.py",
+     "line": 27,
+     "name": "opened_at",
+     "note": null
+    }
+   ],
+   "kind": "relational",
+   "name": "tickets",
+   "note": "Table holding support tickets, linked to the user by user_id.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "models.py",
+    "line": 28
+   }
+  },
+  {
+   "declared_at": {
+    "file": "middleware.py",
+    "line": 5,
+    "symbol": "request_log"
+   },
+   "erasure": {
+    "evidence": [
+     {
+      "file": "middleware.py",
+      "line": 11,
+      "symbol": "logger.info"
+     },
+     {
+      "file": "api/account.py",
+      "line": 14,
+      "symbol": "anonymize_user"
+     }
+    ],
+    "note": "No code reads or removes anything from this logger, and close_account only writes to the user row.",
+    "timer_days": null,
+    "verdict": "not_erased"
+   },
+   "fields": [
+    {
+     "category": "technical",
+     "erasure": null,
+     "file": "middleware.py",
+     "line": 9,
+     "name": "ip_address",
+     "note": "Read from request.client.host and written to the log line at middleware.py:11."
+    }
+   ],
+   "kind": "log",
+   "name": "request_log",
+   "note": "Standard-library logger that records the caller's IP address and the request path for every request.",
+   "recipient_kind": null,
+   "subject_link": {
+    "file": "middleware.py",
+    "line": 9
+   }
+  }
+ ],
+ "unscanned": [
+  {
+   "path": "README.md",
+   "reason": "not_python"
+  },
+  {
+   "path": "requirements.txt",
+   "reason": "not_python"
+  }
+ ],
+ "verification": {
+  "accepted_on_attempt": 1,
+  "bad_citations_resolved": [],
+  "conservative_divergences": [],
+  "missing_stores_resolved": [],
+  "rejected_history": [],
+  "rule_set_sha": "e9a260adc28b",
+  "submits": 1,
+  "unverified": []
+ }
+}

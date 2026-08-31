@@ -1,0 +1,59 @@
+{
+  "case": "S04",
+  "arm": "advanced",
+  "seed": 1,
+  "split": "dev",
+  "mode": "live",
+  "manifest_sha256": "9459e07149eb0c78a7716ac5bd45e94f214b3fbd6a4bd3b5438f540a2ebcc851",
+  "record_path": "/Users/tun/Documents/micro1-hackathon/results/runs/advanced/S04/s1/record.json",
+  "tp": 4,
+  "fp": 0,
+  "fn": 0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1": 1.0,
+  "false_safe": 0,
+  "false_safe_tuples": [],
+  "unmatched_reaching_claims": 0,
+  "unmatched_reaching_tuples": [],
+  "draft": null,
+  "pass": true,
+  "missing": [],
+  "spurious": [],
+  "wrong_verdict": [],
+  "unverified": 0,
+  "invalid_verdict_for_kind": [],
+  "duplicates": [],
+  "verdict_confusion": {
+    "erased": {
+      "erased": 4
+    }
+  },
+  "citation_check": {
+    "checked": 4,
+    "bad": 0
+  },
+  "retention_check": {
+    "matched": 0,
+    "missing": 0,
+    "spurious": 0
+  },
+  "entry_point_check": {
+    "matched": 1,
+    "missing": 0,
+    "spurious": 0
+  },
+  "run": {
+    "stop_condition": "accepted",
+    "steps": 7,
+    "tool_calls": 13,
+    "submits": 1,
+    "verify_rounds": 0,
+    "cost_usd": 0.289404,
+    "gate": {
+      "risk": "low",
+      "decision": "approved",
+      "by": "simulated"
+    }
+  }
+}

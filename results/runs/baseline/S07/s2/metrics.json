@@ -1,0 +1,67 @@
+{
+  "case": "S07",
+  "arm": "baseline",
+  "seed": 2,
+  "split": "dev",
+  "mode": "live",
+  "manifest_sha256": "79fc32a0c76ee122c3f8ef64cb8fb7752119f21888e63586ff3fdbf2babd0763",
+  "record_path": "/Users/tun/Documents/micro1-hackathon/results/runs/baseline/S07/s2/record.json",
+  "tp": 8,
+  "fp": 0,
+  "fn": 1,
+  "precision": 1.0,
+  "recall": 0.888889,
+  "f1": 0.941176,
+  "false_safe": 0,
+  "false_safe_tuples": [],
+  "unmatched_reaching_claims": 0,
+  "unmatched_reaching_tuples": [],
+  "draft": null,
+  "pass": false,
+  "missing": [
+    [
+      "request_log",
+      "path"
+    ]
+  ],
+  "spurious": [],
+  "wrong_verdict": [],
+  "unverified": 0,
+  "invalid_verdict_for_kind": [],
+  "duplicates": [],
+  "verdict_confusion": {
+    "anonymised": {
+      "anonymised": 1
+    },
+    "not_erased": {
+      "not_erased": 5
+    },
+    "pseudonymised": {
+      "not_erased": 1,
+      "pseudonymised": 1
+    }
+  },
+  "citation_check": {
+    "checked": 8,
+    "bad": 0
+  },
+  "retention_check": {
+    "matched": 0,
+    "missing": 0,
+    "spurious": 0
+  },
+  "entry_point_check": {
+    "matched": 1,
+    "missing": 0,
+    "spurious": 0
+  },
+  "run": {
+    "stop_condition": "accepted",
+    "steps": 7,
+    "tool_calls": 15,
+    "submits": 1,
+    "verify_rounds": 0,
+    "cost_usd": 0.349494,
+    "gate": null
+  }
+}
