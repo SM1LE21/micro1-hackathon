@@ -107,7 +107,11 @@ class Driver:
                  report: Callable[[str, dict], None] | None) -> None:
         self.cfg, self.case, self.arm, self.seed, self.brain = cfg, case, arm, seed, brain
         self.report = report
-        self.out = Path(cfg.out_dir)
+        # Resolved, not as given: every path that reaches the CLI child or the MCP
+        # server (mcp.json's own path, the spool inside it) is interpreted against
+        # THEIR cwd - the scanned repository - not ours. A relative --out from the
+        # harness sent claude looking for mcp.json inside the fixture (2026-08-31).
+        self.out = Path(cfg.out_dir).resolve()
         self.spool = Spool(self.out / SPOOL_NAME).reset()
         self.trace = Trace(loop_mod.trace_path(cfg, arm, case, seed))
         self.ctx = RunCtx(case=case.id, arm=arm.name, seed=seed, root=case.root,
